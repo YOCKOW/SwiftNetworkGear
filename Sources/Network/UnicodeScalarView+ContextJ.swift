@@ -18,7 +18,9 @@ extension String.UnicodeScalarView {
     
     switch scalar {
     case "\u{200C}"..."\u{200D}":
-      if self[self.index(before:index)].canonicalCombiningClass == .virama { return true }
+      if self[self.index(before:index)].latestProperties.canonicalCombiningClass == .virama {
+        return true
+      }
       if scalar == "\u{200C}" { fallthrough }
     case "\u{200C}":
       // ZERO WIDTH NON-JOINER
@@ -31,7 +33,7 @@ extension String.UnicodeScalarView {
         ii = self.index(before:ii)
         
         let scalar = self[ii]
-        let joiningType = scalar.joiningType
+        let joiningType = scalar.latestProperties.joiningType
         if joiningType == .leftJoining || joiningType == .dualJoining { break }
         if joiningType == .transparent { continue }
         return false
@@ -44,7 +46,7 @@ extension String.UnicodeScalarView {
         if ii == self.endIndex { return false }
         
         let scalar = self[ii]
-        let joiningType = scalar.joiningType
+        let joiningType = scalar.latestProperties.joiningType
         if joiningType == .rightJoining || joiningType == .dualJoining { return true }
         if joiningType == .transparent { continue }
         return false

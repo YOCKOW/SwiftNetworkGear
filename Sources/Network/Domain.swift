@@ -126,7 +126,7 @@ public struct Domain {
       
       
       // First scalar must not be Mark (M*).
-      let fgc = scalars.first!.generalCategory
+      let fgc = scalars.first!.latestProperties.generalCategory
       if fgc == .spacingMark || fgc == .enclosingMark || fgc == .nonspacingMark {
         throw InitializationError.firstScalarIsMark
       }
@@ -167,8 +167,10 @@ public struct Domain {
         if scalar == "\u{002E}" { throw InitializationError.containingFullStop }
         
         // Check IDNA status
-        guard let status = scalar.idnaStatus(usingSTD3ASCIIRules:options.contains(.useSTD3ASCIIRules),
-                                             idna2008Compatible:options.contains(._idna2008)) else {
+        guard let status =
+          scalar.latestProperties.idnaStatus(usingSTD3ASCIIRules:options.contains(.useSTD3ASCIIRules),
+                                             idna2008Compatible:options.contains(._idna2008))
+        else {
           throw InitializationError.invalidIDNAStatus
         }
         switch status {
@@ -230,26 +232,26 @@ public struct Domain {
 
     // mapping
     for scalar in input {
-      guard let status = scalar.idnaStatus(usingSTD3ASCIIRules:options.contains(.useSTD3ASCIIRules),
-                                           idna2008Compatible:options.contains(._idna2008)) else {
+      guard let status =
+       scalar.latestProperties.idnaStatus(usingSTD3ASCIIRules:options.contains(.useSTD3ASCIIRules),
+                                          idna2008Compatible:options.contains(._idna2008))
+      else {
         return nil
       }
+      
       switch status {
       case .valid:
         converted.append(scalar)
       case .ignored: break
-      case .mapped(let results) where results != nil:
-        converted.append(contentsOf:results!)
+      case .mapped(let results):
+        converted.append(contentsOf:results)
       case .deviation(let results):
         if options.contains(.transitionalProcessing) {
-          if results != nil {
-            converted.append(contentsOf:results!)
-          }
+          converted.append(contentsOf:results)
         } else {
           converted.append(scalar)
         }
       case .disallowed: return nil
-      default: break
       }
     } // end of mapping
     

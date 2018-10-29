@@ -28,12 +28,12 @@ extension String.UnicodeScalarView {
     case "\u{0375}":
       // GREEK LOWER NUMERAL SIGN (KERAIA); https://tools.ietf.org/html/rfc5892#appendix-A.4
       guard let next = nextIndex else { return false }
-      return self[next].script == .greek
+      return self[next].latestProperties.script == .greek
     case "\u{05F3}", "\u{05F4}":
       // HEBREW PUNCTUATION GERESH; https://tools.ietf.org/html/rfc5892#appendix-A.5
       // HEBREW PUNCTUATION GERSHAYIM; https://tools.ietf.org/html/rfc5892#appendix-A.6
       guard let prev = previousIndex else { return false }
-      return self[prev].script == .hebrew
+      return self[prev].latestProperties.script == .hebrew
     case "\u{30FB}":
       // KATAKANA MIDDLE DOT; https://tools.ietf.org/html/rfc5892#appendix-A.7
       var ii = self.startIndex
@@ -41,7 +41,7 @@ extension String.UnicodeScalarView {
         if ii == self.endIndex { break }
         defer { ii = self.index(after:ii) }
         
-        let script = self[ii].script
+        let script = self[ii].latestProperties.script
         guard script == .hiragana || script == .katakana || script == .han else { return false }
       }
       return true

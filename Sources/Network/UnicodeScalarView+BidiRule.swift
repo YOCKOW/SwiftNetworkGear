@@ -12,7 +12,7 @@ extension String.UnicodeScalarView {
   /// reference: https://tools.ietf.org/html/rfc5893#section-2
   internal var satisfiesBidiRule: Bool {
     // Rule 1.
-    let firstBidi = self.first!.bidirectionality
+    let firstBidi = self.first!.latestProperties.bidiClass
     guard firstBidi == .leftToRight || firstBidi == .rightToLeft || firstBidi == .arabicLetter else {
       return false
     }
@@ -20,7 +20,7 @@ extension String.UnicodeScalarView {
     let direction: _LabelDirection = (firstBidi == .leftToRight) ? .ltr : .rtl
     
     // For rule 2. or 5.
-    let availableBidi: Set<Unicode.Scalar.BidiClass> = (direction == .rtl) ? [
+    let availableBidi: Set<Unicode.BidiClass> = (direction == .rtl) ? [
       .rightToLeft, .arabicLetter, .arabicNumber,
       .europeanNumber, .europeanSeparator, .commonSeparator, .europeanTerminator,
       .otherNeutral, .boundaryNeutral, .nonspacingMark
@@ -31,7 +31,7 @@ extension String.UnicodeScalarView {
     ]
     
     // For rule 3. or 6
-    let availableBidiAtEnd: Set<Unicode.Scalar.BidiClass> = (direction == .rtl) ? [
+    let availableBidiAtEnd: Set<Unicode.BidiClass> = (direction == .rtl) ? [
       .rightToLeft, .arabicLetter, .europeanNumber, .arabicNumber
     ] : [
       .leftToRight, .europeanNumber
@@ -48,7 +48,7 @@ extension String.UnicodeScalarView {
       if ii == self.startIndex { break }
       ii = self.index(before:ii)
       
-      let bidi = self[ii].bidirectionality
+      let bidi = self[ii].latestProperties.bidiClass
       
       //// Check the rule 2. or 5.
       guard availableBidi.contains(bidi) else { return false }

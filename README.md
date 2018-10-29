@@ -17,7 +17,7 @@ It was originally written as a part of [SwiftCGIResponder](https://github.com/YO
 
 # Usage
 
-```
+```Swift
 import Network
 import Foundation
 
