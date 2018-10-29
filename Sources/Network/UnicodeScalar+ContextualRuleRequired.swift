@@ -10,7 +10,7 @@ import UnicodeSupplement
 extension Unicode.Scalar {
   /// Returns whether the receiver is a joiner (of ContextJ) or not.
   internal var isContextJoiner: Bool {
-    return self.isJoinControl
+    return self.latestProperties.isJoinControl
   }
   
   
