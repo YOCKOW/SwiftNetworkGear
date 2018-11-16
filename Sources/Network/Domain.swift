@@ -39,7 +39,7 @@ public struct Domain {
       fileprivate static let _idna2008 = ValidityOptions(rawValue:1 << 30)
       
       /// Loose options
-      internal static let loose: Domain.Label.ValidityOptions = [
+      public static let loose: Domain.Label.ValidityOptions = [
         .useSTD3ASCIIRules,
         .addPunycodeEncoding
       ]
