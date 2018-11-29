@@ -331,3 +331,19 @@ extension Domain: Hashable {
     return hh
   }
 }
+
+extension Domain {
+  /// [Domain Matching](https://tools.ietf.org/html/rfc6265#section-5.1.3).
+  /// Used by cookies.
+  public func domainMatches(_ another:Domain) -> Bool {
+    let numberOfMyLabels = self._labels.count
+    let numberOfAnotherLabels = another._labels.count
+    guard numberOfMyLabels >= numberOfAnotherLabels else { return false }
+    for ii in 0..<numberOfAnotherLabels {
+      let myLabel = self._labels[numberOfMyLabels - ii - 1]
+      let anotherLabel = another._labels[numberOfAnotherLabels - ii - 1]
+      guard myLabel == anotherLabel else { return false }
+    }
+    return true
+  }
+}

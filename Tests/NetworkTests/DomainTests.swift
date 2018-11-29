@@ -24,8 +24,20 @@ final class DomainTests: XCTestCase {
     }
   }
   
+  func test_domainMatching() {
+    let myDomain = Domain("Sub.YOCKOW.jp")!
+    
+    XCTAssertTrue(myDomain.domainMatches(Domain("yockow.jp")!))
+    XCTAssertTrue(myDomain.domainMatches(Domain("sub.yockow.jp")!))
+    
+    XCTAssertFalse(myDomain.domainMatches(Domain("another.sub.yockow.jp")!))
+    XCTAssertFalse(myDomain.domainMatches(Domain("foosub.yockow.jp")!))
+    XCTAssertFalse(myDomain.domainMatches(Domain("baryockow.jp")!))
+  }
+  
   static var allTests = [
     ("testInitialization", testInitialization),
+    ("test_domainMatching", test_domainMatching),
   ]
 }
 

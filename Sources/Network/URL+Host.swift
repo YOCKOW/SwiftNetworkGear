@@ -109,3 +109,26 @@ extension URL.Host: CustomStringConvertible {
     return self._host.description
   }
 }
+
+extension URL.Host._Host {
+  fileprivate func _domainMatches(_ another:URL.Host._Host) -> Bool {
+    switch (self, another) {
+    case (.ipAddress, _), (_, .ipAddress):
+      return false
+    case (.domain(let myDomain), .domain(let anotherDomain)):
+      return myDomain.domainMatches(anotherDomain)
+    case (.string(let myString), .string(let anotherString)):
+      return myString == anotherString || myString.hasSuffix(".\(anotherString)")
+    default:
+      return URL.Host._Host.string(self.description)._domainMatches(
+        URL.Host._Host.string(another.description)
+      )
+    }
+  }
+}
+
+extension URL.Host {
+  public func domainMatches(_ another:URL.Host) -> Bool {
+    return self._host._domainMatches(another._host)
+  }
+}
