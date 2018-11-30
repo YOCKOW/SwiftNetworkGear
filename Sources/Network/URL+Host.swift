@@ -51,6 +51,14 @@ extension URL {
       default: return false
       }
     }
+    
+    /// A Boolean value that indicates whether the host is IP address or not.
+    public var isIPAddress: Bool {
+      switch self._host {
+      case .ipAddress: return true
+      default: return false
+      }
+    }
   }
 }
 
