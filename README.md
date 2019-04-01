@@ -5,7 +5,7 @@ It was originally written as a part of [SwiftCGIResponder](https://github.com/YO
 
 # Requirements
 
-- Swift 4.1
+- Swift 5 (including compatibility mode for Swift 4 or 4.2)
 - macOS or Linux
 
 ## Dependencies

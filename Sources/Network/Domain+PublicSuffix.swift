@@ -1,6 +1,6 @@
 /***************************************************************************************************
  Domain+PublicSuffix.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2019 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
@@ -18,7 +18,7 @@ extension Domain {
       if ii == 0 && listNow.contains(.any) { return true }
       
       let label_string = labels[ii].description
-      guard let jj = listNow.index(of:.label(label_string, next:[])) else { return false }
+      guard let jj = listNow.firstIndex(of:.label(label_string, next:[])) else { return false }
       let node = listNow[jj]
       
       switch (ii, node) {

@@ -1,6 +1,6 @@
 /***************************************************************************************************
  UnicodeScalarView+ContextO.swift
-   © 2018 YOCKOW.
+   © 2018-2019 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
@@ -70,6 +70,5 @@ extension String.UnicodeScalarView {
     default:
       fatalError("Unexpected(unimplemented) scalar.")
     }
-    return false
   }
 }

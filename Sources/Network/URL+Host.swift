@@ -1,6 +1,6 @@
 /***************************************************************************************************
  URL+Host.swift
-   © 2018 YOCKOW.
+   © 2018-2019 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
@@ -79,11 +79,12 @@ extension URL.Host._Host: Hashable {
     default: return false
     }
   }
-  fileprivate var hashValue: Int {
+  
+  fileprivate func hash(into hasher:inout Hasher) {
     switch self {
-    case .ipAddress(let ip): return ip.hashValue
-    case .domain(let domain): return domain.hashValue
-    case .string(let string): return string.hashValue
+    case .ipAddress(let ip): hasher.combine(ip)
+    case .domain(let domain): hasher.combine(domain)
+    case .string(let string): hasher.combine(string)
     }
   }
 }
@@ -93,8 +94,8 @@ extension URL.Host: Hashable {
     return lhs._host == rhs._host
   }
   
-  public var hashValue: Int {
-    return self._host.hashValue
+  public func hash(into hasher:inout Hasher) {
+    hasher.combine(self._host)
   }
 }
 

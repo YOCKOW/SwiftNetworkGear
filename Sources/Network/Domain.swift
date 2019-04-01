@@ -1,6 +1,6 @@
 /***************************************************************************************************
  Domain.swift
-   © 2018 YOCKOW.
+   © 2018-2019 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
@@ -308,8 +308,8 @@ extension Domain.Label: Hashable {
     return lhs._string == rhs._string
   }
   
-  public var hashValue:Int {
-    return self._string.hashValue
+  public func hash(into hasher:inout Hasher) {
+    hasher.combine(self._string)
   }
 }
 
@@ -323,12 +323,10 @@ extension Domain: Hashable {
     return true
   }
   
-  public var hashValue: Int {
-    var hh = 0
+  public func hash(into hasher:inout Hasher) {
     for label in  self._labels {
-      hh ^= label.hashValue
+      hasher.combine(label)
     }
-    return hh
   }
 }
 
