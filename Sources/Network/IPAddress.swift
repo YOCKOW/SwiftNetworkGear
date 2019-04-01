@@ -1,6 +1,6 @@
 /***************************************************************************************************
  IPAddress.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2019 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
@@ -108,22 +108,23 @@ extension IPAddress: Hashable {
     }
   }
   
-  public var hashValue: Int {
+  public func hash(into hasher:inout Hasher) {
     switch self {
     case .v4(var bytes):
-      return withUnsafePointer(to:&bytes) {
-        return $0.withMemoryRebound(to:Int32.self, capacity:1) {
-          return Int($0.pointee)
+      withUnsafePointer(to:&bytes) {
+        $0.withMemoryRebound(to:Int32.self, capacity:1) {
+          hasher.combine($0.pointee)
         }
       }
     case .v6(var bytes):
-      if self.isIPv4Mapped { return self.v4Address!.hashValue }
+      if self.isIPv4Mapped {
+        self.v4Address!.hash(into:&hasher)
+        return
+      }
       let nn = 16 / MemoryLayout<Int>.size
-      return withUnsafePointer(to:&bytes) {
-        return $0.withMemoryRebound(to:Int.self, capacity:nn) {
-          var hash: Int = 0
-          for ii in 0..<nn { hash ^= $0[ii] }
-          return hash
+      withUnsafePointer(to:&bytes) {
+        $0.withMemoryRebound(to:Int.self, capacity:nn) {
+          for ii in 0..<nn { hasher.combine($0[ii]) }
         }
       }
     }
