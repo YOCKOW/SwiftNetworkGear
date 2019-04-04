@@ -9,7 +9,7 @@ import XCTest
 @testable import HTTP
 
 import Foundation
-import Network
+import NetworkGear
 
 final class CookieTests: XCTestCase {
   func test_date() {

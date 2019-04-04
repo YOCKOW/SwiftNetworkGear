@@ -7,7 +7,7 @@
 
 import BonaFideCharacterSet
 import Foundation
-import Network
+import NetworkGear
 
 // Request
 extension RFC6265Cookie {

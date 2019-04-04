@@ -6,7 +6,7 @@
  **************************************************************************************************/
  
 import XCTest
-@testable import Network
+@testable import NetworkGear
 
 private protocol URLIDNATestExpectedComponent {}
 extension String: URLIDNATestExpectedComponent {}

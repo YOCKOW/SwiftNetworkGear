@@ -1,6 +1,6 @@
-# What is `SwiftNetwork`?
+# What is `SwiftNetworkGear`?
 
-`SwiftNetwork` will provide various functions about network.
+`SwiftNetworkGear` will provide various functions about network.
 It was originally written as a part of [SwiftCGIResponder](https://github.com/YOCKOW/SwiftCGIResponder).
 
 # Requirements
@@ -21,7 +21,7 @@ It was originally written as a part of [SwiftCGIResponder](https://github.com/YO
 # Usage
 
 ```Swift
-import Network
+import NetworkGear
 import Foundation
 
 // DNS Lookup

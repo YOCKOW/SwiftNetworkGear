@@ -6,7 +6,7 @@
  ************************************************************************************************ */
 
 import Foundation
-import Network
+import NetworkGear
 
 /// Protocol for cookies defined in [RFC 6265](https://tools.ietf.org/html/rfc6265)
 ///
