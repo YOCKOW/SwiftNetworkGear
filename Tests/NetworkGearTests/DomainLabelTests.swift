@@ -6,7 +6,7 @@
  **************************************************************************************************/
  
 import XCTest
-@testable import Network
+@testable import NetworkGear
 
 final class DomainLabelTests: XCTestCase {
   func testInitialization_empty() {

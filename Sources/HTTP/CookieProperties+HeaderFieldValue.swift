@@ -7,7 +7,7 @@
 
 import BonaFideCharacterSet
 import Foundation
-import Network
+import NetworkGear
 
 private func _trim<S>(_ string:S) -> String where S:StringProtocol {
   return string.trimmingUnicodeScalars(in:.whitespacesAndNewlines)
