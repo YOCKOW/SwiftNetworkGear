@@ -10,8 +10,11 @@ It was originally written as a part of [SwiftCGIResponder](https://github.com/YO
 
 ## Dependencies
 
+- [SwiftBonaFideCharacterSet](https://github.com/YOCKOW/SwiftBonaFideCharacterSet)
 - [SwiftBootstring](https://github.com/YOCKOW/SwiftBootstring)
+- [SwiftExtensions](https://github.com/YOCKOW/SwiftExtensions)
 - [SwiftPublicSuffix](https://github.com/YOCKOW/SwiftPublicSuffix)
+- [SwiftRanges](https://github.com/YOCKOW/SwiftRanges)
 - [SwiftUnicodeSupplement](https://github.com/YOCKOW/SwiftUnicodeSupplement)
 
 
