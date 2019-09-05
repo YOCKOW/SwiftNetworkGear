@@ -25,6 +25,13 @@ public struct HeaderFieldName: RawRepresentable {
   }
 }
 
+extension HeaderFieldName: ExpressibleByStringLiteral {
+  public typealias StringLiteralType = String
+  public init(stringLiteral value: String) {
+    self.init(rawValue: value)!
+  }
+}
+
 extension HeaderFieldName: Equatable {
   public static func ==(lhs:HeaderFieldName, rhs:HeaderFieldName) -> Bool {
     return lhs._lowercasedRawValue == rhs._lowercasedRawValue

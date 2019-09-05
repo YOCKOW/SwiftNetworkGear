@@ -31,4 +31,18 @@ final class HeaderTests: XCTestCase {
     header.removeFields(forName:.ifNoneMatch)
     XCTAssertEqual(header.count, 0)
   }
+  
+  func test_asSequence() {
+    let header: Header = [
+      "Set-Cookie": "name1=value1; Domain=Example.com; Path=/",
+      "X-Name1": "Value1",
+      "X-Name2": "Value2",
+      "Set-Cookie": "name2=value2; Domain=Example.com; Path=/"
+    ]
+    
+    XCTAssertEqual(Array<HeaderField>(header).count, 4)
+    XCTAssertEqual(header.filter({ $0.name == .setCookie }).count, 2)
+    XCTAssertEqual(header.filter({ $0.name == "X-Name1" }).count, 1)
+    XCTAssertEqual(header.filter({ $0.name == "X-Name2" }).count, 1)
+  }
 }

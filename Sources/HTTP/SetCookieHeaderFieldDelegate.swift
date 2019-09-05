@@ -16,9 +16,17 @@ public struct SetCookieHeaderFieldDelegate: HeaderFieldDelegate {
     }
     
     public init?(headerFieldValue: HeaderFieldValue) {
-      guard let properties = CookieProperties(_responseHeaderFieldValue:headerFieldValue) else {
-        return nil
-      }
+      self.init(headerFieldValue: headerFieldValue, userInfo: nil)
+    }
+    
+    public init?(headerFieldValue: HeaderFieldValue, userInfo: [AnyHashable: Any]?) {
+      guard let properties: CookieProperties = ({
+        if case let url as URL = userInfo?["url"] {
+          return CookieProperties(responseHeaderFieldValue: headerFieldValue, for: url)
+        } else {
+          return CookieProperties(_responseHeaderFieldValue: headerFieldValue)
+        }
+      })() else { return nil }
       guard let cookie = AnyCookie(properties:properties) else { return nil }
       self.init(cookie)
     }

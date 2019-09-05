@@ -11,7 +11,9 @@ import yExtensions
 extension HeaderField {
   /// Metatype-erasure for `HeaderFieldDelegate`
   private class _TypeBox {
-    fileprivate func headerField(with value:HeaderFieldValue) -> HeaderField {
+    fileprivate func headerField(with value: HeaderFieldValue,
+                                 userInfo: [AnyHashable: Any]?) -> HeaderField
+    {
       fatalError("Must be overridden.")
     }
     
@@ -21,7 +23,9 @@ extension HeaderField {
         self._type = type
       }
       
-      fileprivate override func headerField(with value:HeaderFieldValue) -> HeaderField {
+      fileprivate override func headerField(with value: HeaderFieldValue,
+                                            userInfo: [AnyHashable: Any]?) -> HeaderField
+      {
         guard let source = Delegate.ValueSource(headerFieldValue:value) else {
           fatalError("\(Delegate.ValueSource.self) cannot be initialized with \"\(value)\".")
         }
@@ -32,7 +36,9 @@ extension HeaderField {
     fileprivate class _Appendable<Delegate>: _Normal<Delegate>
       where Delegate:AppendableHeaderFieldDelegate
     {
-      fileprivate override func headerField(with value:HeaderFieldValue) -> HeaderField {
+      fileprivate override func headerField(with value: HeaderFieldValue,
+                                            userInfo: [AnyHashable: Any]?) -> HeaderField
+      {
         guard let source = Delegate.ValueSource(headerFieldValue:value) else {
           fatalError("\(Delegate.ValueSource.self) cannot be initialized with \"\(value)\".")
         }
@@ -84,24 +90,29 @@ extension HeaderField {
       return self._register(_TypeBox._Appendable(typeObject), for:name)
     }
     
-    fileprivate func _headerField(name:HeaderFieldName, value:HeaderFieldValue) -> HeaderField? {
+    fileprivate func _headerField(name: HeaderFieldName,
+                                  value: HeaderFieldValue,
+                                  userInfo: [AnyHashable: Any]?) -> HeaderField?
+    {
       guard let box = self._list[name] else { return nil }
-      return box.headerField(with:value)
+      return box.headerField(with: value, userInfo: userInfo)
     }
   }
   
   /// Initializes with `name` and `value`.
   /// Appropriate delegate will be selected if the type for the name is registered in
   /// `DelegateSelector.default`.
-  public init(name:HeaderFieldName, value:HeaderFieldValue) {
-    if let field = DelegateSelector.default._headerField(name:name, value:value) {
+  public init(name:HeaderFieldName, value:HeaderFieldValue, userInfo: [AnyHashable: Any]? = nil) {
+    if let field = DelegateSelector.default._headerField(name: name, value: value,
+                                                         userInfo: userInfo)
+    {
       self = field
     } else {
       self.init(_AnyHeaderFieldDelegate(name:name, value:value))
     }
   }
   
-  public init?(string:String) {
+  public init?(string: String, userInfo: [AnyHashable: Any]? = nil) {
     func _trim<S>(_ string:S) -> String where S:StringProtocol {
       return string.trimmingUnicodeScalars(in:.whitespacesAndNewlines)
     }
@@ -112,7 +123,7 @@ extension HeaderField {
     {
         return nil
     }
-    self.init(name:name, value:value)
+    self.init(name: name, value: value, userInfo: userInfo)
   }
 }
 

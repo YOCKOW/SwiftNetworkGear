@@ -68,6 +68,49 @@ public struct Header {
   }
 }
 
+extension Header: ExpressibleByArrayLiteral {
+  public typealias ArrayLiteralElement = HeaderField
+  public init(arrayLiteral elements: HeaderField...) {
+    self.init(elements)
+  }
+}
+
+extension Header: ExpressibleByDictionaryLiteral {
+  public typealias Key = HeaderFieldName
+  public typealias Value = HeaderFieldValue
+  public init(dictionaryLiteral elements: (HeaderFieldName, HeaderFieldValue)...) {
+    self.init(elements.map({ HeaderField(name: $0.0, value: $0.1) }))
+  }
+}
+
+extension Header: Sequence {
+  public typealias Element = HeaderField
+  public struct Iterator: IteratorProtocol {
+    private var _pairIterator: Dictionary<HeaderFieldName, Array<HeaderField>>.Iterator
+    private var _fieldIterator: Array<HeaderField>.Iterator!
+    fileprivate init(_ header: Header) {
+      self._pairIterator = header._fieldTable.makeIterator()
+      self._fieldIterator = self._pairIterator.next()?.value.makeIterator()
+    }
+    
+    public typealias Element = Header.Element
+    public mutating func next() -> Header.Element? {
+      if self._fieldIterator == nil { return nil }
+      if let field = self._fieldIterator.next() {
+        return field
+      } else if let pair = self._pairIterator.next() {
+        self._fieldIterator = pair.value.makeIterator()
+        return self.next()
+      }
+      return nil
+    }
+  }
+  
+  public func makeIterator() -> Header.Iterator {
+    return Iterator(self)
+  }
+}
+
 extension Header: CustomStringConvertible {
   public var description: String {
     var desc = ""
