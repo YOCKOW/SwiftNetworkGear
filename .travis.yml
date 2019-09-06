@@ -16,11 +16,11 @@ matrix:
         - swift test -Xswiftc -swift-version -Xswiftc 4
 
     - <<: *macos
-      name: "Release Builds on macOS"
-      script: &release_builds
-        - swift build --configuration release  -Xswiftc -swift-version -Xswiftc 5
-        - swift build --configuration release  -Xswiftc -swift-version -Xswiftc 4.2
-        - swift build --configuration release  -Xswiftc -swift-version -Xswiftc 4
+      name: "Tests with release mode on macOS"
+      script: &tests_with_release_mode
+        - swift test --configuration release -Xswiftc -enable-testing -Xswiftc -swift-version -Xswiftc 5
+        - swift test --configuration release -Xswiftc -enable-testing -Xswiftc -swift-version -Xswiftc 4.2
+        - swift test --configuration release -Xswiftc -enable-testing -Xswiftc -swift-version -Xswiftc 4
 
     - &linux
       name: "Tests on Linux"
@@ -37,5 +37,4 @@ matrix:
       script: *tests
 
     - <<: *linux
-      name: "Release Builds on Linux"
-      script: *release_builds
+      name: "Tests with release mode on Linux"

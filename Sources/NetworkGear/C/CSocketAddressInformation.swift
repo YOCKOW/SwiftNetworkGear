@@ -28,7 +28,7 @@ extension CSocketAddressInformation {
   
   public var options: Options {
     get { return Options(rawValue:self.ai_flags) }
-    set { self.ai_flags = options.rawValue }
+    set { self.ai_flags = newValue.rawValue }
   }
   
   public var family: CSocketAddressFamily {
