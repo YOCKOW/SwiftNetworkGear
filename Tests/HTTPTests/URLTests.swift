@@ -10,6 +10,10 @@ import XCTest
 import Foundation
 
 final class URLTests: XCTestCase {
+  func test_postRequest() {
+    // TODO: Add tests.
+  }
+  
   func test_lastModified() {
     // FIXME: Use internal server.
     let url = URL(string: "https://example.com/")!
@@ -20,6 +24,10 @@ final class URLTests: XCTestCase {
     XCTAssertNotNil(lastModified)
     XCTAssertGreaterThan(lastModified!, past)
     XCTAssertLessThan(lastModified!, future)
+  }
+  
+  func test_eTag() {
+    // TODO: Add tests.
   }
 }
 

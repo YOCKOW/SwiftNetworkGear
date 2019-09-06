@@ -12,11 +12,18 @@ private var _headerCache: [URL: Header] = [:]
 extension URL {
   /// Represents HTTP Request.
   public struct Request {
+    public enum Body {
+      case data(Data)
+      case stream(InputStream)
+    }
+    
     public var method: Method
     public var header: Header
-    public init(method: Method = .get, header: Header = []) {
+    public var body: Body?
+    public init(method: Method = .get, header: Header = [], body: Body? = nil) {
       self.method = method
       self.header = header
+      self.body = body
     }
   }
   
@@ -52,6 +59,14 @@ extension URL {
     urlReq.httpMethod = request.method.rawValue
     for field in request.header {
       urlReq.addValue(field.value.rawValue, forHTTPHeaderField: field.name.rawValue)
+    }
+    switch request.body {
+    case .some(.data(let data)):
+      urlReq.httpBody = data
+    case .some(.stream(let stream)):
+      urlReq.httpBodyStream = stream
+    default:
+      break
     }
     
     enum _Result {

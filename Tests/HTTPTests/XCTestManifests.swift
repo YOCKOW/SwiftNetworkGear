@@ -120,7 +120,9 @@ extension URLTests {
     //   `swift test --generate-linuxmain`
     // to regenerate.
     static let __allTests__URLTests = [
+        ("test_eTag", test_eTag),
         ("test_lastModified", test_lastModified),
+        ("test_postRequest", test_postRequest),
     ]
 }
 
