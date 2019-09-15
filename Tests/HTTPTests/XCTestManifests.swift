@@ -81,7 +81,7 @@ extension LastModifiedHeaderFieldDelegateTests {
     //   `swift test --generate-linuxmain`
     // to regenerate.
     static let __allTests__LastModifiedHeaderFieldDelegateTests = [
-        ("test_initializer", test_initializer),
+        ("test_value", test_value),
     ]
 }
 
