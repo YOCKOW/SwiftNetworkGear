@@ -9,6 +9,9 @@ import XCTest
 @testable import HTTP
 
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import NetworkGear
 
 final class CookieTests: XCTestCase {

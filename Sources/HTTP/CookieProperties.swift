@@ -6,6 +6,9 @@
  ************************************************************************************************ */
 
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 extension HTTPCookiePropertyKey {
   public static let created = HTTPCookiePropertyKey(rawValue:"Created")
