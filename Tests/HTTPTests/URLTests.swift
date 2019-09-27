@@ -26,7 +26,11 @@ final class URLTests: XCTestCase {
   }
   
   func test_eTag() {
-    // TODO: Add tests.
+    let eTagString = "myETag"
+    let eTag = ETag.weak(eTagString)
+    
+    let url = URL(string: "https://Bot.YOCKOW.jp/-/eTag/weak:\(eTagString)")
+    XCTAssertEqual(url?.eTag, eTag)
   }
 }
 
