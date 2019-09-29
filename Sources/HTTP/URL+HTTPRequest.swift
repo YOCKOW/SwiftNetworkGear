@@ -6,6 +6,9 @@
  ************************************************************************************************ */
  
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 private var _headerCache: [URL: Header] = [:]
 

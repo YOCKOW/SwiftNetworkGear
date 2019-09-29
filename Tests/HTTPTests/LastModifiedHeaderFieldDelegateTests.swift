@@ -11,13 +11,17 @@ import XCTest
 import Foundation
 
 final class LastModifiedHeaderFieldDelegateTests: XCTestCase {
-  func test_initializer() {
-    let date_string = "Mon, 03 Oct 1983 16:21:09 GMT"
-    let date_field_value = HeaderFieldValue(rawValue:date_string)!
-    let date = Date(headerFieldValue:date_field_value)!
-    let lastModified = HeaderField(name:.lastModified, value:HeaderFieldValue(rawValue:date_string)!)
+  func test_value() {
+    let dateString = "Mon, 03 Oct 1983 16:21:09 GMT"
+    let dateFieldValue = HeaderFieldValue(rawValue: dateString)!
+    let date = Date(headerFieldValue: dateFieldValue)!
+    let lastModified = HeaderField(name:.lastModified, value: dateFieldValue)
     
-    XCTAssertEqual(lastModified.source as! Date, date)
+    XCTAssertEqual(lastModified.source as? Date, date)
+    XCTAssertEqual(lastModified.value.rawValue, dateString)
+    
+    let lastModified2 = HeaderField.lastModified(date)
+    XCTAssertEqual(lastModified.source as? Date, lastModified2.source as? Date)
   }
 }
 

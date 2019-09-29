@@ -13,7 +13,7 @@ import BonaFideCharacterSet
  Represents HTTP Header Field Name
  
  */
-public struct HeaderFieldName: RawRepresentable {
+public struct HeaderFieldName /* : RawRepresentable */ { // See https://bugs.swift.org/browse/SR-10734
   public let rawValue : String
   private let _lowercasedRawValue : String
   

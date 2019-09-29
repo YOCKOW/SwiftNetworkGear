@@ -8,6 +8,7 @@
 // For the purpose of testing `SocketAddress`
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 #include <sys/socket.h>

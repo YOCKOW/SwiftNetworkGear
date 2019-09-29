@@ -15,19 +15,22 @@ final class URLTests: XCTestCase {
   }
   
   func test_lastModified() {
-    // FIXME: Use internal server.
-    let url = URL(string: "https://example.com/")!
-    let past = Date(timeIntervalSince1970: 0.0)
-    let future = Date(timeIntervalSinceNow: 157680000.0)
+    let time = floor(Date().timeIntervalSinceReferenceDate - 86400.0)
+    let date = Date(timeIntervalSinceReferenceDate: time)
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyyMMddHHmmss"
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
     
-    let lastModified = url.lastModified
-    XCTAssertNotNil(lastModified)
-    XCTAssertGreaterThan(lastModified!, past)
-    XCTAssertLessThan(lastModified!, future)
+    let url = URL(string: "https://Bot.YOCKOW.jp/-/lastModified/\(formatter.string(from: date))")
+    XCTAssertEqual(url?.lastModified, date)
   }
   
   func test_eTag() {
-    // TODO: Add tests.
+    let eTagString = "myETag"
+    let eTag = ETag.weak(eTagString)
+    
+    let url = URL(string: "https://Bot.YOCKOW.jp/-/eTag/weak:\(eTagString)")
+    XCTAssertEqual(url?.eTag, eTag)
   }
 }
 

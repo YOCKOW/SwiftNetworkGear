@@ -64,6 +64,7 @@ final class HeaderFieldTests: XCTestCase {
     
     check_n(.contentDisposition, "attachment", ContentDispositionHeaderFieldDelegate.self)
     check_n(.eTag, "*", ETagHeaderFieldDelegate.self)
+    check_n("Etag", "W/\"weak\"", ETagHeaderFieldDelegate.self)
     check_a(.ifMatch, "*", IfMatchHeaderFieldDelegate.self)
   }
   
