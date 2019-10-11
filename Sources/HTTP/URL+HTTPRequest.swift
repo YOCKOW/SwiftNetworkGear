@@ -99,6 +99,14 @@ extension URL {
     }
   }
   
+  @inlinable
+  public var content: Data? {
+    return (try? self.response(to: Request()))?.content
+  }
+}
+
+// Headers
+extension URL {
   private var _header: Header? {
     if let header = _headerCache[self] {
       return header

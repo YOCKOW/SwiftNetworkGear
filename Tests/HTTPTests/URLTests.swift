@@ -10,6 +10,13 @@ import XCTest
 import Foundation
 
 final class URLTests: XCTestCase {
+  func test_content() throws {
+    let string = "テスト文字列"
+    let url = try XCTUnwrap(URL(internationalString: "https://Bot.YOCKOW.jp/-/stringContent/\(string)"))
+    let content = try XCTUnwrap(url.content)
+    XCTAssertEqual(String(data: content, encoding: .utf8), string)
+  }
+  
   func test_postRequest() {
     // TODO: Add tests.
   }
