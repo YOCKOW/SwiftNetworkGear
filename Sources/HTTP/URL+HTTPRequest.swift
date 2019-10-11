@@ -103,6 +103,11 @@ extension URL {
   public var content: Data? {
     return (try? self.response(to: Request()))?.content
   }
+  
+  @inlinable
+  public var stream: InputStream? {
+    return InputStream(url: self)
+  }
 }
 
 // Headers
