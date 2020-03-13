@@ -15,7 +15,7 @@ let package = Package(
     .package(url:"https://github.com/YOCKOW/SwiftBootstring.git", from: "1.0.1"),
     .package(url:"https://github.com/YOCKOW/SwiftPublicSuffix.git", from: "1.1.0"),
     .package(url:"https://github.com/YOCKOW/SwiftRanges.git", from: "3.0.0"),
-    .package(url:"https://github.com/YOCKOW/SwiftUnicodeSupplement.git", from: "0.5.0"),
+    .package(url:"https://github.com/YOCKOW/SwiftUnicodeSupplement.git", "0.5.0"..<"2.0.0"),
     .package(url:"https://github.com/YOCKOW/ySwiftExtensions.git", from: "0.4.0"),
   ],
   targets: [
