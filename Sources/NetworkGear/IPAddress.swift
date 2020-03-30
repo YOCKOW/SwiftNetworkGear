@@ -56,49 +56,83 @@ extension IPAddress {
   }
 }
 
+private extension IPAddress {
+  func _withUnsafeBufferPointer<Result>(_ body: (UnsafeBufferPointer<UInt8>) throws -> Result) rethrows -> Result {
+    let capacity: Int
+    switch self {
+    case .v4: capacity = 4
+    case .v6: capacity = 16
+    }
+    let pointer = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: capacity)
+    defer { pointer.deallocate() }
+    
+    switch self {
+    case .v4(let b0, let b1, let b2, let b3):
+      pointer[0] = b0
+      pointer[1] = b1
+      pointer[2] = b2
+      pointer[3] = b3
+    case .v6(let b0, let b1, let  b2, let  b3, let  b4, let  b5, let  b6, let  b7,
+             let b8, let b9, let b10, let b11, let b12, let b13, let b14, let b15):
+      pointer[0] = b0
+      pointer[1] = b1
+      pointer[2] = b2
+      pointer[3] = b3
+      pointer[4] = b4
+      pointer[5] = b5
+      pointer[6] = b6
+      pointer[7] = b7
+      pointer[8] = b8
+      pointer[9] = b9
+      pointer[10] = b10
+      pointer[11] = b11
+      pointer[12] = b12
+      pointer[13] = b13
+      pointer[14] = b14
+      pointer[15] = b15
+    }
+    
+    return try body(.init(pointer))
+  }
+}
+
 /// Handles IPv4-Mapped Address
 extension IPAddress {
   /// Check whether the instance is IPv4-mapped or not. Returns `false` if the instance is `.v4`.
   public var isIPv4Mapped: Bool {
-    guard case .v6(let bytes) = self else { return false }
-    return (
-      bytes.0 == 0 && bytes.1 == 0 && bytes.2 == 0 && bytes.3 == 0 &&
-        bytes.4 == 0 && bytes.5 == 0 && bytes.6 == 0 && bytes.7 == 0 &&
-        bytes.8 == 0 && bytes.9 == 0 && bytes.10 == UInt8(0xff) && bytes.11 == UInt8(0xff)
-    )
+    guard case .v6 = self else { return false }
+    return _withUnsafeBufferPointer {
+      for ii in 0...9 {
+        guard $0[ii] == 0 else { return false }
+      }
+      for ii in 10...11 {
+        guard $0[ii] == 0xFF else { return false }
+      }
+      return true
+    }
   }
   
   /// Returns IPv4Address, or `nil` if the instance is `.v6` and is not IPv4-mapped.
   public var v4Address: IPAddress? {
     if case .v4 = self { return self }
-    guard self.isIPv4Mapped, case .v6(let bytes) = self else { return nil }
-    return IPAddress(bytes:[bytes.12, bytes.13, bytes.14, bytes.15])!
+    guard self.isIPv4Mapped else { return nil }
+    return _withUnsafeBufferPointer { .v4($0[12], $0[13], $0[14], $0[15]) }
   }
 }
 
 extension IPAddress: Hashable {
   public static func ==(lhs:IPAddress, rhs:IPAddress) -> Bool {
     switch (lhs, rhs) {
-    case (.v4(let lBytes), .v4(let rBytes)): return lBytes == rBytes
-    case (.v6(let lBytes), .v6(let rBytes)):
-      return (
-        lBytes.0 == rBytes.0 &&
-        lBytes.1 == rBytes.1 &&
-        lBytes.2 == rBytes.2 &&
-        lBytes.3 == rBytes.3 &&
-        lBytes.4 == rBytes.4 &&
-        lBytes.5 == rBytes.5 &&
-        lBytes.6 == rBytes.6 &&
-        lBytes.7 == rBytes.7 &&
-        lBytes.8 == rBytes.8 &&
-        lBytes.9 == rBytes.9 &&
-        lBytes.10 == rBytes.10 &&
-        lBytes.11 == rBytes.11 &&
-        lBytes.12 == rBytes.12 &&
-        lBytes.13 == rBytes.13 &&
-        lBytes.14 == rBytes.14 &&
-        lBytes.15 == rBytes.15
-      )
+    case (.v4, .v4), (.v6, .v6):
+      return lhs._withUnsafeBufferPointer { (lp) -> Bool in
+        return rhs._withUnsafeBufferPointer { (rp) -> Bool in
+          assert(lp.count == rp.count)
+          for ii in 0..<lp.count {
+            if lp[ii] != rp[ii] { return false }
+          }
+          return true
+        }
+      }
     case (.v4, .v6):
       guard let mapped = rhs.v4Address else { return false }
       return lhs == mapped
@@ -109,23 +143,13 @@ extension IPAddress: Hashable {
   }
   
   public func hash(into hasher:inout Hasher) {
-    switch self {
-    case .v4(var bytes):
-      withUnsafePointer(to:&bytes) {
-        $0.withMemoryRebound(to:Int32.self, capacity:1) {
-          hasher.combine($0.pointee)
-        }
-      }
-    case .v6(var bytes):
-      if self.isIPv4Mapped {
-        self.v4Address!.hash(into:&hasher)
-        return
-      }
-      let nn = 16 / MemoryLayout<Int>.size
-      withUnsafePointer(to:&bytes) {
-        $0.withMemoryRebound(to:Int.self, capacity:nn) {
-          for ii in 0..<nn { hasher.combine($0[ii]) }
-        }
+    if case .v6 = self, let mapped = self.v4Address {
+      mapped.hash(into: &hasher)
+    }
+    
+    _withUnsafeBufferPointer {
+      for ii in 0..<$0.count {
+        hasher.combine($0[ii])
       }
     }
   }
@@ -135,10 +159,11 @@ extension IPAddress: Hashable {
 extension IPAddress {
   private var _cIPAddress: CIPAddress {
     switch self {
-    case .v4(let bytes):
-      return CIPv4Address(bytes)
-    case .v6(let bytes):
-      return CIPv6Address(bytes)
+    case .v4(let b0, let b1, let b2, let b3):
+      return CIPv4Address((b0, b1, b2, b3))
+    case .v6(let b0, let b1, let  b2, let  b3, let  b4, let  b5, let  b6, let  b7,
+             let b8, let b9, let b10, let b11, let b12, let b13, let b14, let b15):
+      return CIPv6Address((b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15))
     }
   }
   internal var _cIPSocketAddress: CIPSocketAddress {

@@ -16,7 +16,7 @@ extension CSocketAddressInformation {
     public let rawValue:CInt
     public init(rawValue:CInt) { self.rawValue = rawValue }
     
-    public static let none = Options(rawValue:0)
+    public static let none = Options([])
     public static let passive = Options(rawValue:AI_PASSIVE)
     public static let requestForCanonicalName = Options(rawValue:AI_CANONNAME)
     public static let disallowHostNameResolution = Options(rawValue:AI_NUMERICHOST)
