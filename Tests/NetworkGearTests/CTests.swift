@@ -102,30 +102,34 @@ final class CTests: XCTestCase {
     XCTAssertNotNil(v4Mapped)
     XCTAssertEqual(v4Mapped!.description.lowercased(), v4MappedString.lowercased())
     
-    guard case .v4(let v4Bytes) = v4! else { XCTFail("Not IPv4."); return }
-    XCTAssertEqual(v4Bytes.0, 127)
-    XCTAssertEqual(v4Bytes.1, 0)
-    XCTAssertEqual(v4Bytes.2, 0)
-    XCTAssertEqual(v4Bytes.3, 1)
+    do {
+      guard case .v4(let b0, let b1, let b2, let b3) = v4 else { XCTFail("Not IPv4."); return }
+      XCTAssertEqual(b0, 127)
+      XCTAssertEqual(b1, 0)
+      XCTAssertEqual(b2, 0)
+      XCTAssertEqual(b3, 1)
+    }
     
-    guard case .v6(let v6Bytes) = v6! else { XCTFail("Not IPv6."); return }
-    XCTAssertEqual(v6Bytes.0, 0x12)
-    XCTAssertEqual(v6Bytes.1, 0x34)
-    XCTAssertEqual(v6Bytes.2, 0x56)
-    XCTAssertEqual(v6Bytes.3, 0x78)
-    XCTAssertEqual(v6Bytes.4, 0x90)
-    XCTAssertEqual(v6Bytes.5, 0xAB)
-    XCTAssertEqual(v6Bytes.6, 0xCD)
-    XCTAssertEqual(v6Bytes.7, 0xEF)
-    XCTAssertEqual(v6Bytes.8, 0x12)
-    XCTAssertEqual(v6Bytes.9, 0x34)
-    XCTAssertEqual(v6Bytes.10, 0x56)
-    XCTAssertEqual(v6Bytes.11, 0x78)
-    XCTAssertEqual(v6Bytes.12, 0x90)
-    XCTAssertEqual(v6Bytes.13, 0xAB)
-    XCTAssertEqual(v6Bytes.14, 0xCD)
-    XCTAssertEqual(v6Bytes.15, 0xEF)
-    
+    do {
+      guard case .v6(let b0, let b1, let  b2, let  b3, let  b4, let  b5, let  b6, let  b7,
+                     let b8, let b9, let b10, let b11, let b12, let b13, let b14, let b15) = v6 else { XCTFail("Not IPv6."); return }
+      XCTAssertEqual(b0, 0x12)
+      XCTAssertEqual(b1, 0x34)
+      XCTAssertEqual(b2, 0x56)
+      XCTAssertEqual(b3, 0x78)
+      XCTAssertEqual(b4, 0x90)
+      XCTAssertEqual(b5, 0xAB)
+      XCTAssertEqual(b6, 0xCD)
+      XCTAssertEqual(b7, 0xEF)
+      XCTAssertEqual(b8, 0x12)
+      XCTAssertEqual(b9, 0x34)
+      XCTAssertEqual(b10, 0x56)
+      XCTAssertEqual(b11, 0x78)
+      XCTAssertEqual(b12, 0x90)
+      XCTAssertEqual(b13, 0xAB)
+      XCTAssertEqual(b14, 0xCD)
+      XCTAssertEqual(b15, 0xEF)
+    }
     
     XCTAssertEqual(v4!, v4Mapped!)
   }
