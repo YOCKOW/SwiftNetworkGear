@@ -26,10 +26,10 @@ extension HTTPHeaderField {
       fileprivate override func headerField(with value: HTTPHeaderFieldValue,
                                             userInfo: [AnyHashable: Any]?) -> HTTPHeaderField
       {
-        guard let source = Delegate.ValueSource(headerFieldValue:value) else {
-          fatalError("\(Delegate.ValueSource.self) cannot be initialized with \"\(value)\".")
+        guard let delegate = Delegate(value) else {
+          fatalError("\(Delegate.self) cannot be initialized with \"\(value)\".")
         }
-        return HTTPHeaderField(delegate:Delegate(source))
+        return HTTPHeaderField(delegate: delegate)
       }
     }
     
@@ -39,10 +39,10 @@ extension HTTPHeaderField {
       fileprivate override func headerField(with value: HTTPHeaderFieldValue,
                                             userInfo: [AnyHashable: Any]?) -> HTTPHeaderField
       {
-        guard let source = Delegate.ValueSource(headerFieldValue:value) else {
-          fatalError("\(Delegate.ValueSource.self) cannot be initialized with \"\(value)\".")
+        guard let delegate = Delegate(value) else {
+          fatalError("\(Delegate.self) cannot be initialized with \"\(value)\".")
         }
-        return HTTPHeaderField(delegate:Delegate(source))
+        return HTTPHeaderField(delegate: delegate)
       }
     }
   }

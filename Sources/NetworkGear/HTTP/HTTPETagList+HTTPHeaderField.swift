@@ -7,16 +7,16 @@
  
 
 extension HTTPETagList: HTTPHeaderFieldValueConvertible {
-  public init?(headerFieldValue: HTTPHeaderFieldValue) {
-    try? self.init(headerFieldValue.rawValue)
+  public init?(_ value: HTTPHeaderFieldValue) {
+    try? self.init(value.rawValue)
   }
   
-  public var headerFieldValue: HTTPHeaderFieldValue {
+  public var httpHeaderFieldValue: HTTPHeaderFieldValue {
     return HTTPHeaderFieldValue(rawValue:self.description)!
   }
 }
 
-extension AppendableHTTPHeaderFieldDelegate where ValueSource == HTTPETagList, Element == HTTPETag {
+extension AppendableHTTPHeaderFieldDelegate where HTTPHeaderFieldValueSource == HTTPETagList, Element == HTTPETag {
   public var elements: Array<HTTPETag> {
     switch self.source {
     case .any: return [.any]
@@ -37,7 +37,7 @@ extension AppendableHTTPHeaderFieldDelegate where ValueSource == HTTPETagList, E
 
 /// Generates a header field whose name is "If-Match"
 public struct IfMatchHTTPHeaderFieldDelegate: AppendableHTTPHeaderFieldDelegate {
-  public typealias ValueSource = HTTPETagList
+  public typealias HTTPHeaderFieldValueSource = HTTPETagList
   public typealias Element = HTTPETag
   
   public static var name: HTTPHeaderFieldName { return .ifMatch }
@@ -53,7 +53,7 @@ public struct IfMatchHTTPHeaderFieldDelegate: AppendableHTTPHeaderFieldDelegate 
 
 /// Generates a header field whose name is "If-None-Match"
 public struct IfNoneMatchHTTPHeaderFieldDelegate: AppendableHTTPHeaderFieldDelegate {
-  public typealias ValueSource = HTTPETagList
+  public typealias HTTPHeaderFieldValueSource = HTTPETagList
   public typealias Element = HTTPETag
   
   public static var name: HTTPHeaderFieldName { return .ifNoneMatch }

@@ -1,12 +1,12 @@
 /* *************************************************************************************************
  HTTPHeaderFieldDelegate.swift
-   © 2018-2019 YOCKOW.
+   © 2018-2020 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
 public protocol HTTPHeaderFieldDelegate: Hashable {
-  associatedtype ValueSource: HTTPHeaderFieldValueConvertible
+  associatedtype HTTPHeaderFieldValueSource
   
   /// The name of the header field.
   static var name: HTTPHeaderFieldName { get }
@@ -14,27 +14,42 @@ public protocol HTTPHeaderFieldDelegate: Hashable {
   /// The representation how it can exist in the header.
   static var type: HTTPHeaderField.PresenceType { get }
   
-  /// The source that generates the value of the header field.
-  var source: ValueSource { get }
+  /// The HTTP field value.
+  ///
+  /// Default implementation provided where `HTTPHeaderFieldValueSource` conforms to `HTTPHeaderFieldValueConvertible`.
+  var value: HTTPHeaderFieldValue { get }
   
-  /// Initializes with an instance of `ValueSource`.
-  init(_ source: ValueSource)
+  /// The source that generates the value of the header field.
+  var source: HTTPHeaderFieldValueSource { get }
+  
+  /// Initializes with an instance of `HTTPHeaderFieldValueSource`.
+  init(_ source: HTTPHeaderFieldValueSource)
+  
+  /// Initializes with an instance of `HTTPHeaderFieldValue`
+  ///
+  /// Default implementation provided where `HTTPHeaderFieldValueSource` conforms to `HTTPHeaderFieldValueConvertible`.
+  init?(_: HTTPHeaderFieldValue)
 }
 
-extension HTTPHeaderFieldDelegate {
+extension HTTPHeaderFieldDelegate where HTTPHeaderFieldValueSource: HTTPHeaderFieldValueConvertible {
   /// The value of the header field.
   public var value: HTTPHeaderFieldValue {
-    return self.source.headerFieldValue
+    return self.source.httpHeaderFieldValue
+  }
+  
+  public init?(_ httpHeaderFieldValue: HTTPHeaderFieldValue) {
+    guard let source = HTTPHeaderFieldValueSource(httpHeaderFieldValue) else { return nil }
+    self.init(source)
   }
 }
 
-extension HTTPHeaderFieldDelegate where ValueSource: Equatable {
+extension HTTPHeaderFieldDelegate where HTTPHeaderFieldValueSource: Equatable {
   public static func ==(lhs:Self, rhs:Self) -> Bool {
     return lhs.source == rhs.source
   }
 }
 
-extension HTTPHeaderFieldDelegate where ValueSource: Hashable {
+extension HTTPHeaderFieldDelegate where HTTPHeaderFieldValueSource: Hashable {
   public func hash(into hasher:inout Hasher) {
     hasher.combine(self.source)
   }
@@ -45,7 +60,7 @@ public protocol AppendableHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate {
   associatedtype Element
   
   /// The source that generates the value of the header field.
-  var source: ValueSource { get set }
+  var source: HTTPHeaderFieldValueSource { get set }
   
   /// The elements contained in the header field.
   var elements: [Element] { get }
@@ -58,7 +73,7 @@ public protocol AppendableHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate {
 }
 
 extension AppendableHTTPHeaderFieldDelegate
-  where ValueSource:RangeReplaceableCollection, ValueSource.Element == Element
+  where HTTPHeaderFieldValueSource: RangeReplaceableCollection, HTTPHeaderFieldValueSource.Element == Element
 {
   public mutating func append(_ element:Element) {
     self.source.append(element)

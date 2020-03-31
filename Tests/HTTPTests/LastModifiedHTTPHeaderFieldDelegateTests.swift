@@ -14,7 +14,7 @@ final class LastModifiedHTTPHeaderFieldDelegateTests: XCTestCase {
   func test_value() {
     let dateString = "Mon, 03 Oct 1983 16:21:09 GMT"
     let dateFieldValue = HTTPHeaderFieldValue(rawValue: dateString)!
-    let date = Date(headerFieldValue: dateFieldValue)!
+    let date = Date(dateFieldValue)!
     let lastModified = HTTPHeaderField(name:.lastModified, value: dateFieldValue)
     
     XCTAssertEqual(lastModified.source as? Date, date)

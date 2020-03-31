@@ -29,14 +29,14 @@ final class HTTPHeaderFieldTests: XCTestCase {
     XCTAssertFalse(eTagField.isAppendable)
     XCTAssertFalse(eTagField.isDuplicable)
     XCTAssertEqual(eTagField.name, .eTag)
-    XCTAssertEqual(eTagField.value, eTag1.headerFieldValue)
+    XCTAssertEqual(eTagField.value, eTag1.httpHeaderFieldValue)
     
     let ifMatchDelegate = IfMatchHTTPHeaderFieldDelegate(.list([eTag1, eTag2]))
     let ifMatchField = HTTPHeaderField(delegate:ifMatchDelegate)
     XCTAssertTrue(ifMatchField.isAppendable)
     XCTAssertFalse(ifMatchField.isDuplicable)
     XCTAssertEqual(ifMatchField.name, .ifMatch)
-    XCTAssertEqual(ifMatchField.value, HTTPETagList.list([eTag1, eTag2]).headerFieldValue)
+    XCTAssertEqual(ifMatchField.value, HTTPETagList.list([eTag1, eTag2]).httpHeaderFieldValue)
   }
   
   func test_delegateSelection() {

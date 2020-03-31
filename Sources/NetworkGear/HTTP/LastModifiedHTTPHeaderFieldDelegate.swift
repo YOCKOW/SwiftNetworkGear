@@ -8,7 +8,7 @@
 import Foundation
 
 public struct LastModifiedHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate {
-  public typealias ValueSource = Date
+  public typealias HTTPHeaderFieldValueSource = Date
   
   public static var name: HTTPHeaderFieldName { return .lastModified }
   public static var type: HTTPHeaderField.PresenceType { return .single }

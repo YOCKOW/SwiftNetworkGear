@@ -6,18 +6,18 @@
  ************************************************************************************************ */
  
 extension HTTPETag: HTTPHeaderFieldValueConvertible {
-  public init?(headerFieldValue: HTTPHeaderFieldValue) {
-    self.init(headerFieldValue.rawValue)
+  public init?(_ value: HTTPHeaderFieldValue) {
+    self.init(value.rawValue)
   }
   
-  public var headerFieldValue: HTTPHeaderFieldValue {
+  public var httpHeaderFieldValue: HTTPHeaderFieldValue {
     return HTTPHeaderFieldValue(rawValue:self.description)!
   }
 }
 
 /// Generates a header field whose name is "ETag"
 public struct HTTPETagHeaderFieldDelegate: HTTPHeaderFieldDelegate {
-  public typealias ValueSource = HTTPETag
+  public typealias HTTPHeaderFieldValueSource = HTTPETag
   
   public static var name: HTTPHeaderFieldName { return .eTag }
   

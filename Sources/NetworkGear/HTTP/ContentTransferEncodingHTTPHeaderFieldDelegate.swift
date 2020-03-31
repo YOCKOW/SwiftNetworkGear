@@ -7,7 +7,7 @@
 
 /// Generate the value of "Content-Transfer-Encoding:"
 public struct ContentTransferEncodingHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate {
-  public typealias ValueSource = ContentTransferEncoding
+  public typealias HTTPHeaderFieldValueSource = ContentTransferEncoding
   
   public static var name: HTTPHeaderFieldName { return .contentTransferEncoding }
   public static var type: HTTPHeaderField.PresenceType { return .single }

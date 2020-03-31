@@ -7,16 +7,16 @@
 
 /// A type that can be converted to/from an instance of `HeaderFieldValue`.
 public protocol HTTPHeaderFieldValueConvertible: Hashable {
-  init?(headerFieldValue:HTTPHeaderFieldValue)
-  init?(headerFieldValue:HTTPHeaderFieldValue, userInfo: [AnyHashable: Any]?)
-  var headerFieldValue:HTTPHeaderFieldValue { get }
+  init?(_: HTTPHeaderFieldValue)
+  init?(_: HTTPHeaderFieldValue, userInfo: [AnyHashable: Any]?)
+  var httpHeaderFieldValue: HTTPHeaderFieldValue { get }
 }
 
 extension HTTPHeaderFieldValueConvertible {
   /// Default implementation.
   ///
   /// Note: `userInfo` is always ignored when this default implementation is used.
-  public init?(headerFieldValue:HTTPHeaderFieldValue, userInfo: [AnyHashable: Any]?) {
-    self.init(headerFieldValue: headerFieldValue)
+  public init?(_ httpHeaderFieldValue: HTTPHeaderFieldValue, userInfo: [AnyHashable: Any]?) {
+    self.init(httpHeaderFieldValue)
   }
 }

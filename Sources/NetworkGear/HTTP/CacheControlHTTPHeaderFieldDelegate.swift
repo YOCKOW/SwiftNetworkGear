@@ -8,7 +8,7 @@
 
 /// Represents HTTP Header "Cache-Control"
 public struct CacheControlHTTPHeaderFieldDelegate: AppendableHTTPHeaderFieldDelegate {
-  public typealias ValueSource = CacheControlDirectiveSet
+  public typealias HTTPHeaderFieldValueSource = CacheControlDirectiveSet
   public typealias Element = CacheControlDirective
   
   public static var name: HTTPHeaderFieldName { return .cacheControl }

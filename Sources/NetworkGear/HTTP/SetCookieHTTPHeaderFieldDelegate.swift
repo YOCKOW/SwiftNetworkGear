@@ -15,27 +15,27 @@ public struct SetCookieHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate {
       self._cookie = AnyHTTPCookie(cookie)
     }
     
-    public init?(headerFieldValue: HTTPHeaderFieldValue) {
-      self.init(headerFieldValue: headerFieldValue, userInfo: nil)
+    public init?(_ value: HTTPHeaderFieldValue) {
+      self.init(value, userInfo: nil)
     }
     
-    public init?(headerFieldValue: HTTPHeaderFieldValue, userInfo: [AnyHashable: Any]?) {
+    public init?(_ value: HTTPHeaderFieldValue, userInfo: [AnyHashable: Any]?) {
       guard let properties: HTTPCookieProperties = ({
         if case let url as URL = userInfo?["url"] {
-          return HTTPCookieProperties(responseHeaderFieldValue: headerFieldValue, for: url)
+          return HTTPCookieProperties(responseHeaderFieldValue: value, for: url)
         } else {
-          return HTTPCookieProperties(_responseHeaderFieldValue: headerFieldValue)
+          return HTTPCookieProperties(_responseHeaderFieldValue: value)
         }
       })() else { return nil }
       guard let cookie = AnyHTTPCookie(properties:properties) else { return nil }
       self.init(cookie)
     }
     
-    public var headerFieldValue: HTTPHeaderFieldValue {
+    public var httpHeaderFieldValue: HTTPHeaderFieldValue {
       return self._cookie.responseHeaderFieldValue()!
     }
   }
-  public typealias ValueSource = Cookie
+  public typealias HTTPHeaderFieldValueSource = Cookie
   
   public static var name: HTTPHeaderFieldName { return .setCookie }
   public static var type: HTTPHeaderField.PresenceType { return .duplicable }

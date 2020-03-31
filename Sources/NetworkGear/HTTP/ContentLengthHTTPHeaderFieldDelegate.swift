@@ -7,7 +7,7 @@
  
 /// Generates "Content-Length".
 public struct ContentLengthHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate {
-  public typealias ValueSource = UInt
+  public typealias HTTPHeaderFieldValueSource = UInt
   
   public static var name: HTTPHeaderFieldName { return .contentLength }
   public static var type: HTTPHeaderField.PresenceType { return .single }

@@ -6,11 +6,11 @@
  ************************************************************************************************ */
  
 extension UInt: HTTPHeaderFieldValueConvertible {
-  public init?(headerFieldValue: HTTPHeaderFieldValue) {
-    self.init(headerFieldValue.rawValue)
+  public init?(_ value: HTTPHeaderFieldValue) {
+    self.init(value.rawValue)
   }
   
-  public var headerFieldValue: HTTPHeaderFieldValue {
+  public var httpHeaderFieldValue: HTTPHeaderFieldValue {
     return HTTPHeaderFieldValue(rawValue:self.description)!
   }
 }
