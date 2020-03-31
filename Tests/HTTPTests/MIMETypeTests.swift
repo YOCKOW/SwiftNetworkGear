@@ -6,7 +6,7 @@
  ************************************************************************************************ */
  
 import XCTest
-@testable import HTTP
+@testable import NetworkGear
 
 final class MIMETypeTests: XCTestCase {
   func test_parser() {
