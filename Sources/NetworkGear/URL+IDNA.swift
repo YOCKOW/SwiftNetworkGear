@@ -5,6 +5,7 @@
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
 
+import BonaFideCharacterSet
 import Foundation
 
 extension URL {

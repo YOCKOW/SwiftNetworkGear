@@ -6,7 +6,7 @@
  ************************************************************************************************ */
  
 import XCTest
-@testable import HTTP
+@testable import NetworkGear
 import Foundation
 
 final class URLTests: XCTestCase {
@@ -34,7 +34,7 @@ final class URLTests: XCTestCase {
   
   func test_eTag() {
     let eTagString = "myETag"
-    let eTag = ETag.weak(eTagString)
+    let eTag = HTTPETag.weak(eTagString)
     
     let url = URL(string: "https://Bot.YOCKOW.jp/-/eTag/weak:\(eTagString)")
     XCTAssertEqual(url?.eTag, eTag)
