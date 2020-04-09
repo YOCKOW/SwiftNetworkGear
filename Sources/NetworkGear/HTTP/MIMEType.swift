@@ -18,7 +18,7 @@ import yExtensions
 /// - `suffix`: Suffix
 /// - `parameters`: Companion data such as *charset=UTF-8*
 public struct MIMEType {
-  public enum TopLevelType: String {
+  public enum TopLevelType: String, Comparable {
     case application
     case audio
     case example
@@ -30,17 +30,25 @@ public struct MIMEType {
     case text
     case video
     case chemical
+    
+    public static func <(lhs: TopLevelType, rhs: TopLevelType) -> Bool {
+      return lhs.rawValue < rhs.rawValue
+    }
   }
   
-  public enum Tree: String {
+  public enum Tree: String, Comparable {
     case vnd
     case prs
     case x
+    
+    public static func <(lhs: Tree, rhs: Tree) -> Bool {
+      return lhs.rawValue < rhs.rawValue
+    }
   }
   
   public typealias Subtype = String
   
-  public enum Suffix: String {
+  public enum Suffix: String, Comparable {
     case xml
     case json
     case ber
@@ -49,6 +57,10 @@ public struct MIMEType {
     case wbxml
     case zip
     case cbor
+    
+    public static func <(lhs: Suffix, rhs: Suffix) -> Bool {
+      return lhs.rawValue < rhs.rawValue
+    }
   }
   
   public typealias Parameters = Dictionary<String, String>
@@ -159,7 +171,7 @@ extension MIMEType {
   /// Initialize with `string` such as "application/xhtml+xml; charset=UTF-8"
   ///
   /// - parameter string: must be `type "/" [tree "."] subtype ["+" suffix] *[";" parameter]`
-  public init?(_ string:String) {
+  public init?<S>(_ string: S) where S: StringProtocol {
     let (type_s, tree_subtype_suffix_parameters_s_nilable) = string.splitOnce(separator:"/")
     
     guard let type = TopLevelType(rawValue:type_s.lowercased()) else { return nil }
@@ -168,7 +180,7 @@ extension MIMEType {
       return nil
     }
     
-    let (tree, subtype_suffix_parameters_s): (Tree?, Substring) = ({
+    let (tree, subtype_suffix_parameters_s): (Tree?, S.SubSequence) = ({
       if let indexOfFirstDot = $0.firstIndex(of:".") {
         let tree_s = $0[$0.startIndex..<indexOfFirstDot]
         if let tree = Tree(rawValue:String(tree_s)) {
@@ -180,7 +192,7 @@ extension MIMEType {
     
     let (subtype_suffix_s, parameters_s) = subtype_suffix_parameters_s.splitOnce(separator:";")
     
-    let (subtype, suffix): (Substring, Suffix?) = ({
+    let (subtype, suffix): (S.SubSequence, Suffix?) = ({
       if let indexOfLastPlus = $0.lastIndex(of:"+") {
         let suffix_s = $0[$0.index(after:indexOfLastPlus)..<$0.endIndex]
         if let suffix = Suffix(rawValue:String(suffix_s)) {
