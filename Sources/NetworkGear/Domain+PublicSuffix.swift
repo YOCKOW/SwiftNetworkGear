@@ -10,21 +10,20 @@ import PublicSuffix
 extension Domain {
   /// Returns whether the receiver matches `list` or not.
   /// `list` represents the tree of `PublicSuffix`
-  private func matches(list:Set<PublicSuffix.Node>) -> Bool {
+  private func _matches(list: PublicSuffix.Node.Set) -> Bool {
     guard let labels = self.removingPunycodeEncoding?._labels else { return false }
     let nn = labels.count
-    var listNow: Set<PublicSuffix.Node> = list
+    var listNow: PublicSuffix.Node.Set = list
     for ii in (0..<nn).reversed() {
-      if ii == 0 && listNow.contains(.any) { return true }
+      if ii == 0 && listNow.containsAnyLabelNode() { return true }
       
       let label_string = labels[ii].description
-      guard let jj = listNow.firstIndex(of:.label(label_string, next:[])) else { return false }
-      let node = listNow[jj]
+      guard let node = listNow.node(of: label_string) else { return false }
       
       switch (ii, node) {
-      case (0, .label(_, next:let list)):
-        return list.contains(.termination)
-      case (_, .label(_, next:let list)):
+      case (0, .label(_, next: let list)):
+        return list.containsTerminationNode()
+      case (_, .label(_, next: let list)):
         // continue
         listNow = list
       default:
@@ -37,8 +36,8 @@ extension Domain {
   /// Check whether the receiver is "public suffix" or not.
   public var isPublicSuffix: Bool {
     get {
-      if self.matches(list:PublicSuffix.whitelist) { return false }
-      if self.matches(list:PublicSuffix.blacklist) { return true }
+      if self._matches(list: PublicSuffix.positiveList) { return false }
+      if self._matches(list: PublicSuffix.negativeList) { return true }
       return false
     }
   }
