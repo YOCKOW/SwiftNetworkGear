@@ -7,14 +7,14 @@
 
 import UnicodeSupplement
 
-extension String.UnicodeScalarView {
+extension BidirectionalCollection where Element == Unicode.Scalar {
   /// Returns whether the receiver satisfies Context J Rules.
   /// Reference: [RFC 5892#Appendix A.](https://tools.ietf.org/html/rfc5892#appendix-A)
-  internal func satisfiesContextJRules(at index:String.UnicodeScalarView.Index) -> Bool {
+  internal func _satisfiesContextJRules(at index: Index) -> Bool {
     if index == self.startIndex { return false }
     let scalar = self[index]
     
-    guard scalar.isContextJoiner else { return false }
+    guard scalar._isContextJoiner else { return false }
     
     switch scalar {
     case "\u{200C}"..."\u{200D}":

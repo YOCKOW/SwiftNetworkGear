@@ -8,6 +8,7 @@
 import Foundation
 import Bootstring
 
+/// Represents domain name.
 public struct Domain {
   /// Represents Domain Label
   public struct Label {
@@ -82,25 +83,30 @@ public struct Domain {
       case invalidLength
     }
     
+    /// Raw Label Value.
+    fileprivate var _string: Substring
     
-    fileprivate var _string:String
-    fileprivate var _length:Int
+    /// The number of unicode scalars.
+    fileprivate var _length: Int
     
     /// Initialize with `string`.
-    public init(_ string:String,
-                options:ValidityOptions = .default) throws {
-      var string = string
+    public init<S>(_ string: S,
+                   options: ValidityOptions = .default) throws where S: StringProtocol, S.SubSequence == Substring {
+      func _forceSubstring<S>(_ s: S) -> Substring where S: StringProtocol, S.SubSequence == Substring {
+        return s[s.startIndex..<s.endIndex]
+      }
+      
+      var string = _forceSubstring(string)
       
       // not zero-length
       if string.isEmpty { throw InitializationError.emptyString }
       
       // Decode string with punycode if necessary
       if string.hasPrefix("xn--") {
-        let rr = string.range(of:"xn--", options:.anchored)!.upperBound..<string.endIndex
-        guard let decoded = String(string[rr]).removingPunycodeEncoding else {
+        guard let decoded = string.dropFirst(4).removingPunycodeEncoding else {
           throw InitializationError.invalidIDNLabel
         }
-        string = decoded
+        string = _forceSubstring(decoded)
       }
       
       // preparation
@@ -149,7 +155,7 @@ public struct Domain {
       // "checkBidi" - Check the Bidi Rule
       // reference: https://tools.ietf.org/html/rfc5893#section-2
       if options.contains(.checkBidirectionality) {
-        guard scalars.satisfiesBidiRule else { throw InitializationError.violatingBidiRule }
+        guard scalars._satisfiesBidiRule else { throw InitializationError.violatingBidiRule }
       } // end of checkBidi
       
       
@@ -180,15 +186,15 @@ public struct Domain {
         }
         
         // "checkJoiners" - Check Joiners
-        if scalar.isContextJoiner && options.contains(.checkJoiners) {
-          guard scalars.satisfiesContextJRules(at:ii) else {
+        if scalar._isContextJoiner && options.contains(.checkJoiners) {
+          guard scalars._satisfiesContextJRules(at: ii) else {
             throw InitializationError.vaiolatingContextJRules
           }
         }
         
         // Check ContextO Rules
-        if scalar.isContextOther && options.contains(.checkOtherContextualRules) {
-          guard scalars.satisfiesContextORules(at:ii) else {
+        if scalar._isContextOther && options.contains(.checkOtherContextualRules) {
+          guard scalars._satisfiesContextORules(at: ii) else {
             throw InitializationError.vaiolatingContextORules
           }
         }
@@ -291,7 +297,7 @@ public struct Domain {
 
 extension Domain.Label: CustomStringConvertible {
   public var description: String {
-    return self._string
+    return String(self._string)
   }
 }
 

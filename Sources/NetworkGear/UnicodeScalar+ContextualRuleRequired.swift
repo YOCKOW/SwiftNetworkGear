@@ -9,13 +9,13 @@ import UnicodeSupplement
 
 extension Unicode.Scalar {
   /// Returns whether the receiver is a joiner (of ContextJ) or not.
-  internal var isContextJoiner: Bool {
+  internal var _isContextJoiner: Bool {
     return self.latestProperties.isJoinControl
   }
   
   
   /// Returns whether the receiver is a scalar that requires contextual rule, and is not a joiner.
-  internal var isContextOther: Bool {
+  internal var _isContextOther: Bool {
     // https://tools.ietf.org/html/rfc5892#page-8
     switch self.value {
     case 0x00B7: // MIDDLE DOT
