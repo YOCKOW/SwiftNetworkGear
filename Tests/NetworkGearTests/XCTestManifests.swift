@@ -46,6 +46,7 @@ extension DomainTests {
     //   `swift test --generate-linuxmain`
     // to regenerate.
     static let __allTests__DomainTests = [
+        ("test_asCollection", test_asCollection),
         ("test_domainMatching", test_domainMatching),
         ("testInitialization", testInitialization),
     ]
