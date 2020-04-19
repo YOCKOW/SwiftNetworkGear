@@ -360,8 +360,14 @@ extension Domain.Label: Hashable {
 
 extension Domain.Label {
   public static func == <S>(lhs: Domain.Label, rhs: S) -> Bool where S: StringProtocol, S.SubSequence == Substring {
-    guard let rLabel = try? Domain.Label(rhs) else { return false }
+    guard let rLabel = try? Domain.Label(rhs, options: lhs._options) else { return false }
     return lhs == rLabel
+  }
+}
+
+extension StringProtocol where SubSequence == Substring {
+  public static func ==(lhs: Self, rhs: Domain.Label) -> Bool {
+    return rhs == lhs
   }
 }
 
