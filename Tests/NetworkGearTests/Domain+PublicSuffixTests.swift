@@ -9,7 +9,7 @@ import XCTest
 @testable import NetworkGear
 
 final class DomainPublicSuffixTests: XCTestCase {
-  func test() {
+  func test_publicSuffix() {
     // how to test...
     // Public Suffix List is fluid.
     
@@ -27,9 +27,5 @@ final class DomainPublicSuffixTests: XCTestCase {
     XCTAssertEqual(domain3.publicSuffix, Domain("jp"))
     
   }
-  
-  static var allTests = [
-    ("test", test),
-  ]
 }
 

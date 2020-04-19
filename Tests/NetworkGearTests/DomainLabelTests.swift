@@ -146,18 +146,4 @@ final class DomainLabelTests: XCTestCase {
       XCTAssertEqual(label.description, pair.1)
     }
   }
-  
-  static var allTests = [
-    ("testInitialization_empty", testInitialization_empty),
-    ("testInitialization_notNFC", testInitialization_notNFC),
-    ("testInitialization_mark", testInitialization_mark),
-    ("testInitialization_hyphens", testInitialization_hyphens),
-    ("testInitialization_bidi", testInitialization_bidi),
-    ("testInitialization_fullStop", testInitialization_fullStop),
-    ("testInitialization_idna", testInitialization_idna),
-    ("testInitialization_contextJ", testInitialization_contextJ),
-    ("testInitialization_contextO", testInitialization_contextO),
-    ("testInitialization_length", testInitialization_length),
-    ("testInitialization", testInitialization),
-  ]
 }

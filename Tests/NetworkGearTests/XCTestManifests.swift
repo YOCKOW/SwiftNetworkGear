@@ -37,7 +37,7 @@ extension DomainPublicSuffixTests {
     //   `swift test --generate-linuxmain`
     // to regenerate.
     static let __allTests__DomainPublicSuffixTests = [
-        ("test", test),
+        ("test_publicSuffix", test_publicSuffix),
     ]
 }
 

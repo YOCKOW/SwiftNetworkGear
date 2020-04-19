@@ -8,7 +8,7 @@
 import XCTest
 
 // Workaround for https://bugs.swift.org/browse/SR-11501
-#if SWIFT_PACKAGE // && compiler(<5.x)
+#if SWIFT_PACKAGE && compiler(<5.2)
 private struct XCTestErrorWhileUnwrappingOptional: Error, CustomNSError {
   static let errorDomain: String = XCTestErrorDomain
   var errorCode: Int = 105

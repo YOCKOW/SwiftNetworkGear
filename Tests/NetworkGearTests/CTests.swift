@@ -133,11 +133,4 @@ final class CTests: XCTestCase {
     
     XCTAssertEqual(v4!, v4Mapped!)
   }
-  
-  static var allTests = [
-    ("testCIPAddress", testCIPAddress),
-    ("testCUNIXSocketAddress", testCUNIXSocketAddress),
-    ("testSocketAddress", testSocketAddress),
-    ("testIPAddress", testIPAddress),
-  ]
 }
