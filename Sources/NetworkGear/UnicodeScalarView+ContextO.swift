@@ -7,15 +7,15 @@
  
 import UnicodeSupplement
 
-extension String.UnicodeScalarView {
+extension BidirectionalCollection where Element == Unicode.Scalar {
   /// Returns whether the receiver satisfies Context O Rules.
   /// Reference: [RFC 5892#Appendix A.](https://tools.ietf.org/html/rfc5892#appendix-A) - A.3-9.
-  internal func satisfiesContextORules(at index:String.UnicodeScalarView.Index) -> Bool {
+  internal func _satisfiesContextORules(at index: Index) -> Bool {
     let scalar = self[index]
-    guard scalar.isContextOther else { return false }
+    guard scalar._isContextOther else { return false }
     
-    let previousIndex: String.UnicodeScalarView.Index? = (index == self.startIndex) ? nil : self.index(before:index)
-    let nextIndex: String.UnicodeScalarView.Index? = ({ (_i:String.UnicodeScalarView.Index) -> String.UnicodeScalarView.Index? in
+    let previousIndex: Index? = (index == self.startIndex) ? nil : self.index(before:index)
+    let nextIndex: Index? = ({ (_i: Index) -> Index? in
       let _n = self.index(after:_i)
       return (_n == self.endIndex) ? nil : _n
     })(index)

@@ -1,4 +1,4 @@
-/***************************************************************************************************
+/* *************************************************************************************************
  UnicodeScalarView+BidiRule.swift
    © 2018 YOCKOW.
      Licensed under MIT License.
@@ -7,16 +7,17 @@
 
 import UnicodeSupplement
  
-extension String.UnicodeScalarView {
+private enum _LabelDirection { case ltr, rtl }
+
+extension BidirectionalCollection where Element == Unicode.Scalar {
   /// "checkBidi" - Check the Bidi Rule
   /// reference: https://tools.ietf.org/html/rfc5893#section-2
-  internal var satisfiesBidiRule: Bool {
+  internal var _satisfiesBidiRule: Bool {
     // Rule 1.
     let firstBidi = self.first!.latestProperties.bidiClass
     guard firstBidi == .leftToRight || firstBidi == .rightToLeft || firstBidi == .arabicLetter else {
       return false
     }
-    enum _LabelDirection { case ltr, rtl }
     let direction: _LabelDirection = (firstBidi == .leftToRight) ? .ltr : .rtl
     
     // For rule 2. or 5.

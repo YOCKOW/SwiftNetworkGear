@@ -21,6 +21,11 @@ final class DomainPublicSuffixTests: XCTestCase {
     let domain2 = Domain("東京.jp")!
     XCTAssertTrue(domain2.isPublicSuffix)
     XCTAssertEqual(domain2.publicSuffix, Domain("東京.jp"))
+    
+    let domain3 = Domain("city.Yokohama.jp")!
+    XCTAssertFalse(domain3.isPublicSuffix)
+    XCTAssertEqual(domain3.publicSuffix, Domain("jp"))
+    
   }
   
   static var allTests = [

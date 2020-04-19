@@ -1,6 +1,6 @@
-/***************************************************************************************************
+/* *************************************************************************************************
  Domain.swift
-   © 2018-2019 YOCKOW.
+   © 2018-2020 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
@@ -8,6 +8,7 @@
 import Foundation
 import Bootstring
 
+/// Represents domain name.
 public struct Domain {
   /// Represents Domain Label
   public struct Label {
@@ -82,25 +83,41 @@ public struct Domain {
       case invalidLength
     }
     
+    /// Raw Label Value.
+    internal private(set) var _string: Substring
     
-    fileprivate var _string:String
-    fileprivate var _length:Int
+    /// The number of unicode scalars.
+    fileprivate private(set) var _length: Int
+    
+    /// Options that was used in init
+    fileprivate private(set) var _options: ValidityOptions
+    
+    fileprivate init(_ label: Label, options: ValidityOptions) throws {
+      if label._options == options {
+        self = label
+      } else {
+        try self.init(label._string, options: options)
+      }
+    }
     
     /// Initialize with `string`.
-    public init(_ string:String,
-                options:ValidityOptions = .default) throws {
-      var string = string
+    public init<S>(_ string: S,
+                   options: ValidityOptions = .default) throws where S: StringProtocol, S.SubSequence == Substring {
+      func _forceSubstring<S>(_ s: S) -> Substring where S: StringProtocol, S.SubSequence == Substring {
+        return s[s.startIndex..<s.endIndex]
+      }
+      
+      var string = _forceSubstring(string)
       
       // not zero-length
       if string.isEmpty { throw InitializationError.emptyString }
       
       // Decode string with punycode if necessary
       if string.hasPrefix("xn--") {
-        let rr = string.range(of:"xn--", options:.anchored)!.upperBound..<string.endIndex
-        guard let decoded = String(string[rr]).removingPunycodeEncoding else {
+        guard let decoded = string.dropFirst(4).removingPunycodeEncoding else {
           throw InitializationError.invalidIDNLabel
         }
-        string = decoded
+        string = _forceSubstring(decoded)
       }
       
       // preparation
@@ -149,7 +166,7 @@ public struct Domain {
       // "checkBidi" - Check the Bidi Rule
       // reference: https://tools.ietf.org/html/rfc5893#section-2
       if options.contains(.checkBidirectionality) {
-        guard scalars.satisfiesBidiRule else { throw InitializationError.violatingBidiRule }
+        guard scalars._satisfiesBidiRule else { throw InitializationError.violatingBidiRule }
       } // end of checkBidi
       
       
@@ -180,15 +197,15 @@ public struct Domain {
         }
         
         // "checkJoiners" - Check Joiners
-        if scalar.isContextJoiner && options.contains(.checkJoiners) {
-          guard scalars.satisfiesContextJRules(at:ii) else {
+        if scalar._isContextJoiner && options.contains(.checkJoiners) {
+          guard scalars._satisfiesContextJRules(at: ii) else {
             throw InitializationError.vaiolatingContextJRules
           }
         }
         
         // Check ContextO Rules
-        if scalar.isContextOther && options.contains(.checkOtherContextualRules) {
-          guard scalars.satisfiesContextORules(at:ii) else {
+        if scalar._isContextOther && options.contains(.checkOtherContextualRules) {
+          guard scalars._satisfiesContextORules(at: ii) else {
             throw InitializationError.vaiolatingContextORules
           }
         }
@@ -213,20 +230,67 @@ public struct Domain {
       // initialize
       self._string = string
       self._length = length
+      self._options = options
     }
   } // end of `Label`
 
-//// Define `Domain`
+  // - MARK: Definition of `Domain`.
+  
+  internal static func _calculateLength<C>(of labels: C) -> Int where C: Collection, C.Element == Label {
+    return labels.reduce(into: labels.count - 1, { $0 += $1._length })
+  }
   
   /// `Domain` consists of labels
-  internal var _labels: [Label]
-  private var _terminatedByDot: Bool = false
+  internal private(set) var _labels: [Label]
   private var _length: Int
-  internal var _options: Label.ValidityOptions
-
+  private var _terminatedByDot: Bool = false
+  internal private(set) var _options: Label.ValidityOptions
+  
+  public var isTerminatedByDot: Bool {
+    return self._terminatedByDot
+  }
+  
+  private init(_validatedLabels labels: [Label],
+               calculatedLength length: Int,
+               terminatedByDot: Bool,
+               usedOptions options: Label.ValidityOptions) {
+    do { // Check arguments only under debug mode.
+      assert(!labels.isEmpty)
+      assert(length > 0)
+      assert(length == Domain._calculateLength(of: labels))
+      assert(labels.allSatisfy({ $0._options == options }))
+      assert(!options.contains(.verifyDNSLength) || length <= (terminatedByDot ? 254 : 253))
+    }
+    
+    self._labels = labels
+    self._length = length
+    self._terminatedByDot = terminatedByDot
+    self._options = options
+  }
+  
+  internal init<C>(_ labels: C,
+                   terminatedByDot: Bool,
+                   options: Label.ValidityOptions) throws where C: Collection, C.Element == Label {
+    if labels.isEmpty { throw Label.InitializationError.emptyString }
+    
+    let labels = try labels.map({ try Label($0, options: options) })
+    let length = Domain._calculateLength(of: labels)
+    
+    if options.contains(.verifyDNSLength) {
+      let max = terminatedByDot ? 254 : 253
+      guard length > 0 && length <= max else { throw Label.InitializationError.invalidLength }
+    }
+    
+    self.init(_validatedLabels: labels,
+              calculatedLength: length,
+              terminatedByDot: terminatedByDot,
+              usedOptions: options)
+  }
+  
   /// Initialize with string such as "YOCKOW.jp"
-  public init?(_ string:String,
-               options: Label.ValidityOptions = .default) {
+  /// Returns `nil` if some domain label(s) is/are invalid.
+  public init?<S>(_ string: S,
+                  options: Label.ValidityOptions = .default) where S: StringProtocol {
     let input = string.unicodeScalars
     var converted = String.UnicodeScalarView()
 
@@ -255,43 +319,23 @@ public struct Domain {
       }
     } // end of mapping
     
-    var string_labels = String(converted).precomposedStringWithCanonicalMapping.components(separatedBy:".")
-    guard let last = string_labels.last else { return nil }
+    var stringLabels = String(converted).precomposedStringWithCanonicalMapping.split(separator: ".", omittingEmptySubsequences: false)
+    guard let last = stringLabels.last else { return nil }
     
-    if last.isEmpty {
-      self._terminatedByDot = true
-      string_labels.removeLast()
-    }
-    
-    var labels:[Label] = []
-    for string_label in string_labels {
-      guard let label = try? Label(string_label, options:options) else { return nil }
-      labels.append(label)
-    }
-    
-    if labels.isEmpty { return nil }
-    
-    var length: Int = labels.count - 1
-    for label in labels {
-      length += label._length
-    }
-    
-    if options.contains(.verifyDNSLength) {
-      let max = self._terminatedByDot ? 254 : 253
-      if length < 1 || length > max { return nil }
-    }
-    
-    self._labels = labels
-    self._length = length
-    
-    self._options = options
+    let terminatedByDot = last.isEmpty
+    if terminatedByDot { stringLabels.removeLast() }
+    guard let labels = try? stringLabels.map({ try Label($0, options: options) }) else { return nil }
+    self.init(_validatedLabels: labels,
+              calculatedLength: Domain._calculateLength(of: labels),
+              terminatedByDot: terminatedByDot,
+              usedOptions: options)
   }
 }
 
 
 extension Domain.Label: CustomStringConvertible {
   public var description: String {
-    return self._string
+    return String(self._string)
   }
 }
 
