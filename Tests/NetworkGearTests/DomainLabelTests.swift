@@ -146,4 +146,20 @@ final class DomainLabelTests: XCTestCase {
       XCTAssertEqual(label.description, pair.1)
     }
   }
+  
+  func test_equatability() throws {
+    XCTAssertTrue(try Domain.Label("foo") == "foo")
+    XCTAssertTrue(try "foo" == Domain.Label("foo"))
+    XCTAssertTrue((try? Domain.Label("foo")) == "foo")
+    XCTAssertTrue(Optional<Substring>.some("foo") == (try? Domain.Label("foo")))
+    XCTAssertTrue((try? Domain.Label("----------")) == Optional<String>.none)
+    XCTAssertTrue(Optional<String>.none == (try? Domain.Label("----------")))
+    
+    XCTAssertFalse(try Domain.Label("foo") == "bar")
+    XCTAssertFalse(try "foo" == Domain.Label("bar"))
+    XCTAssertFalse((try? Domain.Label("foo")) == "bar")
+    XCTAssertFalse(Optional<Substring>.some("foo") == (try? Domain.Label("bar")))
+    XCTAssertFalse((try? Domain.Label("----------")) == Optional<String>.some("bar"))
+    XCTAssertFalse(Optional<String>.none == (try? Domain.Label("bar")))
+  }
 }

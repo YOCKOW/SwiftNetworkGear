@@ -18,6 +18,7 @@ extension DomainLabelTests {
     //   `swift test --generate-linuxmain`
     // to regenerate.
     static let __allTests__DomainLabelTests = [
+        ("test_equatability", test_equatability),
         ("testInitialization", testInitialization),
         ("testInitialization_bidi", testInitialization_bidi),
         ("testInitialization_contextJ", testInitialization_contextJ),
