@@ -370,15 +370,23 @@ extension Domain: Equatable {
 }
 
 extension Domain.Label {
-  public static func == <S>(lhs: Domain.Label, rhs: S) -> Bool where S: StringProtocol, S.SubSequence == Substring {
+  public static func ==<S>(lhs: Domain.Label, rhs: S) -> Bool where S: StringProtocol, S.SubSequence == Substring {
     guard let rLabel = try? Domain.Label(rhs, options: lhs._options) else { return false }
     return lhs == rLabel
+  }
+  
+  public static func !=<S>(lhs: Domain.Label, rhs: S) -> Bool where S: StringProtocol, S.SubSequence == Substring {
+    return !(lhs == rhs)
   }
 }
 
 extension StringProtocol where SubSequence == Substring {
   public static func ==(lhs: Self, rhs: Domain.Label) -> Bool {
     return rhs == lhs
+  }
+  
+  public static func !=(lhs: Self, rhs: Domain.Label) -> Bool {
+    return !(rhs == lhs)
   }
 }
 
@@ -393,11 +401,19 @@ extension Optional where Wrapped == Domain.Label {
       return label == string
     }
   }
+  
+  public static func !=<S>(lhs: Self, rhs: S?) -> Bool where S: StringProtocol, S.SubSequence == Substring {
+    return !(lhs == rhs)
+  }
 }
 
 extension Optional where Wrapped: StringProtocol, Wrapped.SubSequence == Substring {
   public static func ==(lhs: Self, rhs: Domain.Label?) -> Bool {
     return rhs == lhs
+  }
+  
+  public static func !=(lhs: Self, rhs: Domain.Label?) -> Bool {
+    return !(rhs == lhs)
   }
 }
 
