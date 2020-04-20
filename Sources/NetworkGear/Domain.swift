@@ -333,6 +333,7 @@ public struct Domain {
   }
 }
 
+// MARK: - CustomStringConvertible
 
 extension Domain.Label: CustomStringConvertible {
   public var description: String {
@@ -348,13 +349,23 @@ extension Domain: CustomStringConvertible {
   }
 }
 
-extension Domain.Label: Hashable {
-  public static func ==(lhs:Domain.Label, rhs:Domain.Label) -> Bool {
+// MARK: - Equatable and Equatable-like
+
+extension Domain.Label: Equatable {
+  public static func ==(lhs: Domain.Label, rhs: Domain.Label) -> Bool {
     return lhs._string == rhs._string
   }
-  
-  public func hash(into hasher:inout Hasher) {
-    hasher.combine(self._string)
+}
+
+extension Domain: Equatable {
+  public static func ==(lhs: Domain, rhs: Domain) -> Bool {
+    guard lhs.count == rhs.count else { return false }
+    var lIter = lhs.makeIterator()
+    var rIter = rhs.makeIterator()
+    while let lLabel = lIter.next(), let rLabel = rIter.next() {
+      if lLabel != rLabel { return false }
+    }
+    return true
   }
 }
 
@@ -371,23 +382,42 @@ extension StringProtocol where SubSequence == Substring {
   }
 }
 
-extension Domain: Hashable {
-  public static func ==(lhs:Domain, rhs:Domain) -> Bool {
-    let lLabels = lhs._labels, rLabels = rhs._labels
-    guard lLabels.count == rLabels.count else { return false }
-    let (ii, jj) = (lLabels.startIndex, rLabels.startIndex)
-    for kk in 0..<lLabels.count {
-      if lLabels[ii + kk] != rLabels[jj + kk] { return false }
+extension Optional where Wrapped == Domain.Label {
+  public static func ==<S>(lhs: Self, rhs: S?) -> Bool where S: StringProtocol, S.SubSequence == Substring {
+    switch (lhs, rhs) {
+    case (nil, nil):
+      return true
+    case (nil, _?), (_?, nil):
+      return false
+    case (let label?, let string?):
+      return label == string
     }
-    return true
   }
-  
+}
+
+extension Optional where Wrapped: StringProtocol, Wrapped.SubSequence == Substring {
+  public static func ==(lhs: Self, rhs: Domain.Label?) -> Bool {
+    return rhs == lhs
+  }
+}
+
+// MARK: - Hashable
+
+extension Domain.Label: Hashable {
+  public func hash(into hasher:inout Hasher) {
+    hasher.combine(self._string)
+  }
+}
+
+extension Domain: Hashable {
   public func hash(into hasher:inout Hasher) {
     for label in  self._labels {
       hasher.combine(label)
     }
   }
 }
+
+// MARK: - Domain Matching
 
 extension Domain {
   /// [Domain Matching](https://tools.ietf.org/html/rfc6265#section-5.1.3).
@@ -404,6 +434,8 @@ extension Domain {
     return true
   }
 }
+
+// MARK: - Sequence, Collection, and BidirectionalCollection
 
 extension Domain: Sequence {
   public typealias Element = Domain.Label
