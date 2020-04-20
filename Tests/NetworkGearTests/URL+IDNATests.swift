@@ -117,9 +117,5 @@ class URLIDNATests: XCTestCase {
       exec(test.expected.absolute, url.absoluteString)
     }
   }
-  
-  static var allTests = [
-    ("testInitialization", testInitialization),
-  ]
 }
 

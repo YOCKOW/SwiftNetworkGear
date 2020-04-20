@@ -241,7 +241,8 @@ public struct Domain {
   }
   
   /// `Domain` consists of labels
-  internal private(set) var _labels: [Label]
+  /// Let it be of type `ArraySlice` so that `SubSequence` can be also `Domain`.
+  internal private(set) var _labels: ArraySlice<Label>
   private var _length: Int
   private var _terminatedByDot: Bool = false
   internal private(set) var _options: Label.ValidityOptions
@@ -250,12 +251,12 @@ public struct Domain {
     return self._terminatedByDot
   }
   
-  private init(_validatedLabels labels: [Label],
+  private init(_validatedLabels labels: ArraySlice<Label>,
                calculatedLength length: Int,
                terminatedByDot: Bool,
                usedOptions options: Label.ValidityOptions) {
-    do { // Check arguments only under debug mode.
-      assert(!labels.isEmpty)
+    do {
+      precondition(!labels.isEmpty, "Empty domain is not allowed.")
       assert(length > 0)
       assert(length == Domain._calculateLength(of: labels))
       assert(labels.allSatisfy({ $0._options == options }))
@@ -281,7 +282,7 @@ public struct Domain {
       guard length > 0 && length <= max else { throw Label.InitializationError.invalidLength }
     }
     
-    self.init(_validatedLabels: labels,
+    self.init(_validatedLabels: labels[labels.startIndex..<labels.endIndex],
               calculatedLength: length,
               terminatedByDot: terminatedByDot,
               usedOptions: options)
@@ -325,7 +326,7 @@ public struct Domain {
     let terminatedByDot = last.isEmpty
     if terminatedByDot { stringLabels.removeLast() }
     guard let labels = try? stringLabels.map({ try Label($0, options: options) }) else { return nil }
-    self.init(_validatedLabels: labels,
+    self.init(_validatedLabels: labels[labels.startIndex..<labels.endIndex],
               calculatedLength: Domain._calculateLength(of: labels),
               terminatedByDot: terminatedByDot,
               usedOptions: options)
@@ -357,12 +358,26 @@ extension Domain.Label: Hashable {
   }
 }
 
+extension Domain.Label {
+  public static func == <S>(lhs: Domain.Label, rhs: S) -> Bool where S: StringProtocol, S.SubSequence == Substring {
+    guard let rLabel = try? Domain.Label(rhs, options: lhs._options) else { return false }
+    return lhs == rLabel
+  }
+}
+
+extension StringProtocol where SubSequence == Substring {
+  public static func ==(lhs: Self, rhs: Domain.Label) -> Bool {
+    return rhs == lhs
+  }
+}
+
 extension Domain: Hashable {
   public static func ==(lhs:Domain, rhs:Domain) -> Bool {
     let lLabels = lhs._labels, rLabels = rhs._labels
     guard lLabels.count == rLabels.count else { return false }
-    for ii in 0..<lLabels.count {
-      if lLabels[ii] != rLabels[ii] { return false }
+    let (ii, jj) = (lLabels.startIndex, rLabels.startIndex)
+    for kk in 0..<lLabels.count {
+      if lLabels[ii + kk] != rLabels[jj + kk] { return false }
     }
     return true
   }
@@ -387,5 +402,79 @@ extension Domain {
       guard myLabel == anotherLabel else { return false }
     }
     return true
+  }
+}
+
+extension Domain: Sequence {
+  public typealias Element = Domain.Label
+  
+  public struct Iterator: IteratorProtocol {
+    public typealias Element = Domain.Label
+    
+    private var _iterator: ArraySlice<Domain.Label>.Iterator
+    fileprivate init(_ domain: Domain) {
+      self._iterator = domain._labels.makeIterator()
+    }
+    
+    public mutating func next() -> Domain.Label? {
+      return self._iterator.next()
+    }
+  }
+  
+  public func makeIterator() -> Iterator {
+    return Iterator(self)
+  }
+}
+
+extension Domain: Collection {
+  public struct Index: Comparable {
+    fileprivate let _index: Int
+    fileprivate init(_ index: Int) {
+      self._index = index
+    }
+
+    public static func ==(lhs: Domain.Index, rhs: Domain.Index) -> Bool {
+      return lhs._index == rhs._index
+    }
+
+    public static func <(lhs: Domain.Index, rhs: Domain.Index) -> Bool {
+      return lhs._index < rhs._index
+    }
+  }
+
+  public subscript(position: Index) -> Domain.Label {
+    return self._labels[position._index]
+  }
+  
+  public var count: Int {
+    return self._labels.count
+  }
+  
+  public var startIndex: Index {
+    return Index(self._labels.startIndex)
+  }
+  
+  public var endIndex: Index {
+    return Index(self._labels.endIndex)
+  }
+  
+  public func index(after ii: Index) -> Index {
+    return Index(ii._index + 1)
+  }
+  
+  public typealias SubSequence = Domain
+  
+  public subscript(bounds: Range<Index>) -> Domain {
+    let labels: ArraySlice<Domain.Label> = self._labels[bounds.lowerBound._index..<bounds.upperBound._index]
+    return Domain(_validatedLabels: labels,
+                  calculatedLength: Domain._calculateLength(of: labels),
+                  terminatedByDot: bounds.upperBound == self.endIndex ? self._terminatedByDot : false,
+                  usedOptions: self._options)
+  }
+}
+
+extension Domain: BidirectionalCollection {
+  public func index(before ii: Index) -> Index {
+    return Index(ii._index - 1)
   }
 }

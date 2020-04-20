@@ -33,11 +33,6 @@ class URLHostTests: XCTestCase {
     XCTAssertFalse(numberDomainURL.hostComponent!.domainMatches(numberDomainPlusSubdomainURL.hostComponent!))
     XCTAssertTrue(numberDomainPlusSubdomainURL.hostComponent!.domainMatches(numberDomainURL.hostComponent!))
   }
-  
-  static var allTests = [
-    ("testInitialization", testInitialization),
-    ("test_domainMatching", test_domainMatching),
-  ]
 }
 
 
