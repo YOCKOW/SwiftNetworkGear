@@ -17,14 +17,17 @@ final class DomainPublicSuffixTests: XCTestCase {
     
     XCTAssertFalse(domain1.isPublicSuffix)
     XCTAssertEqual(domain1.publicSuffix, Domain("jp"))
+    XCTAssertEqual(domain1.dropPublicSuffix(), Domain("YOCKOW"))
     
     let domain2 = Domain("東京.jp")!
     XCTAssertTrue(domain2.isPublicSuffix)
     XCTAssertEqual(domain2.publicSuffix, Domain("東京.jp"))
+    XCTAssertEqual(domain2.dropPublicSuffix(), nil)
     
     let domain3 = Domain("city.Yokohama.jp")!
     XCTAssertFalse(domain3.isPublicSuffix)
     XCTAssertEqual(domain3.publicSuffix, Domain("jp"))
+    XCTAssertEqual(domain3.dropPublicSuffix(), Domain("city.yokohama"))
     
   }
 }
