@@ -255,8 +255,8 @@ public struct Domain {
                calculatedLength length: Int,
                terminatedByDot: Bool,
                usedOptions options: Label.ValidityOptions) {
-    do { // Check arguments only under debug mode.
-      assert(!labels.isEmpty)
+    do {
+      precondition(!labels.isEmpty, "Empty domain is not allowed.")
       assert(length > 0)
       assert(length == Domain._calculateLength(of: labels))
       assert(labels.allSatisfy({ $0._options == options }))
