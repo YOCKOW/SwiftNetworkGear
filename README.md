@@ -5,17 +5,12 @@ It was originally written as a part of [SwiftCGIResponder](https://github.com/YO
 
 # Requirements
 
-- Swift 5 (including compatibility mode for Swift 4 or 4.2)
-- macOS or Linux
+- Swift 5
+- macOS(>=10.15) or Linux
 
 ## Dependencies
 
-- [SwiftBonaFideCharacterSet](https://github.com/YOCKOW/SwiftBonaFideCharacterSet)
-- [SwiftBootstring](https://github.com/YOCKOW/SwiftBootstring)
-- [SwiftExtensions](https://github.com/YOCKOW/SwiftExtensions)
-- [SwiftPublicSuffix](https://github.com/YOCKOW/SwiftPublicSuffix)
-- [SwiftRanges](https://github.com/YOCKOW/SwiftRanges)
-- [SwiftUnicodeSupplement](https://github.com/YOCKOW/SwiftUnicodeSupplement)
+![Dependencies](./dependencies.svg)
 
 
 # Usage
