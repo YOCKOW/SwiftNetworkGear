@@ -1,6 +1,6 @@
 .DS_Store
 ._*
-.build/
+.build
 /Packages
 Package.resolved
 .swiftpm/

@@ -21,8 +21,8 @@ jobs:
           - macOS-latest
         swift-compat-ver:
           - '5'
-          - '4.2'
-          - '4'
+          # - '4.2'
+          # - '4'
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
@@ -37,7 +37,7 @@ jobs:
           build-${{ github.workspace }}-
     - uses: YOCKOW/Action-setup-swift@master
       with:
-        swift-version: '5.2'
+        swift-version: '5.2.2'
     - name: Try to build products with debug mode.
       run: |
         swift build --configuration debug -Xswiftc -swift-version -Xswiftc ${{ matrix.swift-compat-ver }}

@@ -1,10 +1,16 @@
-// swift-tools-version:5.0
+// swift-tools-version:5.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
 let package = Package(
   name: "NetworkGear",
+  platforms: [
+    .macOS(.v10_15),
+    .iOS(.v13),
+    .watchOS(.v6),
+    .tvOS(.v13),
+  ],
   products: [
     // Products define the executables and libraries produced by a package, and make them visible to other packages.
     .library(name: "SwiftNetworkGear", type: .dynamic, targets: ["NetworkGear"]),
@@ -16,7 +22,7 @@ let package = Package(
     .package(url:"https://github.com/YOCKOW/SwiftPublicSuffix.git", from: "2.0.1"),
     .package(url:"https://github.com/YOCKOW/SwiftRanges.git", from: "3.1.0"),
     .package(url:"https://github.com/YOCKOW/SwiftUnicodeSupplement.git", from: "1.0.0"),
-    .package(url:"https://github.com/YOCKOW/ySwiftExtensions.git", "0.9.1"..<"2.0.0"),
+    .package(url:"https://github.com/YOCKOW/ySwiftExtensions.git", from: "1.0.0"),
   ],
   targets: [
     // Targets are the basic building blocks of a package. A target can define a module or a test suite.
@@ -33,7 +39,7 @@ let package = Package(
     .testTarget(name: "NetworkGearTests", dependencies: ["NetworkGear", "sockaddr_tests"]),
     .testTarget(name: "HTTPTests", dependencies: ["NetworkGear"]),
   ],
-  swiftLanguageVersions: [.v4, .v4_2, .v5]
+  swiftLanguageVersions: [.v5]
 )
 
 import Foundation
