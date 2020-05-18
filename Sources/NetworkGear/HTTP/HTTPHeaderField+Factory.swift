@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  HeaderField+Factory.swift
-   © 2018 YOCKOW.
+   © 2018, 2020 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -19,9 +19,17 @@ extension HTTPHeaderField {
     return ._create(CacheControlHTTPHeaderFieldDelegate(directives))
   }
   
+  public static func contentDisposition(_ contentDisposition: ContentDisposition) -> HTTPHeaderField {
+    return ._create(ContentDispositionHTTPHeaderFieldDelegate(contentDisposition))
+  }
+  
   /// Creates the HTTP header field of "Content-Length"
   public static func contentLength(_ length:UInt) -> HTTPHeaderField {
     return ._create(ContentLengthHTTPHeaderFieldDelegate(length))
+  }
+  
+  public static func contentTransferEncoding(_ encoding: ContentTransferEncoding) -> HTTPHeaderField {
+    return ._create(ContentTransferEncodingHTTPHeaderFieldDelegate(encoding))
   }
   
   /// Creates the HTTP header field of "Content-Type"
@@ -46,6 +54,10 @@ extension HTTPHeaderField {
   
   public static func lastModified(_ date:Date) -> HTTPHeaderField {
     return ._create(LastModifiedHTTPHeaderFieldDelegate(date))
+  }
+  
+  public static func location(_ url: URL) -> HTTPHeaderField {
+    return ._create(LocationHTTPHeaderFieldDelegate(url))
   }
   
   public static func setCookie<C>(_ cookie:C) -> HTTPHeaderField where C:RFC6265Cookie {
