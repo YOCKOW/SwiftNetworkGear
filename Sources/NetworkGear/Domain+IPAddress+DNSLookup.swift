@@ -36,8 +36,19 @@ extension Domain {
       defer { info = info!.next }
       
       guard let socketAddress = info!.socketAddress else { return [] }
-      guard socketAddress is CIPSocketAddress else { return [] }
-      guard let ipAddress = IPAddress(bytes:(socketAddress as! CIPSocketAddress).ipAddress.bytes) else { return [] }
+      
+      func __ipAddress() -> IPAddress? {
+        switch socketAddress {
+        case let cIPv4SockAddr as CIPv4SocketAddress:
+          return IPAddress(cIPv4SockAddr.ipAddress)
+        case let cIPv6SockAddr as CIPv6SocketAddress:
+          return IPAddress(cIPv6SockAddr.ipAddress)
+        default:
+          return nil
+        }
+      }
+      
+      guard let ipAddress = __ipAddress() else { return [] }
       results.append(ipAddress)
     }
     
@@ -51,15 +62,18 @@ extension IPAddress {
     let domain_p = UnsafeMutablePointer<CChar>.allocate(capacity:Int(NI_MAXHOST))
     defer { domain_p.deallocate() }
     
-    var mySockAddr = self._cIPSocketAddress
-    let mySockAddrSize = CSocketRelatedSize(mySockAddr.size)
-    let result = withUnsafePointer(to:&mySockAddr) {
-      return $0.withMemoryRebound(to:CSocketAddress.self, capacity:2) {
-        return getnameinfo($0, mySockAddrSize,
-                           domain_p, CSocketRelatedSize(NI_MAXHOST),
-                           nil, 0, NI_NAMEREQD)
+    func __getNameInfo<T>(_ sockAddr: T) -> CInt where T: CIPSocketAddress {
+      let size = CSocketRelatedSize(sockAddr.size)
+      return withUnsafePointer(to: sockAddr) {
+        return $0.withMemoryRebound(to: CSocketAddress.self, capacity: 2) {
+          return getnameinfo($0, size,
+                             domain_p, CSocketRelatedSize(NI_MAXHOST),
+                             nil, 0, NI_NAMEREQD)
+        }
       }
     }
+    
+    let result = self._cIPv4SocketAddress.map({ __getNameInfo($0) }) ?? __getNameInfo(self._cIPv6SocketAddress!)
     guard result  == 0 else { return nil }
     guard let domain = String(utf8String:domain_p), !domain.isEmpty else { return nil }
     return Domain(domain, options:.loose)

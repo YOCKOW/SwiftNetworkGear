@@ -20,6 +20,22 @@ public enum IPAddress {
 }
 
 extension IPAddress {
+  public init<T>(_ cIPAddress: T) where T: CIPAddress {
+    switch type(of: cIPAddress).size {
+    case 4:
+      self = cIPAddress.withUnsafeBufferPointer {
+        return .v4($0[0], $0[1], $0[2], $0[3])
+      }
+    case 16:
+      self = cIPAddress.withUnsafeBufferPointer {
+        return .v6($0[0], $0[1],  $0[2],  $0[3],  $0[4],  $0[5],  $0[6], $0[7],
+                   $0[8], $0[9], $0[10], $0[11], $0[12], $0[13], $0[14], $0[15])
+      }
+    default:
+      fatalError("Unexpected IPAddress.")
+    }
+  }
+  
   /// Initialize with the array of `UInt8`.
   /// - parameter bytes: the array of `UInt8` representing IP Address.
   /// - returns: `.v4` address if the length of bytes is equal to 4,
@@ -43,13 +59,11 @@ extension IPAddress {
   /// - returns: `.v4` address if the string is valid for IPv4,
   ///            `.v6` address if the string is valid for IPv6,
   ///            `nil` if otherwise.
-  public init?(string:String) {
-    if let bytes = ({ (string:String) -> [UInt8]? in
-      if let ipv4 = CIPv4Address(string:string) { return ipv4.bytes }
-      if let ipv6 = CIPv6Address(string:string) { return ipv6.bytes }
-      return nil
-    })(string) {
-      self.init(bytes:bytes)
+  public init?(string: String) {
+    if let ipv4 = CIPv4Address(string) {
+      self.init(ipv4)
+    } else if let ipv6 = CIPv6Address(string) {
+      self.init(ipv6)
     } else {
       return nil
     }
@@ -157,27 +171,32 @@ extension IPAddress: Hashable {
 
 /// Work with CIPAddress
 extension IPAddress {
-  private var _cIPAddress: CIPAddress {
-    switch self {
-    case .v4(let b0, let b1, let b2, let b3):
-      return CIPv4Address((b0, b1, b2, b3))
-    case .v6(let b0, let b1, let  b2, let  b3, let  b4, let  b5, let  b6, let  b7,
-             let b8, let b9, let b10, let b11, let b12, let b13, let b14, let b15):
-      return CIPv6Address((b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15))
-    }
+  private var _cIPv4Address: CIPv4Address? {
+    guard case .v4(let b0, let b1, let b2, let b3) = self else { return nil }
+    return CIPv4Address((b0, b1, b2, b3))
   }
-  internal var _cIPSocketAddress: CIPSocketAddress {
-    switch self {
-    case .v4:
-      return CIPv4SocketAddress(ipAddress:self._cIPAddress as! CIPv4Address)!
-    case .v6:
-      return CIPv6SocketAddress(ipAddress:self._cIPAddress as! CIPv6Address)!
+  
+  private var _cIPv6Address: CIPv6Address? {
+    guard
+      case .v6(let b0, let b1, let  b2, let  b3, let  b4, let  b5, let b6,
+               let  b7, let b8, let b9, let b10, let b11, let b12, let b13, let b14, let b15) = self
+      else {
+      return nil
     }
+    return CIPv6Address((b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15))
+  }
+  
+  internal var _cIPv4SocketAddress: CIPv4SocketAddress? {
+    return self._cIPv4Address.map({ CIPv4SocketAddress(ipAddress: $0) })
+  }
+  
+  internal var _cIPv6SocketAddress: CIPv6SocketAddress? {
+    return self._cIPv6Address.map({ CIPv6SocketAddress(ipAddress: $0) })
   }
 }
 
 extension IPAddress: CustomStringConvertible {
   public var description: String {
-    return self._cIPAddress.description
+    return self._cIPv4Address?.description ?? self._cIPv6Address!.description
   }
 }

@@ -8,6 +8,8 @@
 import CoreFoundation
 
 extension CIPv6SocketAddress: CIPSocketAddress {
+  public typealias ConcreteIPAddress = CIPv6Address
+  
   public private(set) var size: CSocketAddressSize {
     get {
       #if !os(Linux)
@@ -41,19 +43,17 @@ extension CIPv6SocketAddress: CIPSocketAddress {
     }
   }
   
-  public private(set) var ipAddress: CIPAddress {
+  public private(set) var ipAddress: CIPv6Address {
     get {
       return self.sin6_addr
     }
     set {
-      guard newValue is CIPv6Address else { fatalError("Requires CIPv6Address") }
-      self.sin6_addr = newValue as! CIPv6Address
+      self.sin6_addr = newValue
     }
   }
   
-  public init?(ipAddress:CIPAddress, port:CSocketPortNumber = 80) {
-    guard ipAddress is CIPv6Address else { return nil }
-    self.init(ipv6Address:ipAddress as! CIPv6Address, port:port)
+  public init(ipAddress: CIPv6Address, port: CSocketPortNumber = 80) {
+    self.init(ipv6Address: ipAddress, port: port)
   }
 }
 
