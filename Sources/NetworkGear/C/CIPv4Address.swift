@@ -1,6 +1,6 @@
-/***************************************************************************************************
+/* *************************************************************************************************
  CIPv4Address.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018, 2020 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
@@ -8,33 +8,32 @@
 import CoreFoundation
 import Foundation
 
-/// Extend `CIPv4Address`(a.k.a. `in_addr`)
-extension CIPv4Address {
-  /// Initialize with 4 `UInt8`s.
-  public init(_ bytes:(UInt8, UInt8, UInt8, UInt8)) {
-    self.init()
-    self.bytes = [bytes.0, bytes.1, bytes.2, bytes.3]
-  }
-}
-
-/// Make it conform to `CIPAddress`
 extension CIPv4Address: CIPAddress {
-  public internal(set) var bytes: [UInt8] {
+  public static let size: Int = 4
+  
+  public typealias Address = in_addr_t
+  
+  public var address: Address {
     get {
-      var addr = self.s_addr
-      return withUnsafePointer(to:&addr) {
-        return $0.withMemoryRebound(to:UInt8.self, capacity:4) {
-          return [$0[0], $0[1], $0[2], $0[3]]
-        }
-      }
+      return self.s_addr
     }
-    set(newBytes) {
-      guard newBytes.count == 4 else { fatalError("IPv4 Address is 32-bit wide.") }
-      withUnsafeMutablePointer(to:&self.s_addr) {
-        $0.withMemoryRebound(to:UInt8.self, capacity:4) {
-          for ii in 0..<4 { $0[ii] = newBytes[ii] }
-        }
-      }
+    set {
+      self.s_addr = newValue
+    }
+  }
+  
+  public static func ==(lhs: CIPv4Address, rhs: CIPv4Address) -> Bool {
+    return lhs.address == rhs.address
+  }
+  
+  /// Initialize with 4 `UInt8`s.
+  public init(_ bytes: (UInt8, UInt8, UInt8, UInt8)) {
+    self.init()
+    self.withUnsafeMutableBufferPointer {
+      $0[0] = bytes.0
+      $0[1] = bytes.1
+      $0[2] = bytes.2
+      $0[3] = bytes.3
     }
   }
   
@@ -50,15 +49,9 @@ extension CIPv4Address: CIPAddress {
     return String(utf8String:address_p)!
   }
   
-  public init?(_ bytes: [UInt8]) {
-    guard bytes.count == 4 else { return nil }
-    self.init()
-    self.bytes = bytes
-  }
-  
   /// Initialized with `string` such as "127.0.0.1".
   /// Returns `nil` if the string is not valid for IPv4 Address.
-  public init?(string: String) {
+  public init?(_ string: String) {
     self.init()
     guard inet_pton(AF_INET, string, &self) == 1 else { return nil }
   }

@@ -1,6 +1,6 @@
-/***************************************************************************************************
+/* *************************************************************************************************
  CIPv6Address.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018, 2020 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
@@ -8,10 +8,13 @@
 import CoreFoundation
 import Foundation
 
-/// Extend `CIPv6Address`(a.k.a. `in6_addr`)
-extension CIPv6Address {
-  /// Define `s6_addr` here because `s6_addr` cannot be accessed from Swift on neither macOS and Linux.
-  private var s6_addr: (UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8) {
+extension CIPv6Address: CIPAddress {
+  public static let size: Int = 16
+  
+  public typealias Address = (UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+                              UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8)
+  
+  public var address: Address {
     get {
       #if !os(Linux)
       return self.__u6_addr.__u6_addr8
@@ -28,43 +31,26 @@ extension CIPv6Address {
     }
   }
   
-  /// Initialize with 16 `UInt8`s.
-  public init(_ bytes:(UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8)) {
-    self.init()
-    self.s6_addr = bytes
-  }
-}
-
-extension CIPv6Address: CIPAddress {
-  public internal(set) var bytes: [UInt8] {
-    get {
-      return [
-        self.s6_addr.0, self.s6_addr.1, self.s6_addr.2, self.s6_addr.3,
-        self.s6_addr.4, self.s6_addr.5, self.s6_addr.6, self.s6_addr.7,
-        self.s6_addr.8, self.s6_addr.9, self.s6_addr.10, self.s6_addr.11,
-        self.s6_addr.12, self.s6_addr.13, self.s6_addr.14, self.s6_addr.15,
-      ]
-    }
-    set(newBytes) {
-      guard newBytes.count == 16 else { fatalError("IPv6 Address is 128-bit wide.") }
-      self.s6_addr = (
-        newBytes[0], newBytes[1], newBytes[2], newBytes[3],
-        newBytes[4], newBytes[5], newBytes[6], newBytes[7],
-        newBytes[8], newBytes[9], newBytes[10], newBytes[11],
-        newBytes[12], newBytes[13], newBytes[14], newBytes[15]
-      )
+  public static func ==(lhs: CIPv6Address, rhs: CIPv6Address) -> Bool {
+    return lhs.withUnsafeBufferPointer { lhsPointer -> Bool in
+      return rhs.withUnsafeBufferPointer { rhsPointer -> Bool in
+        for ii in 0..<CIPv6Address.size {
+          guard lhsPointer[ii] == rhsPointer[ii] else { return false }
+        }
+        return true
+      }
     }
   }
   
-  public init?(_ bytes: [UInt8]) {
-    guard bytes.count == 16 else { return nil }
+  /// Initialize with 16 `UInt8`s.
+  public init(_ bytes: Address) {
     self.init()
-    self.bytes = bytes
+    self.address = bytes
   }
   
   /// Initialized with `string` such as "1234::ABCD".
   /// Returns `nil` if the string is not valid for IPv6 Address.
-  public init?(string: String) {
+  public init?(_ string: String) {
     self.init()
     guard inet_pton(AF_INET6, string, &self) == 1 else { return nil }
   }
@@ -74,7 +60,7 @@ extension CIPv6Address: CIPAddress {
     defer { address_p.deallocate() }
     
     var myself = self
-    guard inet_ntop(AF_INET6, &myself.s6_addr, address_p, CSocketRelatedSize(INET6_ADDRSTRLEN)) != nil else {
+    guard inet_ntop(AF_INET6, &myself.address, address_p, CSocketRelatedSize(INET6_ADDRSTRLEN)) != nil else {
       fatalError("Failed to convert IP address to String")
     }
     return String(utf8String:address_p)!
