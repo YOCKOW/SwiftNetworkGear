@@ -5,7 +5,7 @@
 //
 // URL: https://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types
 // Last-Modified: 2017-09-29T15:10:29Z
-// ETag: "1810121//httpd/httpd/trunk/docs/conf/mime.types-gzip"
+// ETag: "1810121//httpd/httpd/trunk/docs/conf/mime.types"
 
 extension MIMEType {
   public enum PathExtension: String {

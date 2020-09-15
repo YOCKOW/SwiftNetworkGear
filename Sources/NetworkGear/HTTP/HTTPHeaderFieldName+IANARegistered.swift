@@ -4,15 +4,16 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/message-headers/perm-headers.csv
-// Last-Modified: 2020-03-13T15:40:08Z
+// Last-Modified: 2020-09-02T00:10:13Z
 //
 // URL: https://www.iana.org/assignments/message-headers/prov-headers.csv
-// Last-Modified: 2020-03-13T15:40:08Z
+// Last-Modified: 2020-09-02T00:10:13Z
 
 extension HTTPHeaderFieldName {
   public static let aIM = HTTPHeaderFieldName(rawValue: "A-IM")!
   public static let accept = HTTPHeaderFieldName(rawValue: "Accept")!
   public static let acceptAdditions = HTTPHeaderFieldName(rawValue: "Accept-Additions")!
+  public static let acceptCH = HTTPHeaderFieldName(rawValue: "Accept-CH")!
   public static let acceptCharset = HTTPHeaderFieldName(rawValue: "Accept-Charset")!
   public static let acceptDatetime = HTTPHeaderFieldName(rawValue: "Accept-Datetime")!
   public static let acceptEncoding = HTTPHeaderFieldName(rawValue: "Accept-Encoding")!
@@ -188,6 +189,10 @@ extension HTTPHeaderFieldName {
   public static let messageID = HTTPHeaderFieldName(rawValue: "Message-ID")!
   public static let nonCompliance = HTTPHeaderFieldName(rawValue: "Non-Compliance")!
   public static let optional = HTTPHeaderFieldName(rawValue: "Optional")!
+  public static let repeatabilityClientID = HTTPHeaderFieldName(rawValue: "Repeatability-Client-ID")!
+  public static let repeatabilityFirstSent = HTTPHeaderFieldName(rawValue: "Repeatability-First-Sent")!
+  public static let repeatabilityRequestID = HTTPHeaderFieldName(rawValue: "Repeatability-Request-ID")!
+  public static let repeatabilityResult = HTTPHeaderFieldName(rawValue: "Repeatability-Result")!
   public static let resolutionHint = HTTPHeaderFieldName(rawValue: "Resolution-Hint")!
   public static let resolverLocation = HTTPHeaderFieldName(rawValue: "Resolver-Location")!
   public static let subOK = HTTPHeaderFieldName(rawValue: "SubOK")!
