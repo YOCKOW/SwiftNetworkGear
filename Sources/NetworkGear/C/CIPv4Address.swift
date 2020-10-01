@@ -39,7 +39,7 @@ extension CIPv4Address: CIPAddress {
   
   /// Returns string such as "127.0.0.1"
   public var description: String {
-    var address_p = UnsafeMutablePointer<CChar>.allocate(capacity:Int(INET_ADDRSTRLEN))
+    let address_p = UnsafeMutablePointer<CChar>.allocate(capacity:Int(INET_ADDRSTRLEN))
     defer { address_p.deallocate() }
     
     var myself = self
