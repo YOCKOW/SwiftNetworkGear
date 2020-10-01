@@ -21,7 +21,7 @@ extension Domain {
     hints.family = .unspecified
     hints.socketType = .stream
     
-    var results_pp = UnsafeMutablePointer<UnsafeMutablePointer<CSocketAddressInformation>?>.allocate(capacity:1)
+    let results_pp = UnsafeMutablePointer<UnsafeMutablePointer<CSocketAddressInformation>?>.allocate(capacity:1)
     defer { results_pp.deallocate() }
     
     

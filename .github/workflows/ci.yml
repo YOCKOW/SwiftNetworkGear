@@ -38,10 +38,10 @@ jobs:
     - uses: YOCKOW/Action-setup-swift@master
       with:
         swift-version: '5.3'
-
+    # DEBUG mode
     - name: Try to build products with debug mode.
       id: debug_build
-      run: swift build --configuration debug -Xswiftc -swift-version -Xswiftc ${{ matrix.swift-compat-ver }}
+      run: swift build --configuration debug -Xswiftc -warnings-as-errors -Xswiftc -swift-version -Xswiftc ${{ matrix.swift-compat-ver }}
       continue-on-error: true
     - name: Clean debug build directory if necessary
       if: steps.debug_build.outcome == 'failure'
@@ -53,10 +53,10 @@ jobs:
         git diff --exit-code
     - name: Test with debug mode.
       run: swift test --configuration debug -Xswiftc -swift-version -Xswiftc ${{ matrix.swift-compat-ver }}
-
+    # RELEASE mode
     - name: Try to build products with release mode.
       id: release_build
-      run: swift build --configuration release -Xswiftc -enable-testing -Xswiftc -swift-version -Xswiftc ${{ matrix.swift-compat-ver }}
+      run: swift build --configuration release -Xswiftc -warnings-as-errors -Xswiftc -enable-testing -Xswiftc -swift-version -Xswiftc ${{ matrix.swift-compat-ver }}
       continue-on-error: true
     - name: Clean release build directory if necessary
       if: steps.release_build.outcome == 'failure'

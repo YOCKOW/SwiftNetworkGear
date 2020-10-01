@@ -56,7 +56,7 @@ extension CIPv6Address: CIPAddress {
   }
   
   public var description: String {
-    var address_p = UnsafeMutablePointer<CChar>.allocate(capacity:Int(INET6_ADDRSTRLEN))
+    let address_p = UnsafeMutablePointer<CChar>.allocate(capacity:Int(INET6_ADDRSTRLEN))
     defer { address_p.deallocate() }
     
     var myself = self
