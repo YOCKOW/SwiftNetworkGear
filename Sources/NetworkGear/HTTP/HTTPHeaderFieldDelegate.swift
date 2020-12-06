@@ -83,3 +83,14 @@ extension AppendableHTTPHeaderFieldDelegate
     self.source.append(contentsOf:elements)
   }
 }
+
+public protocol ExternalInformationReferenceableHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate {
+  init?(_: HTTPHeaderFieldValue, userInfo: [AnyHashable: Any]?)
+}
+
+extension ExternalInformationReferenceableHTTPHeaderFieldDelegate where HTTPHeaderFieldValueSource: HTTPHeaderFieldValueConvertible {
+  public init?(_ httpHeaderFieldValue: HTTPHeaderFieldValue, userInfo: [AnyHashable: Any]?) {
+    guard let source = HTTPHeaderFieldValueSource(httpHeaderFieldValue, userInfo: userInfo) else { return nil }
+    self.init(source)
+  }
+}
