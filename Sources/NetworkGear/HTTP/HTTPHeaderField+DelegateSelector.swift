@@ -32,6 +32,16 @@ extension HTTPHeaderField {
         return HTTPHeaderField(delegate: delegate)
       }
     }
+
+    fileprivate class _ExtInfo<Delegate>: _Normal<Delegate> where Delegate: ExternalInformationReferenceableHTTPHeaderFieldDelegate {
+      override func headerField(with value: HTTPHeaderFieldValue,
+                                userInfo: [AnyHashable: Any]?) -> HTTPHeaderField {
+        guard let delegate = Delegate(value, userInfo: userInfo) else {
+          fatalError("\(Delegate.self) cannot be initialized with \"\(value)\".")
+        }
+        return HTTPHeaderField(delegate: delegate)
+      }
+    }
     
     fileprivate class _Appendable<Delegate>: _Normal<Delegate>
       where Delegate:AppendableHTTPHeaderFieldDelegate
@@ -63,7 +73,7 @@ extension HTTPHeaderField {
       .ifNoneMatch: _TypeBox._Appendable(IfNoneMatchHTTPHeaderFieldDelegate.self),
       .lastModified: _TypeBox._Normal(LastModifiedHTTPHeaderFieldDelegate.self),
       .location: _TypeBox._Normal(LocationHTTPHeaderFieldDelegate.self),
-      .setCookie: _TypeBox._Normal(SetCookieHTTPHeaderFieldDelegate.self),
+      .setCookie: _TypeBox._ExtInfo(SetCookieHTTPHeaderFieldDelegate.self),
     ]
     
     private func _register(_ box:_TypeBox, for name:HTTPHeaderFieldName) -> Bool {

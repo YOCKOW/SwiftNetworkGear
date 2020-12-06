@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  HTTPHeaderFieldTests.swift
-   © 2018 YOCKOW.
+   © 2018, 2020 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -40,32 +40,58 @@ final class HTTPHeaderFieldTests: XCTestCase {
   }
   
   func test_delegateSelection() {
-    func check_n<D>(_ name:HTTPHeaderFieldName, _ value:HTTPHeaderFieldValue, _ expected:D.Type,
-                  file:StaticString = #file, line:UInt = #line)
-      where D: HTTPHeaderFieldDelegate
-    {
-      let field = HTTPHeaderField(name:name, value:value)
+    func check_n<D>(
+      name:HTTPHeaderFieldName,
+      value:HTTPHeaderFieldValue,
+      userInfo: [AnyHashable: Any]? = nil,
+      expected: D.Type,
+      file: StaticString = #file, line: UInt = #line
+    ) where D: HTTPHeaderFieldDelegate {
+      let field = HTTPHeaderField(name:name, value:value, userInfo: userInfo)
+      guard case _ as _AnyHTTPHeaderFieldDelegate._Box._Normal<D> = field._delegate._box else {
+        XCTFail("Unexpected delegate", file:file, line:line)
+        return
+      }
+    }
+
+    func check_e<D>(
+      name:HTTPHeaderFieldName,
+      value:HTTPHeaderFieldValue,
+      userInfo: [AnyHashable: Any]? = nil,
+      expected: D.Type,
+      file: StaticString = #file, line: UInt = #line
+    ) where D: ExternalInformationReferenceableHTTPHeaderFieldDelegate {
+      let field = HTTPHeaderField(name:name, value:value, userInfo: userInfo)
       guard case _ as _AnyHTTPHeaderFieldDelegate._Box._Normal<D> = field._delegate._box else {
         XCTFail("Unexpected delegate", file:file, line:line)
         return
       }
     }
     
-    func check_a<D>(_ name:HTTPHeaderFieldName, _ value:HTTPHeaderFieldValue, _ expected:D.Type,
-                  file:StaticString = #file, line:UInt = #line)
-      where D: AppendableHTTPHeaderFieldDelegate
-    {
-      let field = HTTPHeaderField(name:name, value:value)
+    func check_a<D>(
+      name: HTTPHeaderFieldName,
+      value: HTTPHeaderFieldValue,
+      userInfo: [AnyHashable: Any]? = nil,
+      expected: D.Type,
+      file: StaticString = #file, line: UInt = #line
+    ) where D: AppendableHTTPHeaderFieldDelegate {
+      let field = HTTPHeaderField(name:name, value:value, userInfo: userInfo)
       guard case _ as _AnyHTTPHeaderFieldDelegate._Box._Appendable<D> = field._delegate._box else {
         XCTFail("Unexpected delegate", file:file, line:line)
         return
       }
     }
     
-    check_n(.contentDisposition, "attachment", ContentDispositionHTTPHeaderFieldDelegate.self)
-    check_n(.eTag, "*", HTTPETagHeaderFieldDelegate.self)
-    check_n("Etag", "W/\"weak\"", HTTPETagHeaderFieldDelegate.self)
-    check_a(.ifMatch, "*", IfMatchHTTPHeaderFieldDelegate.self)
+    check_n(name: .contentDisposition, value: "attachment",
+            expected: ContentDispositionHTTPHeaderFieldDelegate.self)
+    check_n(name: .eTag, value: "*",
+            expected: HTTPETagHeaderFieldDelegate.self)
+    check_n(name: "Etag", value: "W/\"weak\"",
+            expected: HTTPETagHeaderFieldDelegate.self)
+    check_a(name: .ifMatch, value: "*",
+            expected: IfMatchHTTPHeaderFieldDelegate.self)
+    check_n(name: .setCookie, value: "lang=ja; Path=/", userInfo: ["url": "http://example.com/"],
+            expected: SetCookieHTTPHeaderFieldDelegate.self)
   }
   
   func test_contentLengh() {
