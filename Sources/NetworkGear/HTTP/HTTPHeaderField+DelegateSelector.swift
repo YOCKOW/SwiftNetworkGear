@@ -12,7 +12,7 @@ extension HTTPHeaderField {
   /// Metatype-erasure for `HeaderFieldDelegate`
   private class _TypeBox {
     fileprivate func headerField(with value: HTTPHeaderFieldValue,
-                                 userInfo: [AnyHashable: Any]?) -> HTTPHeaderField
+                                 userInfo: [AnyHashable: Any]?) -> HTTPHeaderField?
     {
       fatalError("Must be overridden.")
     }
@@ -24,21 +24,17 @@ extension HTTPHeaderField {
       }
       
       fileprivate override func headerField(with value: HTTPHeaderFieldValue,
-                                            userInfo: [AnyHashable: Any]?) -> HTTPHeaderField
+                                            userInfo: [AnyHashable: Any]?) -> HTTPHeaderField?
       {
-        guard let delegate = Delegate(value) else {
-          fatalError("\(Delegate.self) cannot be initialized with \"\(value)\".")
-        }
+        guard let delegate = Delegate(value) else { return nil }
         return HTTPHeaderField(delegate: delegate)
       }
     }
 
     fileprivate class _ExtInfo<Delegate>: _Normal<Delegate> where Delegate: ExternalInformationReferenceableHTTPHeaderFieldDelegate {
       override func headerField(with value: HTTPHeaderFieldValue,
-                                userInfo: [AnyHashable: Any]?) -> HTTPHeaderField {
-        guard let delegate = Delegate(value, userInfo: userInfo) else {
-          fatalError("\(Delegate.self) cannot be initialized with \"\(value)\".")
-        }
+                                userInfo: [AnyHashable: Any]?) -> HTTPHeaderField? {
+        guard let delegate = Delegate(value, userInfo: userInfo) else { return nil }
         return HTTPHeaderField(delegate: delegate)
       }
     }
@@ -47,11 +43,9 @@ extension HTTPHeaderField {
       where Delegate:AppendableHTTPHeaderFieldDelegate
     {
       fileprivate override func headerField(with value: HTTPHeaderFieldValue,
-                                            userInfo: [AnyHashable: Any]?) -> HTTPHeaderField
+                                            userInfo: [AnyHashable: Any]?) -> HTTPHeaderField?
       {
-        guard let delegate = Delegate(value) else {
-          fatalError("\(Delegate.self) cannot be initialized with \"\(value)\".")
-        }
+        guard let delegate = Delegate(value) else { return nil }
         return HTTPHeaderField(delegate: delegate)
       }
     }
