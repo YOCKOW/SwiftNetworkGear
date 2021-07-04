@@ -4,8 +4,8 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types
-// Last-Modified: 2017-09-29T15:10:29Z
-// ETag: "1810121//httpd/httpd/trunk/docs/conf/mime.types"
+// Last-Modified: 2020-12-16T16:57:44Z
+// ETag: "1884511//httpd/httpd/trunk/docs/conf/mime.types"
 
 extension MIMEType {
   public enum PathExtension: String {
@@ -551,6 +551,7 @@ extension MIMEType {
      case opf = "opf"
      case opml = "opml"
      case oprc = "oprc"
+     case opus = "opus"
      case org = "org"
      case osf = "osf"
      case osfpvg = "osfpvg"
@@ -1585,7 +1586,7 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .audio, tree: nil, subtype: "midi", suffix: nil): [.kar, .mid, .midi, .rmi],
   MIMEType._Core(type: .audio, tree: nil, subtype: "mp4", suffix: nil): [.m4a, .mp4a],
   MIMEType._Core(type: .audio, tree: nil, subtype: "mpeg", suffix: nil): [.m2a, .m3a, .mp2, .mp2a, .mp3, .mpga],
-  MIMEType._Core(type: .audio, tree: nil, subtype: "ogg", suffix: nil): [.oga, .ogg, .spx],
+  MIMEType._Core(type: .audio, tree: nil, subtype: "ogg", suffix: nil): [.oga, .ogg, .opus, .spx],
   MIMEType._Core(type: .audio, tree: nil, subtype: "s3m", suffix: nil): [.s3m],
   MIMEType._Core(type: .audio, tree: nil, subtype: "silk", suffix: nil): [.sil],
   MIMEType._Core(type: .audio, tree: nil, subtype: "webm", suffix: nil): [.weba],
@@ -2305,6 +2306,7 @@ internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
   .opf: MIMEType._Core(type: .application, tree: nil, subtype: "oebps-package", suffix: .xml),
   .opml: MIMEType._Core(type: .text, tree: nil, subtype: "x-opml", suffix: nil),
   .oprc: MIMEType._Core(type: .application, tree: .vnd, subtype: "palm", suffix: nil),
+  .opus: MIMEType._Core(type: .audio, tree: nil, subtype: "ogg", suffix: nil),
   .org: MIMEType._Core(type: .application, tree: .vnd, subtype: "lotus-organizer", suffix: nil),
   .osf: MIMEType._Core(type: .application, tree: .vnd, subtype: "yamaha.openscoreformat", suffix: nil),
   .osfpvg: MIMEType._Core(type: .application, tree: .vnd, subtype: "yamaha.openscoreformat.osfpvg", suffix: .xml),

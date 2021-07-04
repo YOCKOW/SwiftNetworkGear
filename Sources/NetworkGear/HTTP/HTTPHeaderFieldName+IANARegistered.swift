@@ -4,10 +4,10 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/message-headers/perm-headers.csv
-// Last-Modified: 2020-09-02T00:10:13Z
+// Last-Modified: 2021-06-23T23:40:46Z
 //
 // URL: https://www.iana.org/assignments/message-headers/prov-headers.csv
-// Last-Modified: 2020-09-02T00:10:13Z
+// Last-Modified: 2021-06-23T23:40:46Z
 
 extension HTTPHeaderFieldName {
   public static let aIM = HTTPHeaderFieldName(rawValue: "A-IM")!
@@ -189,6 +189,7 @@ extension HTTPHeaderFieldName {
   public static let messageID = HTTPHeaderFieldName(rawValue: "Message-ID")!
   public static let nonCompliance = HTTPHeaderFieldName(rawValue: "Non-Compliance")!
   public static let optional = HTTPHeaderFieldName(rawValue: "Optional")!
+  public static let oslcCoreVersion = HTTPHeaderFieldName(rawValue: "OSLC-Core-Version")!
   public static let repeatabilityClientID = HTTPHeaderFieldName(rawValue: "Repeatability-Client-ID")!
   public static let repeatabilityFirstSent = HTTPHeaderFieldName(rawValue: "Repeatability-First-Sent")!
   public static let repeatabilityRequestID = HTTPHeaderFieldName(rawValue: "Repeatability-Request-ID")!

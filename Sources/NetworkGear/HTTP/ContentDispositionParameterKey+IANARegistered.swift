@@ -4,7 +4,7 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/cont-disp/cont-disp-2.csv
-// Last-Modified: 2016-06-22T20:57:14Z
+// Last-Modified: 2021-04-15T19:20:41Z
 
 extension ContentDispositionParameterKey {
   public static let filename = ContentDispositionParameterKey(rawValue: "filename")
@@ -16,4 +16,5 @@ extension ContentDispositionParameterKey {
   public static let voice = ContentDispositionParameterKey(rawValue: "voice")
   public static let handling = ContentDispositionParameterKey(rawValue: "handling")
   public static let previewType = ContentDispositionParameterKey(rawValue: "preview-type")
+  public static let reaction = ContentDispositionParameterKey(rawValue: "reaction")
 }
