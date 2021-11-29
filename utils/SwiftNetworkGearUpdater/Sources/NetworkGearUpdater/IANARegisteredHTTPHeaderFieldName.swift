@@ -18,8 +18,7 @@ public final class IANARegisteredHTTPHeaderFieldName: HTTPUpdaterDelegate {
   
   public override var sourceURLs: Array<URL> {
     return [
-      URL(string: "https://www.iana.org/assignments/message-headers/perm-headers.csv")!,
-      URL(string: "https://www.iana.org/assignments/message-headers/prov-headers.csv")!,
+      URL(string: "https://www.iana.org/assignments/http-fields/field-names.csv")!,
     ]
   }
   
@@ -27,8 +26,7 @@ public final class IANARegisteredHTTPHeaderFieldName: HTTPUpdaterDelegate {
     let names: [String] = intermediates.flatMap({ $0.content.rows() }).compactMap {
       let name = $0[0]!
       guard name.allSatisfy({ $0.isLetter || $0 == "-" }) else { return nil }
-      guard $0[2]!.lowercased() == "http" else { return nil }
-      guard $0[3] != "deprecated" && $0[3] != "obsoleted" else { return nil }
+      guard $0[2] != "deprecated" && $0[2] != "obsoleted" else { return nil }
       return name
     }
     

@@ -4,7 +4,7 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/http-status-codes/http-status-codes-1.csv
-// Last-Modified: 2021-03-24T23:21:11Z
+// Last-Modified: 2021-10-01T19:01:10Z
 
 public enum HTTPStatusCode: UInt16 {
   case `continue` = 100
@@ -42,13 +42,13 @@ public enum HTTPStatusCode: UInt16 {
   case gone = 410
   case lengthRequired = 411
   case preconditionFailed = 412
-  case payloadTooLarge = 413
+  case contentTooLarge = 413
   case uriTooLong = 414
   case unsupportedMediaType = 415
   case rangeNotSatisfiable = 416
   case expectationFailed = 417
   case misdirectedRequest = 421
-  case unprocessableEntity = 422
+  case unprocessableContent = 422
   case locked = 423
   case failedDependency = 424
   case tooEarly = 425
@@ -107,13 +107,13 @@ extension HTTPStatusCode {
     case .gone: return "Gone"
     case .lengthRequired: return "Length Required"
     case .preconditionFailed: return "Precondition Failed"
-    case .payloadTooLarge: return "Payload Too Large"
+    case .contentTooLarge: return "Content Too Large"
     case .uriTooLong: return "URI Too Long"
     case .unsupportedMediaType: return "Unsupported Media Type"
     case .rangeNotSatisfiable: return "Range Not Satisfiable"
     case .expectationFailed: return "Expectation Failed"
     case .misdirectedRequest: return "Misdirected Request"
-    case .unprocessableEntity: return "Unprocessable Entity"
+    case .unprocessableContent: return "Unprocessable Content"
     case .locked: return "Locked"
     case .failedDependency: return "Failed Dependency"
     case .tooEarly: return "Too Early"
