@@ -1,9 +1,11 @@
 /***************************************************************************************************
  SocketAddress.swift
-   © 2018 YOCKOW.
+   © 2018, 2021 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
+
+@_exported import _NGCExtensions
 
 ///
 /**
@@ -51,6 +53,22 @@ public class SocketAddress {
   }
   
   public var cSocketAddress: CSocketAddressStructure {
-    return CSocketAddress.actualSocketAddress(for:UnsafePointer(self._boundPointer))
+    let pointer = self._boundPointer
+    let family = pointer.pointee.family
+    if family == .unix {
+      return pointer.withMemoryRebound(to: CUNIXSocketAddress.self, capacity:1) {
+        return $0.pointee
+      }
+    } else if family == .ipv4 {
+      return pointer.withMemoryRebound(to: CIPv4SocketAddress.self, capacity:1) {
+        return $0.pointee
+      }
+    } else if family == .ipv6 {
+      return pointer.withMemoryRebound(to: CIPv6SocketAddress.self, capacity:1) {
+        return $0.pointee
+      }
+    } else {
+      fatalError("Unimplemented family: \(family)")
+    }
   }
 }
