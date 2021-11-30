@@ -57,6 +57,12 @@ let package = Package(
       ]
     ),
     .testTarget(
+      name: "NGCExtensionsTests",
+      dependencies: [
+        "_NGCExtensions",
+      ]
+    ),
+    .testTarget(
       name: "HTTPTests",
       dependencies: [
         "_NGCExtensions",
