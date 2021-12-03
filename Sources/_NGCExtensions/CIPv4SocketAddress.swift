@@ -1,11 +1,11 @@
 /***************************************************************************************************
  CIPv4SocketAddress.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018, 2021 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
 
-import CoreFoundation
+import _NGCExtensionsSupport
 
 /// Extend `CIPv4SocketAddress` (a.k.a. `sockaddr_in`) to make it conform to `CIPSocketAddress`.
 extension CIPv4SocketAddress: CIPSocketAddress {
@@ -37,10 +37,10 @@ extension CIPv4SocketAddress: CIPSocketAddress {
   
   public var port: CSocketPortNumber {
     get {
-      return CFSwapInt16BigToHost(self.sin_port)
+      return _NGCESwapInt16BigToHost(self.sin_port)
     }
     set {
-      self.sin_port = CFSwapInt16HostToBig(newValue)
+      self.sin_port = _NGCESwapInt16HostToBig(newValue)
     }
   }
   

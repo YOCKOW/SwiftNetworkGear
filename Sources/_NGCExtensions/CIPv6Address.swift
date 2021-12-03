@@ -1,33 +1,31 @@
 /* *************************************************************************************************
  CIPv6Address.swift
-   © 2017-2018, 2020 YOCKOW.
+   © 2017-2018, 2020-2021 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
  
-import CoreFoundation
-import Foundation
+import _NGCExtensionsSupport
 
 extension CIPv6Address: CIPAddress {
   public static let size: Int = 16
   
-  public typealias Address = (UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-                              UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8)
+  public typealias Address = CIPv6AddressBytes
   
   public var address: Address {
     get {
-      #if !os(Linux)
-      return self.__u6_addr.__u6_addr8
-      #else
-      return self.__in6_u.__u6_addr8
-      #endif
+      return withUnsafePointer(to: self) {
+        return _NGCEGetIPv6AddressBytes($0).pointee
+      }
     }
     set {
-      #if !os(Linux)
-      self.__u6_addr.__u6_addr8 = newValue
-      #else
-      self.__in6_u.__u6_addr8 = newValue
-      #endif
+      withUnsafePointer(to: newValue) {
+        $0.withMemoryRebound(to: UInt8.self, capacity: Self.size) { (newValuePointer) in
+          withUnsafeMutablePointer(to: &self) {
+            _NGCESetIPv6AddressBytes($0, newValuePointer)
+          }
+        }
+      }
     }
   }
   
@@ -52,17 +50,25 @@ extension CIPv6Address: CIPAddress {
   /// Returns `nil` if the string is not valid for IPv6 Address.
   public init?(_ string: String) {
     self.init()
-    guard inet_pton(AF_INET6, string, &self) == 1 else { return nil }
+    guard _NGCEStringToAddress(_kNGCESocketAddressFamilyIPv6, string, &self) == 1 else {
+      return nil
+    }
   }
   
   public var description: String {
-    let address_p = UnsafeMutablePointer<CChar>.allocate(capacity:Int(INET6_ADDRSTRLEN))
+    let address_p = UnsafeMutablePointer<CChar>.allocate(capacity: Int(_kNGCEIPv6AddressStringLength))
     defer { address_p.deallocate() }
-    
-    var myself = self
-    guard inet_ntop(AF_INET6, &myself.address, address_p, CSocketRelatedSize(INET6_ADDRSTRLEN)) != nil else {
-      fatalError("Failed to convert IP address to String")
+
+    return withUnsafePointer(to: self.address) {
+      guard let _ = _NGCEAddressToString(
+        _kNGCESocketAddressFamilyIPv6,
+        $0,
+        address_p,
+        _kNGCEIPv6AddressStringLength
+      ) else {
+        fatalError("Failed to convert IP address to String")
+      }
+      return String(utf8String: address_p)!
     }
-    return String(utf8String:address_p)!
   }
 }

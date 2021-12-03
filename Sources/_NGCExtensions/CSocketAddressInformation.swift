@@ -1,29 +1,28 @@
 /***************************************************************************************************
  CSocketAddressInformation.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018, 2021 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
  
-import CoreFoundation
-import Foundation
-
-
+import _NGCExtensionsSupport
 
 /// Extend `CSocketAddressInformation` (a.k.a. `addrinfo`)
 extension CSocketAddressInformation {
   public struct Options: OptionSet {
-    public let rawValue:CInt
-    public init(rawValue:CInt) { self.rawValue = rawValue }
+    public let rawValue: CInt
+    public init(rawValue: CInt) {
+      self.rawValue = rawValue
+    }
     
     public static let none = Options([])
-    public static let passive = Options(rawValue:AI_PASSIVE)
-    public static let requestForCanonicalName = Options(rawValue:AI_CANONNAME)
-    public static let disallowHostNameResolution = Options(rawValue:AI_NUMERICHOST)
-    public static let acceptIPv4MappedAddress = Options(rawValue:AI_V4MAPPED)
-    public static let includeBothIPv4MappedAndIPv6Address = Options(rawValue:AI_ALL)
-    public static let useHostConfiguration = Options(rawValue:AI_ADDRCONFIG)
-    public static let disallowServiceNameResolution = Options(rawValue:AI_NUMERICSERV)
+    public static let passive = Options(rawValue: _kNGCEAddressInformationFlagPassive)
+    public static let requestForCanonicalName = Options(rawValue: _kNGCEAddressInformationFlagCanonicalName)
+    public static let disallowHostNameResolution = Options(rawValue: _kNGCEAddressInformationFlagNumericHost)
+    public static let acceptIPv4MappedAddress = Options(rawValue: _kNGCEAddressInformationFlagV4Mapped)
+    public static let includeBothIPv4MappedAndIPv6Address = Options(rawValue: _kNGCEAddressInformationFlagAll)
+    public static let useHostConfiguration = Options(rawValue: _kNGCEAddressInformationFlagAddressConfiguration)
+    public static let disallowServiceNameResolution = Options(rawValue: _kNGCEAddressInformationFlagNumericService)
   }
   
   public var options: Options {

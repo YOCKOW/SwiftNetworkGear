@@ -4,8 +4,8 @@
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
- 
-import Foundation
+
+import struct Foundation.Data
 
 extension CUNIXSocketAddress: CSocketAddressStructure {
   public private(set) var size: CSocketAddressSize {
