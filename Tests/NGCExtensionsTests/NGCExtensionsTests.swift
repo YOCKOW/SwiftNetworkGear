@@ -8,6 +8,8 @@
 import XCTest
 @testable import _NGCExtensions
 
+// Disable these tests due to https://github.com/YOCKOW/SwiftNetworkGear/issues/36
+#if canImport(Darwin) || SR15822Fixed
 final class NGCExtensionsTests: XCTestCase {
   func testCIPAddress() {
     let v4_1 = CIPv4Address((127,0,0,1))
@@ -41,3 +43,4 @@ final class NGCExtensionsTests: XCTestCase {
     XCTAssertEqual(u_1.path, u_2.path)
   }
 }
+#endif
