@@ -1,12 +1,12 @@
 /***************************************************************************************************
  NGCExtensionsTests.swift
-   © 2018, 2021 YOCKOW.
+   © 2018, 2022 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
 
 import XCTest
-@testable import _NGCExtensions
+import NetworkGear
 
 // Disable these tests due to https://github.com/YOCKOW/SwiftNetworkGear/issues/36
 #if canImport(Darwin) || SR15822Fixed
