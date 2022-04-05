@@ -1,4 +1,4 @@
-// swift-tools-version:5.1
+// swift-tools-version:5.6
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -21,8 +21,8 @@ let package = Package(
     .package(url:"https://github.com/YOCKOW/SwiftBootstring.git", from: "1.1.0"),
     .package(url:"https://github.com/YOCKOW/SwiftPublicSuffix.git", from: "2.0.1"),
     .package(url:"https://github.com/YOCKOW/SwiftRanges.git", from: "3.1.0"),
-    .package(url:"https://github.com/YOCKOW/SwiftUnicodeSupplement.git", from: "1.0.0"),
-    .package(url:"https://github.com/YOCKOW/ySwiftExtensions.git", from: "1.5.3"),
+    .package(url:"https://github.com/YOCKOW/SwiftUnicodeSupplement.git", from: "1.1.1"),
+    .package(url:"https://github.com/YOCKOW/ySwiftExtensions.git", from: "1.7.5"),
   ],
   targets: [
     // Targets are the basic building blocks of a package. A target can define a module or a test suite.
@@ -36,8 +36,9 @@ let package = Package(
       "ySwiftExtensions",
     ]),
     .target(name: "sockaddr_tests", dependencies: [], path:"Tests/sockaddr-tests"),
-    .testTarget(name: "NetworkGearTests", dependencies: ["NetworkGear", "sockaddr_tests"]),
     .testTarget(name: "HTTPTests", dependencies: ["NetworkGear"]),
+    .testTarget(name: "NGCExtensionsTests", dependencies: ["NetworkGear"]),
+    .testTarget(name: "NetworkGearTests", dependencies: ["NetworkGear", "sockaddr_tests"]),
   ],
   swiftLanguageVersions: [.v5]
 )
@@ -49,5 +50,8 @@ if ProcessInfo.processInfo.environment["YOCKOW_USE_LOCAL_PACKAGES"] != nil {
     let dirName = url.deletingPathExtension().lastPathComponent
     return "../\(dirName)"
   }
-  package.dependencies = package.dependencies.map { .package(path: localPath(with: $0.url)) }
+  package.dependencies = package.dependencies.map {
+    guard case .sourceControl(_, let location, _) = $0.kind else { fatalError("Unexpected dependency.") }
+    return .package(path: localPath(with: location))
+  }
 }
