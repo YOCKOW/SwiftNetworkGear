@@ -4,7 +4,7 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/http-status-codes/http-status-codes-1.csv
-// Last-Modified: 2021-10-01T19:01:10Z
+// Last-Modified: 2021-12-22T22:11:10Z
 
 public enum HTTPStatusCode: UInt16 {
   case `continue` = 100
@@ -66,7 +66,7 @@ public enum HTTPStatusCode: UInt16 {
   case variantAlsoNegotiates = 506
   case insufficientStorage = 507
   case loopDetected = 508
-  case notExtended = 510
+  case notExtendedOBSOLETED = 510
   case networkAuthenticationRequired = 511
 }
 extension HTTPStatusCode {
@@ -131,7 +131,7 @@ extension HTTPStatusCode {
     case .variantAlsoNegotiates: return "Variant Also Negotiates"
     case .insufficientStorage: return "Insufficient Storage"
     case .loopDetected: return "Loop Detected"
-    case .notExtended: return "Not Extended"
+    case .notExtendedOBSOLETED: return "Not Extended (OBSOLETED)"
     case .networkAuthenticationRequired: return "Network Authentication Required"
     }
   }

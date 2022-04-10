@@ -48,7 +48,6 @@ final class NetworkGearUpdaterTests: XCTestCase {
   
   func test_HTTPStatusCode() throws {
     let lines = try _lines(with: HTTPStatusCode())
-    print(lines.joined(separator: "\n"))
     XCTAssertTrue(lines._contains(line: "case ok = 200"))
     XCTAssertTrue(lines._contains(line: "case .notFound: return \"Not Found\""))
   }
@@ -66,7 +65,6 @@ final class NetworkGearUpdaterTests: XCTestCase {
   
   func test_MIMETypePathExtension() throws {
     let lines = try _lines(with: MIMETypePathExtension())
-    print(lines.joined(separator: "\n"))
     XCTAssertTrue(lines._contains(line: "case text = \"text\""))
     XCTAssertTrue(lines._contains(line: "MIMEType._Core(type: .text, tree: nil, subtype: \"html\", suffix: nil): [.html, .htm],"))
     XCTAssertTrue(lines._contains(line: ".aiff: MIMEType._Core(type: .audio, tree: nil, subtype: \"x-aiff\", suffix: nil),"))
