@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  URL+HTTPRequest.swift
-   © 2019 YOCKOW.
+   © 2019, 2022 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -9,8 +9,7 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
-
-private var _headerCache: [URL: HTTPHeader] = [:]
+import yExtensions
 
 extension URL {
   /// Represents HTTP Request.
@@ -55,8 +54,9 @@ extension URL {
       self.content = data
     }
   }
-  
+
   /// Returns an instance of `Response` representing the response to `request`.
+  @available(*, deprecated, renamed: "response(to:followRedirects:)")
   public func response(to request: Request) throws -> Response {
     var urlReq = URLRequest(url: self)
     urlReq.httpMethod = request.method.rawValue
@@ -71,13 +71,13 @@ extension URL {
     default:
       break
     }
-    
+
     enum _Result {
       case error(Error)
       case response(HTTPURLResponse, data: Data?)
     }
     var result: _Result = .error(NSError(domain: "Unexpected Error.", code: -1))
-    
+
     let semaphore = DispatchSemaphore(value: 0)
     let handler: (Data?, URLResponse?, Error?) -> Void = { (data, response, error) in
       if case let httpResponse as HTTPURLResponse = response {
@@ -98,10 +98,87 @@ extension URL {
       return .init(url: self, response: httpResponse, data: data)
     }
   }
-  
+
+  public enum ResponseError: Error {
+    case notHTTPURLResponse
+    case tooManyRedirects
+    case missingLocationHeaderField(URL)
+    case unexpectedLocation(String)
+  }
+
+  /// Returns an instance of `Response` representing the response to `request`.
+  /// - parameter followRedirects:
+  ///     Specify whether or not redirects should be followed.
+  @available(swift 5.5)
+  @available(macOS 12.0, *)
+  public func response(to request: Request, followRedirects: Bool) async throws -> Response {
+    func __response(from url: URL, to request: Request) async throws -> Response {
+      let (data, response) = try await URLSession.shared.data(from: url)
+      guard case let httpResponse as HTTPURLResponse = response else {
+        throw ResponseError.notHTTPURLResponse
+      }
+      return .init(url: url, response: httpResponse, data: data)
+    }
+    if !followRedirects {
+      return try await __response(from: self, to: request)
+    }
+
+    let cutOff = 100
+    var nn = 0
+    var currentURL = self
+    while true {
+      nn += 1
+      if nn > cutOff {
+        throw ResponseError.tooManyRedirects
+      }
+
+      let response = try await __response(from: currentURL, to: request)
+      if !response.statusCode.requiresLocationHeader {
+        return response
+      }
+      guard let location = response.header[.location].first else {
+        throw ResponseError.missingLocationHeaderField(currentURL)
+      }
+      func __nextURL() throws -> URL {
+        if case let url as URL = location.source {
+          return url
+        }
+        let string = location.value.rawValue
+        if let url = URL(string: string) {
+          return url
+        }
+        if let url = URL(string: string, relativeTo: currentURL) {
+          return url
+        }
+        throw ResponseError.unexpectedLocation(string)
+      }
+      currentURL = try __nextURL()
+    }
+  }
+
+  @available(*, deprecated, renamed: "finalContent")
   @inlinable
   public var content: Data? {
     return (try? self.response(to: Request()))?.content
+  }
+
+
+  /// Returns the content at the URL. Request will follow all redirects.
+  @available(swift 5.5)
+  @available(macOS 12.0, *)
+  @inlinable
+  public var finalContent: Data? {
+    get async throws {
+      if isFileURL {
+        guard isExistingLocalFile else {
+          throw POSIXError(.ENOENT)
+        }
+        let fh = try FileHandle(forReadingFrom: self)
+        try fh.seek(toOffset: 0)
+        return try fh.readToEnd()
+      }
+      return try await response(to: Request(), followRedirects: true).content
+    }
   }
   
   @inlinable
@@ -110,9 +187,10 @@ extension URL {
   }
 }
 
-// Headers
+private var _headerCache: [URL: HTTPHeader] = [:]
 extension URL {
-  private var _header: HTTPHeader? {
+  @available(*, deprecated)
+  private var __header: HTTPHeader? {
     if let header = _headerCache[self] {
       return header
     }
@@ -120,14 +198,52 @@ extension URL {
     _headerCache[self] = response.header
     return response.header
   }
+
+  @available(swift 5.5)
+  @available(macOS 12.0, *)
+  private var _header: HTTPHeader {
+    get async throws {
+      if _headerCache[self] == nil {
+        let response = try await response(to: .init(method: .head), followRedirects: true)
+        _headerCache[self] = response.header
+      }
+      return _headerCache[self]!
+    }
+  }
   
   /// Returns the date when the resource at URL modified last.
+  @available(*, deprecated)
   public var lastModified: Date? {
-    return self._header?[.lastModified].first?.source as? Date
+    return self.__header?[.lastModified].first?.source as? Date
+  }
+
+  /// Returns the date when the resource at URL modified last. Redirects are enabled.
+  @available(swift 5.5)
+  @available(macOS 12.0, *)
+  public var lastModifiedDate: Date? {
+    get async throws {
+      if isFileURL {
+        return try FileManager.default.attributesOfItem(atPath: path)[.modificationDate] as? Date
+      }
+      return try await _header[.lastModified].first?.source as? Date
+    }
   }
   
   /// Returns the ETag value of the URL.
+  @available(*, deprecated)
   public var eTag: HTTPETag? {
-    return self._header?[.eTag].first?.source as? HTTPETag
+    return self.__header?[.eTag].first?.source as? HTTPETag
+  }
+
+  /// Returns the ETag value of the URL, or `nil` if there is no ETag or the URL is a file URL.
+  @available(swift 5.5)
+  @available(macOS 12.0, *)
+  public var httpETag: HTTPETag? {
+    get async throws {
+      if isFileURL {
+        return nil
+      }
+      return try await _header[.eTag].first?.source as? HTTPETag
+    }
   }
 }
