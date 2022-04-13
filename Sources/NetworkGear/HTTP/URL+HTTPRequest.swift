@@ -113,11 +113,16 @@ extension URL {
   @available(macOS 12.0, *)
   public func response(to request: Request, followRedirects: Bool) async throws -> Response {
     func __response(from url: URL, to request: Request) async throws -> Response {
+      // URLSession missing async APIs: https://bugs.swift.org/browse/SR-15187
+      #if canImport(Darwin)
       let (data, response) = try await URLSession.shared.data(from: url)
       guard case let httpResponse as HTTPURLResponse = response else {
         throw ResponseError.notHTTPURLResponse
       }
       return .init(url: url, response: httpResponse, data: data)
+      #else
+      return try url.response(to: request)
+      #endif
     }
     if !followRedirects {
       return try await __response(from: self, to: request)
