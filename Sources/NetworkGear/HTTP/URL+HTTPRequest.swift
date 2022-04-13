@@ -56,7 +56,10 @@ extension URL {
   }
 
   /// Returns an instance of `Response` representing the response to `request`.
-  @available(*, deprecated, renamed: "response(to:followRedirects:)")
+  @available(macOS, deprecated: 12.0, renamed: "response(to:followRedirects:)")
+  @available(iOS, deprecated: 15.0, renamed: "response(to:followRedirects:)")
+  @available(watchOS, deprecated: 8.0, renamed: "response(to:followRedirects:)")
+  @available(tvOS, deprecated: 15.0, renamed: "response(to:followRedirects:)")
   public func response(to request: Request) throws -> Response {
     var urlReq = URLRequest(url: self)
     urlReq.httpMethod = request.method.rawValue
@@ -109,8 +112,7 @@ extension URL {
   /// Returns an instance of `Response` representing the response to `request`.
   /// - parameter followRedirects:
   ///     Specify whether or not redirects should be followed.
-  @available(swift 5.5)
-  @available(macOS 12.0, *)
+  @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
   public func response(to request: Request, followRedirects: Bool) async throws -> Response {
     func __response(from url: URL, to request: Request) async throws -> Response {
       // URLSession missing async APIs: https://bugs.swift.org/browse/SR-15187
@@ -161,7 +163,10 @@ extension URL {
     }
   }
 
-  @available(*, deprecated, renamed: "finalContent")
+  @available(macOS, deprecated: 12.0, renamed: "finalContent")
+  @available(iOS, deprecated: 15.0, renamed: "finalContent")
+  @available(watchOS, deprecated: 8.0, renamed: "finalContent")
+  @available(tvOS, deprecated: 15.0, renamed: "finalContent")
   @inlinable
   public var content: Data? {
     return (try? self.response(to: Request()))?.content
@@ -169,8 +174,7 @@ extension URL {
 
 
   /// Returns the content at the URL. Request will follow all redirects.
-  @available(swift 5.5)
-  @available(macOS 12.0, *)
+  @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
   @inlinable
   public var finalContent: Data? {
     get async throws {
@@ -194,7 +198,10 @@ extension URL {
 
 private var _headerCache: [URL: HTTPHeader] = [:]
 extension URL {
-  @available(*, deprecated)
+  @available(macOS, deprecated: 12.0)
+  @available(iOS, deprecated: 15.0)
+  @available(watchOS, deprecated: 8.0)
+  @available(tvOS, deprecated: 15.0)
   private var __header: HTTPHeader? {
     if let header = _headerCache[self] {
       return header
@@ -204,8 +211,7 @@ extension URL {
     return response.header
   }
 
-  @available(swift 5.5)
-  @available(macOS 12.0, *)
+  @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
   private var _header: HTTPHeader {
     get async throws {
       if _headerCache[self] == nil {
@@ -217,14 +223,16 @@ extension URL {
   }
   
   /// Returns the date when the resource at URL modified last.
-  @available(*, deprecated)
+  @available(macOS, deprecated: 12.0)
+  @available(iOS, deprecated: 15.0)
+  @available(watchOS, deprecated: 8.0)
+  @available(tvOS, deprecated: 15.0)
   public var lastModified: Date? {
     return self.__header?[.lastModified].first?.source as? Date
   }
 
   /// Returns the date when the resource at URL modified last. Redirects are enabled.
-  @available(swift 5.5)
-  @available(macOS 12.0, *)
+  @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
   public var lastModifiedDate: Date? {
     get async throws {
       if isFileURL {
@@ -235,14 +243,16 @@ extension URL {
   }
   
   /// Returns the ETag value of the URL.
-  @available(*, deprecated)
+  @available(macOS, deprecated: 12.0)
+  @available(iOS, deprecated: 15.0)
+  @available(watchOS, deprecated: 8.0)
+  @available(tvOS, deprecated: 15.0)
   public var eTag: HTTPETag? {
     return self.__header?[.eTag].first?.source as? HTTPETag
   }
 
   /// Returns the ETag value of the URL, or `nil` if there is no ETag or the URL is a file URL.
-  @available(swift 5.5)
-  @available(macOS 12.0, *)
+  @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
   public var httpETag: HTTPETag? {
     get async throws {
       if isFileURL {
