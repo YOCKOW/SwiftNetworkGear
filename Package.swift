@@ -37,7 +37,7 @@ let package = Package(
     ]),
     .target(name: "sockaddr_tests", dependencies: [], path:"Tests/sockaddr-tests"),
     .testTarget(name: "HTTPTests", dependencies: ["NetworkGear"]),
-    .testTarget(name: "NGCExtensionsTests", dependencies: ["NetworkGear"]),
+    .testTarget(name: "NGCExtensionsTests", dependencies: ["NetworkGear", "sockaddr_tests"]),
     .testTarget(name: "NetworkGearTests", dependencies: ["NetworkGear", "sockaddr_tests"]),
   ],
   swiftLanguageVersions: [.v5]
