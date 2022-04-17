@@ -130,7 +130,7 @@ extension URL {
       return try await __response(from: self, to: request)
     }
 
-    let cutOff = 100
+    let cutOff = 20
     var nn = 0
     var currentURL = self
     while true {
@@ -146,7 +146,7 @@ extension URL {
       guard let location = response.header[.location].first else {
         throw ResponseError.missingLocationHeaderField(currentURL)
       }
-      func __nextURL() throws -> URL {
+      currentURL = try ({ () throws -> URL in
         if case let url as URL = location.source {
           return url
         }
@@ -158,8 +158,7 @@ extension URL {
           return url
         }
         throw ResponseError.unexpectedLocation(string)
-      }
-      currentURL = try __nextURL()
+      })()
     }
   }
 
