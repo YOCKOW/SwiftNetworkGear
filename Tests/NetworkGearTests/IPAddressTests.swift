@@ -57,4 +57,9 @@ final class IPAddressTests: XCTestCase {
     
     XCTAssertEqual(v4!, v4Mapped!)
   }
+
+  func test_DNSReverseLookup() throws {
+    let ipAddress = try XCTUnwrap(IPAddress(string: "2001:e42:102:1820:160:16:237:39"))
+    XCTAssertEqual(ipAddress.domain, Domain("Choeropsis-liberiensis.YOCKOW.jp"))
+  }
 }
