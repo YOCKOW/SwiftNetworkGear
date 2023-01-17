@@ -65,11 +65,10 @@ extension IPAddress {
     func __getNameInfo<T>(_ sockAddr: T) -> CInt where T: CIPSocketAddress {
       let size = CSocketRelatedSize(sockAddr.size)
       return withUnsafePointer(to: sockAddr) {
-        return $0.withMemoryRebound(to: CSocketAddress.self, capacity: 2) {
-          return getnameinfo($0, size,
-                             domain_p, CSocketRelatedSize(NI_MAXHOST),
-                             nil, 0, NI_NAMEREQD)
-        }
+        let asSockAddr = UnsafeRawPointer($0).bindMemory(to: CSocketAddress.self, capacity: 2)
+        return getnameinfo(asSockAddr, size,
+                           domain_p, CSocketRelatedSize(NI_MAXHOST),
+                           nil, 0, NI_NAMEREQD)
       }
     }
     
