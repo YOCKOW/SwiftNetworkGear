@@ -1,16 +1,11 @@
 /* *************************************************************************************************
  CookieProperties+HeaderFieldValue.swift
-   © 2018 YOCKOW.
+   © 2018,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
-import BonaFideCharacterSet
 import Foundation
-
-private func _trim<S>(_ string:S) -> String where S:StringProtocol {
-  return string.trimmingUnicodeScalars(in:.whitespacesAndNewlines)
-}
 
 private func _attributes(_ string:String) -> [String:String] {
   let pairs = string.components(separatedBy:";").map { _trim($0) }

@@ -1,11 +1,9 @@
 /* *************************************************************************************************
  HTTPHeaderFieldName.swift
-   © 2017-2020 YOCKOW.
+   © 2017-2020,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
-
-import BonaFideCharacterSet
 
 /// # HeaderFieldName
 /// Represents HTTP Header Field Name
@@ -20,7 +18,7 @@ public struct HTTPHeaderFieldName: Equatable, Hashable, RawRepresentable {
   
   public init?(rawValue: String) {
     if rawValue.isEmpty { return nil }
-    guard rawValue.consists(of:.httpHeaderFieldNameAllowed) else { return nil }
+    guard rawValue.unicodeScalars.allSatisfy(\.isAllowedInHTTPHeaderFieldName) else { return nil }
     self.rawValue = rawValue
     self._lowercasedName = rawValue.lowercased()
   }

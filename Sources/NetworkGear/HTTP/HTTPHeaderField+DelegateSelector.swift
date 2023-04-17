@@ -1,11 +1,10 @@
 /* *************************************************************************************************
  HTTPHeaderField+DelegateSelector.swift
-   © 2018, 2020 YOCKOW.
+   © 2018,2020,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
-import BonaFideCharacterSet
 import yExtensions
 
 extension HTTPHeaderField {
@@ -117,15 +116,11 @@ extension HTTPHeaderField {
   }
   
   public init?(string: String, userInfo: [AnyHashable: Any]? = nil) {
-    func _trim<S>(_ string:S) -> String where S:StringProtocol {
-      return string.trimmingUnicodeScalars(in:.whitespacesAndNewlines)
-    }
-    
     guard case let (nameString, valueString?) = string.splitOnce(separator:":") else { return nil }
-    guard let name = HTTPHeaderFieldName(rawValue:_trim(nameString)),
-          let value = HTTPHeaderFieldValue(rawValue:_trim(valueString)) else
-    {
-        return nil
+    guard let name = HTTPHeaderFieldName(rawValue: _trim(nameString)),
+          let value = HTTPHeaderFieldValue(rawValue: _trim(valueString))
+    else {
+      return nil
     }
     self.init(name: name, value: value, userInfo: userInfo)
   }
