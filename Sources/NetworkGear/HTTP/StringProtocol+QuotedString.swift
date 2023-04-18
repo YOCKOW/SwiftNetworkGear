@@ -1,11 +1,9 @@
 /* *************************************************************************************************
  StringProtocol+QuotedString.swift
-   © 2018 YOCKOW.
+   © 2018,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
-
-import BonaFideCharacterSet
 
 extension StringProtocol {
   /// See https://tools.ietf.org/html/rfc7230#section-3.2.6
@@ -14,8 +12,8 @@ extension StringProtocol {
     quoted_scalars.append("\"")
     
     for scalar in self.unicodeScalars {
-      guard UnicodeScalarSet.httpEscapableUnicodeScalars.contains(scalar) else { return nil }
-      if !UnicodeScalarSet.httpQuotedTextAllowed.contains(scalar) {
+      guard scalar.isHTTPEscapable else { return nil }
+      if !scalar.isAllowedInHTTPHeaderFieldValueQuotedText {
         quoted_scalars.append(contentsOf:["\\", scalar])
       } else {
         quoted_scalars.append(scalar)
@@ -40,7 +38,7 @@ extension StringProtocol {
     var escaped = false
     for scalar in quoted_scalars {
       if escaped || scalar != "\\" {
-        guard UnicodeScalarSet.httpEscapableUnicodeScalars.contains(scalar) else { return nil }
+        guard scalar.isHTTPEscapable else { return nil }
         unquoted_scalars.append(scalar)
         escaped = false
       } else {

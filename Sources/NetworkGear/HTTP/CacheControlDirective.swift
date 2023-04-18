@@ -1,12 +1,11 @@
 /* *************************************************************************************************
  CacheControlDirective.swift
-   © 2017-2019 YOCKOW.
+   © 2017-2019,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
 import Foundation
-import BonaFideCharacterSet
 import yExtensions
 
 /**
@@ -77,9 +76,9 @@ extension CacheControlDirective: RawRepresentable {
         guard let seconds = nilableSeconds else { return nil }
         self = .staleIfError(seconds)
       default:
-        guard name.consists(of:.httpTokenAllowed) else { return nil }
+        guard name.unicodeScalars.allSatisfy(\.isHTTPToken) else { return nil }
         let unquotedValue = value._unquotedString ?? String(value)
-        guard unquotedValue.consists(of:.httpEscapableUnicodeScalars) else { return nil }
+        guard unquotedValue.unicodeScalars.allSatisfy(\.isHTTPEscapable) else { return nil }
         self = .extension(name:String(name), value:unquotedValue)
       }
     }
@@ -104,9 +103,9 @@ extension CacheControlDirective: RawRepresentable {
     case .noStore: return "no-store"
     case .noTransform: return "no-transform"
     case .extension(let name, let value):
-      guard name.consists(of:.httpTokenAllowed) &&
-            value.consists(of:.httpEscapableUnicodeScalars) else
-      {
+      guard name.unicodeScalars.allSatisfy(\.isHTTPToken) &&
+          value.unicodeScalars.allSatisfy(\.isHTTPEscapable)
+      else {
         fatalError("Invalid unicode scalar is contained.")
       }
       return "\(name)=\(value._quotedString!)"

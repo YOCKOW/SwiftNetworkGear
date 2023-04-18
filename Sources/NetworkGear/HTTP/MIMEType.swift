@@ -76,7 +76,7 @@ public struct MIMEType {
       get { return self.__subtype }
       set {
          if newValue.isEmpty { fatalError("Subtype cannot be empty.") }
-        guard newValue.consists(of:.mimeTypeTokenAllowed) else { fatalError("Invalid string for MIME Type.") }
+        guard newValue.unicodeScalars.allSatisfy(\.isMIMETypeToken) else { fatalError("Invalid string for MIME Type.") }
         self.__subtype = newValue.lowercased()
       }
     }
@@ -133,7 +133,7 @@ public struct MIMEType {
     set {
       if let newParameters = newValue {
         for key in newParameters.keys {
-          guard key.consists(of:.mimeTypeTokenAllowed) else { fatalError("Invalid key exists.") }
+          guard key.unicodeScalars.allSatisfy(\.isMIMETypeToken) else { fatalError("Invalid key exists.") }
         }
       }
       self._parameters = newValue
@@ -235,7 +235,7 @@ extension MIMEType: CustomStringConvertible {
     if let parameters = self.parameters {
       for (key, value) in parameters {
         desc += "; \(key)="
-        if value.consists(of:.mimeTypeTokenAllowed) {
+        if value.unicodeScalars.allSatisfy(\.isMIMETypeToken) {
           desc += value
         } else {
           let escapedValue = value.replacingOccurrences(of:"\\", with:"\\\\").replacingOccurrences(of:"\"", with:"\\\"")

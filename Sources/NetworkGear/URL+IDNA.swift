@@ -1,11 +1,10 @@
 /***************************************************************************************************
  URL+IDNA.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
 
-import BonaFideCharacterSet
 import Foundation
 
 extension URL {
@@ -56,12 +55,12 @@ extension URL {
     })(auth!)
     if user != nil {
       for scalar in user!.unicodeScalars {
-        guard UnicodeScalarSet.urlUserAllowed.contains(scalar) else { return nil }
+        guard scalar.isAllowedInURLUser else { return nil }
       }
     }
     if password != nil {
       for scalar in password!.unicodeScalars {
-        guard UnicodeScalarSet.urlPasswordAllowed.contains(scalar) else { return nil }
+        guard scalar.isAllowedInURLPassword else { return nil }
       }
     }
     
@@ -127,14 +126,14 @@ extension URL {
     if port != nil { urlString += ":" + port! }
     
     // path
-    guard let encodedPath = path.addingPercentEncoding(withAllowedCharacters:.urlPathAllowed) else {
+    guard let encodedPath = path.addingPercentEncoding(whereAllowedUnicodeScalars: \.isAllowedInURLPath) else {
       return nil
     }
     urlString += encodedPath
     
     // query
     if query != nil {
-      guard let encodedQuery = query!.addingPercentEncoding(withAllowedCharacters:.urlQueryAllowed) else {
+      guard let encodedQuery = query!.addingPercentEncoding(whereAllowedUnicodeScalars: \.isAllowedInURLQuery) else {
         return nil
       }
       urlString += "?" + encodedQuery
@@ -142,7 +141,7 @@ extension URL {
     
     // fragment
     if fragment != nil {
-      guard let encodedFragment = fragment!.addingPercentEncoding(withAllowedCharacters:.urlFragmentAllowed) else {
+      guard let encodedFragment = fragment!.addingPercentEncoding(whereAllowedUnicodeScalars: \.isAllowedInURLFragment) else {
         return nil
       }
       urlString += "#" + encodedFragment

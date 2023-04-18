@@ -1,31 +1,30 @@
 /* *************************************************************************************************
  Date+RFC6265Cookie.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
 import Foundation
-import BonaFideCharacterSet
+import yExtensions
 
-extension UnicodeScalarSet {
-  fileprivate static let _cookieDateSeparator = UnicodeScalarSet(unicodeScalarsIn:"\u{0009}").union(
-    UnicodeScalarSet(unicodeScalarsIn:UnicodeScalar(0x20)...UnicodeScalar(0x2F))
-    ).union(
-      UnicodeScalarSet(unicodeScalarsIn:UnicodeScalar(0x3B)...UnicodeScalar(0x40))
-    ).union(
-      UnicodeScalarSet(unicodeScalarsIn:UnicodeScalar(0x5B)...UnicodeScalar(0x60))
-    ).union(
-      UnicodeScalarSet(unicodeScalarsIn:UnicodeScalar(0x7B)...UnicodeScalar(0x7E))
-    )
-  
-  fileprivate static let _numbers = UnicodeScalarSet(unicodeScalarsIn:UnicodeScalar(0x30)...UnicodeScalar(0x39))
+private extension Unicode.Scalar {
+  var _isCookieDateSeparator: Bool {
+    switch value {
+    case 0x09, 0x20...0x2F, 0x3B...0x40, 0x5B...0x60, 0x7B...0x7E:
+      return true
+    default:
+      return false
+    }
+  }
+
+  var _isNumber: Bool { 0x30 <= value && value <= 0x39 }
 }
 
-private func _convert_year(_ string:String) -> Int? {
+private func _convert_year<C>(_ scalars: C) -> Int? where C: Collection, C.Element == Unicode.Scalar {
   var output = String.UnicodeScalarView()
-  for scalar in string.unicodeScalars {
-    guard UnicodeScalarSet._numbers.contains(scalar) else { break }
+  for scalar in scalars {
+    guard scalar._isNumber else { break }
     output.append(scalar)
   }
   guard output.count >= 2 else { return nil }
@@ -39,10 +38,10 @@ private func _convert_year(_ string:String) -> Int? {
   return result
 }
 
-private func _convert_month(_ string:String) -> Int8? {
-  guard string.unicodeScalars.count >= 3 else { return nil }
-  let prefix = string[string.startIndex ..< string.index(string.startIndex, offsetBy:3)].lowercased()
-  switch prefix {
+private func _convert_month<C>(_ scalars: C) -> Int8? where C: Collection, C.Element == Unicode.Scalar {
+  guard scalars.count >= 3 else { return nil }
+  let prefix = String(String.UnicodeScalarView(scalars.prefix(3)))
+  switch prefix.lowercased() {
   case "jan": return 1
   case "feb": return 2
   case "mar": return 3
@@ -59,10 +58,10 @@ private func _convert_month(_ string:String) -> Int8? {
   }
 }
 
-private func _convert_day(_ string:String) -> Int8? {
+private func _convert_day<C>(_ scalars: C) -> Int8? where C: Collection, C.Element == Unicode.Scalar {
   var output = String.UnicodeScalarView()
-  for scalar in string.unicodeScalars {
-    guard UnicodeScalarSet._numbers.contains(scalar) else { break }
+  for scalar in scalars {
+    guard scalar._isNumber else { break }
     output.append(scalar)
   }
   guard output.count >= 2 else { return nil }
@@ -70,18 +69,23 @@ private func _convert_day(_ string:String) -> Int8? {
   return result
 }
 
-private func _convert_time(_ string:String) -> (hour:Int8, minute:Int8, second:Int8)? {
-  let components = string.components(separatedBy:":")
+private func _convert_time<C>(_ scalars: C) -> (hour:Int8, minute:Int8, second:Int8)? where C: Collection, C.Element == Unicode.Scalar {
+  let components = scalars.split(separator: ":")
   guard components.count >= 3 else { return nil }
-  guard let hour = Int8(components[0]), hour >= 0, hour < 24 else { return nil }
-  guard let min = Int8(components[1]), min >= 0, min < 60 else { return nil }
+
+  func __int8<S>(from scalars: S) -> Int8? where S: Sequence, S.Element == Unicode.Scalar {
+    Int8(String(String.UnicodeScalarView(scalars)))
+  }
+
+  guard let hour = __int8(from: components[0]), hour >= 0, hour < 24 else { return nil }
+  guard let min = __int8(from: components[1]), min >= 0, min < 60 else { return nil }
   var secScalars = String.UnicodeScalarView()
-  for scalar in components[2].unicodeScalars {
-    guard UnicodeScalarSet._numbers.contains(scalar) else { break }
+  for scalar in components[2] {
+    guard scalar._isNumber else { break }
     secScalars.append(scalar)
   }
   guard secScalars.count >= 1 else { return nil }
-  guard let sec = Int8(String(String.UnicodeScalarView(secScalars))), sec >= 0, sec <= 60 else { return nil }
+  guard let sec = __int8(from: secScalars), sec >= 0, sec <= 60 else { return nil }
   return (hour:hour, minute:min, second:sec)
 }
 
@@ -94,8 +98,8 @@ extension Date {
     } else if let date = DateFormatter.traditionalHTTPCookie.date(from:string) {
       self.init(timeInterval:0, since:date)
     } else {
-      let components = string.components(separatedBy:._cookieDateSeparator)
-      
+      let components = string.unicodeScalars.split(whereSeparator: \._isCookieDateSeparator).filter({ !$0.isEmpty })
+
       var year: Int = 0
       var month: Int8 = 0
       var day: Int8 = 0

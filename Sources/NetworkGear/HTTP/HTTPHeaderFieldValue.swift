@@ -1,18 +1,17 @@
 /* *************************************************************************************************
  HTTPHeaderFieldValue.swift
-   © 2017-2019 YOCKOW.
+   © 2017-2019,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
-import BonaFideCharacterSet
-
 private func _valid_value(_ value:String) -> Bool {
+  let scalars = value.unicodeScalars
   return (
-    value.consists(of:.httpHeaderFieldValueAllowed) &&
-    UnicodeScalarSet.visibleCharacterUnicodeScalars.contains(value.unicodeScalars.first!) &&
-    UnicodeScalarSet.visibleCharacterUnicodeScalars.contains(value.unicodeScalars.last!)
-  ) ? true : false
+    scalars.allSatisfy(\.isAllowedInHTTPHeaderFieldValue) &&
+    scalars.first?._isVisible == true &&
+    scalars.last?._isVisible == true
+  )
 }
 
 /**

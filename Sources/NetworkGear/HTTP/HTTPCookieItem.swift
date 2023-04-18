@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  CookieItem.swift
-   © 2017-2018, 2020 YOCKOW.
+   © 2017-2018,2020,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -37,9 +37,9 @@ public struct HTTPCookieItem {
 extension HTTPCookieItem {
   internal func _nameAndValue(addingPercentEncoding:Bool = true) -> String? {
     if addingPercentEncoding {
-      guard let name = self.name.addingPercentEncoding(withAllowedUnicodeScalars:.httpTokenAllowed)
+      guard let name = self.name.addingPercentEncoding(whereAllowedUnicodeScalars: \.isHTTPToken)
         else { return nil }
-      guard let value = self.value.addingPercentEncoding(withAllowedUnicodeScalars:.cookieValueAllowed)
+      guard let value = self.value.addingPercentEncoding(whereAllowedUnicodeScalars: \.isAllowedInCookieValue)
         else { return nil }
       return "\(name)=\(value)"
     } else {

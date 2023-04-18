@@ -1,11 +1,9 @@
 /* *************************************************************************************************
  Token.swift
-   © 2018 YOCKOW.
+   © 2018,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
-
-import BonaFideCharacterSet
 
 // Simple Lexer for HTTP header field values
 
@@ -42,14 +40,14 @@ extension StringProtocol {
     for scalar in self.unicodeScalars {
       switch processing {
       case .whitespace:
-        if UnicodeScalarSet.whitespaces.contains(scalar) { continue }
+        if scalar.latestProperties.isWhitespace { continue }
         
         scalars = .init([scalar])
         if scalar == "\"" {
           processing = .quotedString
-        } else if UnicodeScalarSet.httpTokenAllowed.contains(scalar) {
+        } else if scalar.isHTTPToken {
           processing = .rawString
-        } else if UnicodeScalarSet.httpSeparatorAllowed.contains(scalar) {
+        } else if scalar.isHTTPSeparator {
           tokens.append(_Token._Separator(scalars!))
           scalars = nil
           processing = .whitespace
@@ -59,7 +57,7 @@ extension StringProtocol {
         
       case .quotedString:
         guard let _ = scalars else { fatalError("Unexpected.") }
-        guard UnicodeScalarSet.httpEscapableUnicodeScalars.contains(scalar) else { return nil }
+        guard scalar.isHTTPEscapable else { return nil }
         scalars!.append(scalar)
         if !escaped {
           if scalar == "\\" {
@@ -75,11 +73,11 @@ extension StringProtocol {
       
       case .rawString:
         guard let _ = scalars else { fatalError("Unexpected.") }
-        if UnicodeScalarSet.httpTokenAllowed.contains(scalar) {
+        if scalar.isHTTPToken {
           scalars!.append(scalar)
-        } else if UnicodeScalarSet.httpSeparatorAllowed.contains(scalar) {
+        } else if scalar.isHTTPSeparator {
           tokens.append(_Token._RawString(scalars!))
-          if UnicodeScalarSet.whitespaces.contains(scalar) {
+          if scalar.latestProperties.isWhitespace {
             processing = .whitespace
           } else if scalar == "\"" {
             // is it right?
