@@ -5,26 +5,13 @@
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
-// Derived from https://github.com/YOCKOW/SwiftBonaFideCharacterSet/blob/main/Sources/BonaFideCharacterSet/StringProtocol%2BCharacterExpressionSet%2BUnicodeScalarSet.swift
-
-extension StringProtocol {
-  /// Returns a new string made by removing from both ends of the characters
-  /// contained in a given character set.
-  public func trimmingUnicodeScalars(where isTrimmedUnicodeScalar: (Unicode.Scalar) throws -> Bool) rethrows -> String {
-    let scalars = self.unicodeScalars
-    guard let firstIndex = try scalars.firstIndex(where: { try !isTrimmedUnicodeScalar($0) }),
-          let lastIndex = try scalars.lastIndex(where: { try !isTrimmedUnicodeScalar($0) })
-    else {
-      return ""
-    }
-    return String(String.UnicodeScalarView(scalars[firstIndex...lastIndex]))
-  }
-}
+import yExtensions
 
 internal func _trim<S>(_ string: S) -> String where S: StringProtocol {
   return string.trimmingUnicodeScalars(where: { $0.latestProperties.isWhitespace || $0._isNewline })
 }
 
+// Derived from https://github.com/YOCKOW/SwiftBonaFideCharacterSet/blob/main/Sources/BonaFideCharacterSet/StringProtocol%2BCharacterExpressionSet%2BUnicodeScalarSet.swift
 
 private let _hex: [Unicode.Scalar] = ["0", "1", "2", "3", "4", "5", "6", "7",
                                       "8", "9", "A", "B", "C", "D", "E", "F"]
