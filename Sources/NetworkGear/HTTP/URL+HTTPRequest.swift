@@ -28,7 +28,30 @@ extension URL {
       self.body = body
     }
   }
-  
+}
+
+private extension URLRequest {
+  init(url: URL, request: URL.Request) {
+    self.init(url: url)
+
+    self.httpMethod = request.method.rawValue
+
+    for field in request.header {
+      self.addValue(field.value.rawValue, forHTTPHeaderField: field.name.rawValue)
+    }
+
+    switch request.body {
+    case .some(.data(let data)):
+      self.httpBody = data
+    case .some(.stream(let stream)):
+      self.httpBodyStream = stream
+    default:
+      break
+    }
+  }
+}
+
+extension URL {
   /// Represents HTTP Response
   public struct Response {
     public let statusCode: HTTPStatusCode
@@ -61,20 +84,6 @@ extension URL {
   @available(watchOS, deprecated: 8.0, renamed: "response(to:followRedirects:)")
   @available(tvOS, deprecated: 15.0, renamed: "response(to:followRedirects:)")
   public func response(to request: Request) throws -> Response {
-    var urlReq = URLRequest(url: self)
-    urlReq.httpMethod = request.method.rawValue
-    for field in request.header {
-      urlReq.addValue(field.value.rawValue, forHTTPHeaderField: field.name.rawValue)
-    }
-    switch request.body {
-    case .some(.data(let data)):
-      urlReq.httpBody = data
-    case .some(.stream(let stream)):
-      urlReq.httpBodyStream = stream
-    default:
-      break
-    }
-
     enum _Result {
       case error(Error)
       case response(HTTPURLResponse, data: Data?)
@@ -90,7 +99,7 @@ extension URL {
       }
       semaphore.signal()
     }
-    let task = URLSession.shared.dataTask(with: urlReq, completionHandler: handler)
+    let task = URLSession.shared.dataTask(with: URLRequest(url: self, request: request), completionHandler: handler)
     task.resume()
     semaphore.wait()
     
@@ -117,7 +126,7 @@ extension URL {
     func __response(from url: URL, to request: Request) async throws -> Response {
       // URLSession missing async APIs: https://bugs.swift.org/browse/SR-15187
       #if canImport(Darwin)
-      let (data, response) = try await URLSession.shared.data(from: url)
+      let (data, response) = try await URLSession.shared.data(for: URLRequest(url: self, request: request))
       guard case let httpResponse as HTTPURLResponse = response else {
         throw ResponseError.notHTTPURLResponse
       }
@@ -195,32 +204,22 @@ extension URL {
   }
 }
 
-private var _headerCache: [URL: HTTPHeader] = [:]
+
+private var _syncHeaderCache: [URL: HTTPHeader] = [:]
 extension URL {
   @available(macOS, deprecated: 12.0)
   @available(iOS, deprecated: 15.0)
   @available(watchOS, deprecated: 8.0)
   @available(tvOS, deprecated: 15.0)
   private var __header: HTTPHeader? {
-    if let header = _headerCache[self] {
+    if let header = _syncHeaderCache[self] {
       return header
     }
     guard let response = try? self.response(to: .init(method: .head)) else { return nil }
-    _headerCache[self] = response.header
+    _syncHeaderCache[self] = response.header
     return response.header
   }
 
-  @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-  private var _header: HTTPHeader {
-    get async throws {
-      if _headerCache[self] == nil {
-        let response = try await response(to: .init(method: .head), followRedirects: true)
-        _headerCache[self] = response.header
-      }
-      return _headerCache[self]!
-    }
-  }
-  
   /// Returns the date when the resource at URL modified last.
   @available(macOS, deprecated: 12.0)
   @available(iOS, deprecated: 15.0)
@@ -228,6 +227,55 @@ extension URL {
   @available(tvOS, deprecated: 15.0)
   public var lastModified: Date? {
     return self.__header?[.lastModified].first?.source as? Date
+  }
+
+  /// Returns the ETag value of the URL.
+  @available(macOS, deprecated: 12.0)
+  @available(iOS, deprecated: 15.0)
+  @available(watchOS, deprecated: 8.0)
+  @available(tvOS, deprecated: 15.0)
+  public var eTag: HTTPETag? {
+    return self.__header?[.eTag].first?.source as? HTTPETag
+  }
+}
+
+extension URL {
+  @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+  private actor _HeaderCache {
+    private var _cache: [URL: HTTPHeader] = [:]
+    private init() {}
+
+    static let shared: _HeaderCache = .init()
+
+    func header(of url: URL) async throws -> HTTPHeader {
+      guard let header = _cache[url] else {
+        func __setCache(from response: URL.Response) {
+          _cache[url] = _cache[url, default: response.header]
+        }
+
+        do {
+          __setCache(from: try await url.response(to: .init(method: .head), followRedirects: true))
+        } catch {
+          // FIXME: Want to avoid using GET.
+          // Under some circumstances (e.g. content is generated via CGI), the connection would be
+          // lost when the method is HEAD.
+          let nsError = error as NSError
+          guard nsError.domain == NSURLErrorDomain && nsError.code == -1005 else {
+            throw error
+          }
+          __setCache(from: try await url.response(to: .init(method: .get), followRedirects: true))
+        }
+        return _cache[url]!
+      }
+      return header
+    }
+  }
+
+  @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+  private var _header: HTTPHeader {
+    get async throws {
+      return try await _HeaderCache.shared.header(of: self)
+    }
   }
 
   /// Returns the date when the resource at URL modified last. Redirects are enabled.
@@ -239,15 +287,6 @@ extension URL {
       }
       return try await _header[.lastModified].first?.source as? Date
     }
-  }
-  
-  /// Returns the ETag value of the URL.
-  @available(macOS, deprecated: 12.0)
-  @available(iOS, deprecated: 15.0)
-  @available(watchOS, deprecated: 8.0)
-  @available(tvOS, deprecated: 15.0)
-  public var eTag: HTTPETag? {
-    return self.__header?[.eTag].first?.source as? HTTPETag
   }
 
   /// Returns the ETag value of the URL, or `nil` if there is no ETag or the URL is a file URL.
