@@ -21,7 +21,7 @@ jobs:
       matrix:
         os:
           - ubuntu-22.04
-          - macOS-12
+          - macOS-13
         swift-compat-ver:
           - '5'
           # - '4.2'
@@ -40,7 +40,7 @@ jobs:
           build-${{ github.workspace }}-
     - uses: YOCKOW/Action-setup-swift@main
       with:
-        swift-version: '5.7.2'
+        swift-version: '5.8'
     # DEBUG mode
     - name: Test with debug mode.
       id: debug_test
