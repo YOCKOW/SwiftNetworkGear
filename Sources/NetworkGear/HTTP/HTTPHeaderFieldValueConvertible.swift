@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  HTTPHeaderFieldValueConvertible.swift
-   © 2018 YOCKOW.
+   © 2018,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -18,5 +18,26 @@ extension HTTPHeaderFieldValueConvertible {
   /// Note: `userInfo` is always ignored when this default implementation is used.
   public init?(_ httpHeaderFieldValue: HTTPHeaderFieldValue, userInfo: [AnyHashable: Any]?) {
     self.init(httpHeaderFieldValue)
+  }
+}
+
+extension Encodable where Self: HTTPHeaderFieldValueConvertible {
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.singleValueContainer()
+    try container.encode(httpHeaderFieldValue.rawValue)
+  }
+}
+
+extension Decodable where Self: HTTPHeaderFieldValueConvertible {
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    let rawValue = try container.decode(String.self)
+    guard let value = HTTPHeaderFieldValue(rawValue: rawValue) else {
+      throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid string for HTTP field value.")
+    }
+    guard let instance = Self(value) else {
+      throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid string for \(Self.self).")
+    }
+    self = instance
   }
 }

@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  HTTPHeader.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -121,5 +121,25 @@ extension HTTPHeader: CustomStringConvertible {
     }
     desc += "\u{000D}\u{000A}"
     return desc
+  }
+}
+
+
+extension HTTPHeader: Codable {
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: HTTPHeaderFieldName.self)
+    for field in self {
+      try container.encode(field.value, forKey: field.name)
+    }
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: HTTPHeaderFieldName.self)
+    var fields: [HTTPHeaderField] = []
+    for name in container.allKeys {
+      let value = try container.decode(HTTPHeaderFieldValue.self, forKey: name)
+      fields.append(.init(name: name, value: value))
+    }
+    self.init(fields)
   }
 }

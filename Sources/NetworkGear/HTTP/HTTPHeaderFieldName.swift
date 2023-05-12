@@ -47,3 +47,37 @@ extension HTTPHeaderFieldName: ExpressibleByStringLiteral {
     self.init(rawValue: value)!
   }
 }
+
+extension HTTPHeaderFieldName: Codable {
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.singleValueContainer()
+    try container.encode(rawValue)
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    let desc = try container.decode(String.self)
+    guard let instance = HTTPHeaderFieldName(rawValue: desc) else {
+      throw DecodingError.dataCorruptedError(in: container, debugDescription: "'\(desc)' is invalid for HTTP header field name.")
+    }
+    self = instance
+  }
+}
+
+extension HTTPHeaderFieldName: CodingKey {
+  public var stringValue: String {
+    return rawValue
+  }
+
+  public init?(stringValue: String) {
+    self.init(rawValue: stringValue)
+  }
+
+  public var intValue: Int? {
+    return nil
+  }
+
+  public init?(intValue: Int) {
+    return nil
+  }
+}

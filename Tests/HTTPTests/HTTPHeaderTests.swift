@@ -1,10 +1,11 @@
 /* *************************************************************************************************
  HTTPHeaderTests.swift
-   © 2018 YOCKOW.
+   © 2018,2023 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
- 
+
+import Foundation
 import XCTest
 @testable import NetworkGear
 
@@ -44,5 +45,27 @@ final class HTTPHeaderTests: XCTestCase {
     XCTAssertEqual(header.filter({ $0.name == .setCookie }).count, 2)
     XCTAssertEqual(header.filter({ $0.name == "X-Name1" }).count, 1)
     XCTAssertEqual(header.filter({ $0.name == "X-Name2" }).count, 1)
+  }
+
+  func test_asCodable() throws {
+    let json = """
+    {
+      "Cache-Control" : "public",
+      "Content-Type" : "text/plain",
+      "X-Custom-Field" : "Hoge"
+    }
+    """
+
+    let header = try JSONDecoder().decode(HTTPHeader.self, from: Data(json.utf8))
+    let fields = header.sorted(by: { $0.name.rawValue < $1.name.rawValue })
+    XCTAssertEqual(fields.count, 3)
+    XCTAssertEqual(fields.first?.name, "Cache-Control")
+    XCTAssertEqual(fields.dropFirst().first?.source as? MIMEType, MIMEType(pathExtension: .txt))
+    XCTAssertEqual(fields.last?.value, "Hoge")
+
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys, .prettyPrinted, .withoutEscapingSlashes]
+    let encoded = try XCTUnwrap(String(data: try  encoder.encode(header), encoding: .utf8))
+    XCTAssertEqual(encoded, json)
   }
 }
