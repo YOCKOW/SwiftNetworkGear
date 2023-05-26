@@ -79,11 +79,11 @@ extension URL {
   }
 
   /// Returns an instance of `Response` representing the response to `request`.
-  @available(macOS, deprecated: 12.0, renamed: "response(to:followRedirects:)")
-  @available(iOS, deprecated: 15.0, renamed: "response(to:followRedirects:)")
-  @available(watchOS, deprecated: 8.0, renamed: "response(to:followRedirects:)")
-  @available(tvOS, deprecated: 15.0, renamed: "response(to:followRedirects:)")
-  public func response(to request: Request) throws -> Response {
+  @available(macOS, deprecated: 12.0, renamed: "response(to:followRedirects:session:)")
+  @available(iOS, deprecated: 15.0, renamed: "response(to:followRedirects:session:)")
+  @available(watchOS, deprecated: 8.0, renamed: "response(to:followRedirects:session:)")
+  @available(tvOS, deprecated: 15.0, renamed: "response(to:followRedirects:session:)")
+  public func response(to request: Request, session: URLSession = .shared) throws -> Response {
     enum _Result {
       case error(Error)
       case response(HTTPURLResponse, data: Data?)
@@ -99,7 +99,7 @@ extension URL {
       }
       semaphore.signal()
     }
-    let task = URLSession.shared.dataTask(with: URLRequest(url: self, request: request), completionHandler: handler)
+    let task = session.dataTask(with: URLRequest(url: self, request: request), completionHandler: handler)
     task.resume()
     semaphore.wait()
     
@@ -121,18 +121,20 @@ extension URL {
   /// Returns an instance of `Response` representing the response to `request`.
   /// - parameter followRedirects:
   ///     Specify whether or not redirects should be followed.
+  /// - parameter session:
+  ///     An instance of `URLSession` to be used for this request.
   @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-  public func response(to request: Request, followRedirects: Bool) async throws -> Response {
+  public func response(to request: Request, followRedirects: Bool, session: URLSession = .shared) async throws -> Response {
     func __response(from url: URL, to request: Request) async throws -> Response {
       // URLSession missing async APIs: https://bugs.swift.org/browse/SR-15187
       #if canImport(Darwin)
-      let (data, response) = try await URLSession.shared.data(for: URLRequest(url: self, request: request))
+      let (data, response) = try await session.data(for: URLRequest(url: self, request: request))
       guard case let httpResponse as HTTPURLResponse = response else {
         throw ResponseError.notHTTPURLResponse
       }
       return .init(url: url, response: httpResponse, data: data)
       #else
-      return try url.response(to: request)
+      return try url.response(to: request, session: session)
       #endif
     }
     if !followRedirects {
