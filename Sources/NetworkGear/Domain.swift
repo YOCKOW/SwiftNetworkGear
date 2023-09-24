@@ -103,7 +103,7 @@ public struct Domain {
     /// Initialize with `string`.
     public init<S>(_ string: S,
                    options: ValidityOptions = .default) throws where S: StringProtocol, S.SubSequence == Substring {
-      func _forceSubstring<S>(_ s: S) -> Substring where S: StringProtocol, S.SubSequence == Substring {
+      func _forceSubstring<SS>(_ s: SS) -> Substring where SS: StringProtocol, SS.SubSequence == Substring {
         return s[s.startIndex..<s.endIndex]
       }
       

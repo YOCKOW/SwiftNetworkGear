@@ -4,7 +4,7 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/http-fields/field-names.csv
-// Last-Modified: 2022-04-06T02:05:57Z
+// Last-Modified: 2023-09-21T19:30:37Z
 
 extension HTTPHeaderFieldName {
   public static let aIM = HTTPHeaderFieldName(rawValue: "A-IM")!
@@ -18,6 +18,7 @@ extension HTTPHeaderFieldName {
   public static let acceptPatch = HTTPHeaderFieldName(rawValue: "Accept-Patch")!
   public static let acceptPost = HTTPHeaderFieldName(rawValue: "Accept-Post")!
   public static let acceptRanges = HTTPHeaderFieldName(rawValue: "Accept-Ranges")!
+  public static let acceptSignature = HTTPHeaderFieldName(rawValue: "Accept-Signature")!
   public static let accessControlAllowCredentials = HTTPHeaderFieldName(rawValue: "Access-Control-Allow-Credentials")!
   public static let accessControlAllowHeaders = HTTPHeaderFieldName(rawValue: "Access-Control-Allow-Headers")!
   public static let accessControlAllowMethods = HTTPHeaderFieldName(rawValue: "Access-Control-Allow-Methods")!
@@ -41,14 +42,18 @@ extension HTTPHeaderFieldName {
   public static let cacheStatus = HTTPHeaderFieldName(rawValue: "Cache-Status")!
   public static let calManagedID = HTTPHeaderFieldName(rawValue: "Cal-Managed-ID")!
   public static let calDAVTimezones = HTTPHeaderFieldName(rawValue: "CalDAV-Timezones")!
+  public static let capsuleProtocol = HTTPHeaderFieldName(rawValue: "Capsule-Protocol")!
   public static let cdnCacheControl = HTTPHeaderFieldName(rawValue: "CDN-Cache-Control")!
   public static let cdnLoop = HTTPHeaderFieldName(rawValue: "CDN-Loop")!
   public static let certNotAfter = HTTPHeaderFieldName(rawValue: "Cert-Not-After")!
   public static let certNotBefore = HTTPHeaderFieldName(rawValue: "Cert-Not-Before")!
   public static let clearSiteData = HTTPHeaderFieldName(rawValue: "Clear-Site-Data")!
+  public static let clientCert = HTTPHeaderFieldName(rawValue: "Client-Cert")!
+  public static let clientCertChain = HTTPHeaderFieldName(rawValue: "Client-Cert-Chain")!
   public static let close = HTTPHeaderFieldName(rawValue: "Close")!
   public static let configurationContext = HTTPHeaderFieldName(rawValue: "Configuration-Context")!
   public static let connection = HTTPHeaderFieldName(rawValue: "Connection")!
+  public static let contentDigest = HTTPHeaderFieldName(rawValue: "Content-Digest")!
   public static let contentDisposition = HTTPHeaderFieldName(rawValue: "Content-Disposition")!
   public static let contentEncoding = HTTPHeaderFieldName(rawValue: "Content-Encoding")!
   public static let contentID = HTTPHeaderFieldName(rawValue: "Content-ID")!
@@ -56,14 +61,10 @@ extension HTTPHeaderFieldName {
   public static let contentLength = HTTPHeaderFieldName(rawValue: "Content-Length")!
   public static let contentLocation = HTTPHeaderFieldName(rawValue: "Content-Location")!
   public static let contentRange = HTTPHeaderFieldName(rawValue: "Content-Range")!
-  public static let contentScriptType = HTTPHeaderFieldName(rawValue: "Content-Script-Type")!
   public static let contentSecurityPolicy = HTTPHeaderFieldName(rawValue: "Content-Security-Policy")!
   public static let contentSecurityPolicyReportOnly = HTTPHeaderFieldName(rawValue: "Content-Security-Policy-Report-Only")!
-  public static let contentStyleType = HTTPHeaderFieldName(rawValue: "Content-Style-Type")!
-  public static let contentTransferEncoding = HTTPHeaderFieldName(rawValue: "Content-Transfer-Encoding")!
   public static let contentType = HTTPHeaderFieldName(rawValue: "Content-Type")!
   public static let cookie = HTTPHeaderFieldName(rawValue: "Cookie")!
-  public static let cost = HTTPHeaderFieldName(rawValue: "Cost")!
   public static let crossOriginEmbedderPolicy = HTTPHeaderFieldName(rawValue: "Cross-Origin-Embedder-Policy")!
   public static let crossOriginEmbedderPolicyReportOnly = HTTPHeaderFieldName(rawValue: "Cross-Origin-Embedder-Policy-Report-Only")!
   public static let crossOriginOpenerPolicy = HTTPHeaderFieldName(rawValue: "Cross-Origin-Opener-Policy")!
@@ -72,12 +73,12 @@ extension HTTPHeaderFieldName {
   public static let dasl = HTTPHeaderFieldName(rawValue: "DASL")!
   public static let date = HTTPHeaderFieldName(rawValue: "Date")!
   public static let dav = HTTPHeaderFieldName(rawValue: "DAV")!
-  public static let defaultStyle = HTTPHeaderFieldName(rawValue: "Default-Style")!
   public static let deltaBase = HTTPHeaderFieldName(rawValue: "Delta-Base")!
   public static let depth = HTTPHeaderFieldName(rawValue: "Depth")!
   public static let destination = HTTPHeaderFieldName(rawValue: "Destination")!
   public static let differentialID = HTTPHeaderFieldName(rawValue: "Differential-ID")!
-  public static let digest = HTTPHeaderFieldName(rawValue: "Digest")!
+  public static let dPoP = HTTPHeaderFieldName(rawValue: "DPoP")!
+  public static let dPoPNonce = HTTPHeaderFieldName(rawValue: "DPoP-Nonce")!
   public static let earlyData = HTTPHeaderFieldName(rawValue: "Early-Data")!
   public static let ediintFeatures = HTTPHeaderFieldName(rawValue: "EDIINT-Features")!
   public static let eTag = HTTPHeaderFieldName(rawValue: "ETag")!
@@ -86,7 +87,6 @@ extension HTTPHeaderFieldName {
   public static let expires = HTTPHeaderFieldName(rawValue: "Expires")!
   public static let forwarded = HTTPHeaderFieldName(rawValue: "Forwarded")!
   public static let from = HTTPHeaderFieldName(rawValue: "From")!
-  public static let getProfile = HTTPHeaderFieldName(rawValue: "GetProfile")!
   public static let hobareg = HTTPHeaderFieldName(rawValue: "Hobareg")!
   public static let host = HTTPHeaderFieldName(rawValue: "Host")!
   public static let `if` = HTTPHeaderFieldName(rawValue: "If")!
@@ -108,10 +108,10 @@ extension HTTPHeaderFieldName {
   public static let lockToken = HTTPHeaderFieldName(rawValue: "Lock-Token")!
   public static let maxForwards = HTTPHeaderFieldName(rawValue: "Max-Forwards")!
   public static let mementoDatetime = HTTPHeaderFieldName(rawValue: "Memento-Datetime")!
-  public static let messageID = HTTPHeaderFieldName(rawValue: "Message-ID")!
   public static let meter = HTTPHeaderFieldName(rawValue: "Meter")!
   public static let mimeVersion = HTTPHeaderFieldName(rawValue: "MIME-Version")!
   public static let negotiate = HTTPHeaderFieldName(rawValue: "Negotiate")!
+  public static let nel = HTTPHeaderFieldName(rawValue: "NEL")!
   public static let oDataEntityId = HTTPHeaderFieldName(rawValue: "OData-EntityId")!
   public static let oDataIsolation = HTTPHeaderFieldName(rawValue: "OData-Isolation")!
   public static let oDataMaxVersion = HTTPHeaderFieldName(rawValue: "OData-MaxVersion")!
@@ -123,24 +123,16 @@ extension HTTPHeaderFieldName {
   public static let oscore = HTTPHeaderFieldName(rawValue: "OSCORE")!
   public static let oslcCoreVersion = HTTPHeaderFieldName(rawValue: "OSLC-Core-Version")!
   public static let overwrite = HTTPHeaderFieldName(rawValue: "Overwrite")!
-  public static let pep = HTTPHeaderFieldName(rawValue: "PEP")!
-  public static let pepInfo = HTTPHeaderFieldName(rawValue: "Pep-Info")!
-  public static let picsLabel = HTTPHeaderFieldName(rawValue: "PICS-Label")!
+  public static let permissionsPolicy = HTTPHeaderFieldName(rawValue: "Permissions-Policy")!
   public static let pingFrom = HTTPHeaderFieldName(rawValue: "Ping-From")!
   public static let pingTo = HTTPHeaderFieldName(rawValue: "Ping-To")!
   public static let position = HTTPHeaderFieldName(rawValue: "Position")!
-  public static let pragma = HTTPHeaderFieldName(rawValue: "Pragma")!
   public static let prefer = HTTPHeaderFieldName(rawValue: "Prefer")!
   public static let preferenceApplied = HTTPHeaderFieldName(rawValue: "Preference-Applied")!
   public static let priority = HTTPHeaderFieldName(rawValue: "Priority")!
-  public static let profileObject = HTTPHeaderFieldName(rawValue: "ProfileObject")!
-  public static let `protocol` = HTTPHeaderFieldName(rawValue: "Protocol")!
-  public static let protocolRequest = HTTPHeaderFieldName(rawValue: "Protocol-Request")!
   public static let proxyAuthenticate = HTTPHeaderFieldName(rawValue: "Proxy-Authenticate")!
   public static let proxyAuthenticationInfo = HTTPHeaderFieldName(rawValue: "Proxy-Authentication-Info")!
   public static let proxyAuthorization = HTTPHeaderFieldName(rawValue: "Proxy-Authorization")!
-  public static let proxyFeatures = HTTPHeaderFieldName(rawValue: "Proxy-Features")!
-  public static let proxyInstruction = HTTPHeaderFieldName(rawValue: "Proxy-Instruction")!
   public static let proxyStatus = HTTPHeaderFieldName(rawValue: "Proxy-Status")!
   public static let publicKeyPins = HTTPHeaderFieldName(rawValue: "Public-Key-Pins")!
   public static let publicKeyPinsReportOnly = HTTPHeaderFieldName(rawValue: "Public-Key-Pins-Report-Only")!
@@ -153,10 +145,13 @@ extension HTTPHeaderFieldName {
   public static let repeatabilityRequestID = HTTPHeaderFieldName(rawValue: "Repeatability-Request-ID")!
   public static let repeatabilityResult = HTTPHeaderFieldName(rawValue: "Repeatability-Result")!
   public static let replayNonce = HTTPHeaderFieldName(rawValue: "Replay-Nonce")!
+  public static let reportingEndpoints = HTTPHeaderFieldName(rawValue: "Reporting-Endpoints")!
+  public static let reprDigest = HTTPHeaderFieldName(rawValue: "Repr-Digest")!
   public static let retryAfter = HTTPHeaderFieldName(rawValue: "Retry-After")!
   public static let scheduleReply = HTTPHeaderFieldName(rawValue: "Schedule-Reply")!
   public static let scheduleTag = HTTPHeaderFieldName(rawValue: "Schedule-Tag")!
   public static let secGPC = HTTPHeaderFieldName(rawValue: "Sec-GPC")!
+  public static let secPurpose = HTTPHeaderFieldName(rawValue: "Sec-Purpose")!
   public static let secTokenBinding = HTTPHeaderFieldName(rawValue: "Sec-Token-Binding")!
   public static let secWebSocketAccept = HTTPHeaderFieldName(rawValue: "Sec-WebSocket-Accept")!
   public static let secWebSocketExtensions = HTTPHeaderFieldName(rawValue: "Sec-WebSocket-Extensions")!
@@ -166,7 +161,8 @@ extension HTTPHeaderFieldName {
   public static let server = HTTPHeaderFieldName(rawValue: "Server")!
   public static let serverTiming = HTTPHeaderFieldName(rawValue: "Server-Timing")!
   public static let setCookie = HTTPHeaderFieldName(rawValue: "Set-Cookie")!
-  public static let setProfile = HTTPHeaderFieldName(rawValue: "SetProfile")!
+  public static let signature = HTTPHeaderFieldName(rawValue: "Signature")!
+  public static let signatureInput = HTTPHeaderFieldName(rawValue: "Signature-Input")!
   public static let slug = HTTPHeaderFieldName(rawValue: "SLUG")!
   public static let soapAction = HTTPHeaderFieldName(rawValue: "SoapAction")!
   public static let statusURI = HTTPHeaderFieldName(rawValue: "Status-URI")!
@@ -178,7 +174,6 @@ extension HTTPHeaderFieldName {
   public static let te = HTTPHeaderFieldName(rawValue: "TE")!
   public static let timeout = HTTPHeaderFieldName(rawValue: "Timeout")!
   public static let timingAllowOrigin = HTTPHeaderFieldName(rawValue: "Timing-Allow-Origin")!
-  public static let title = HTTPHeaderFieldName(rawValue: "Title")!
   public static let topic = HTTPHeaderFieldName(rawValue: "Topic")!
   public static let traceparent = HTTPHeaderFieldName(rawValue: "Traceparent")!
   public static let tracestate = HTTPHeaderFieldName(rawValue: "Tracestate")!
@@ -190,15 +185,10 @@ extension HTTPHeaderFieldName {
   public static let userAgent = HTTPHeaderFieldName(rawValue: "User-Agent")!
   public static let variantVary = HTTPHeaderFieldName(rawValue: "Variant-Vary")!
   public static let vary = HTTPHeaderFieldName(rawValue: "Vary")!
-  public static let version = HTTPHeaderFieldName(rawValue: "Version")!
   public static let via = HTTPHeaderFieldName(rawValue: "Via")!
-  public static let wantDigest = HTTPHeaderFieldName(rawValue: "Want-Digest")!
+  public static let wantContentDigest = HTTPHeaderFieldName(rawValue: "Want-Content-Digest")!
+  public static let wantReprDigest = HTTPHeaderFieldName(rawValue: "Want-Repr-Digest")!
   public static let wwwAuthenticate = HTTPHeaderFieldName(rawValue: "WWW-Authenticate")!
   public static let xContentTypeOptions = HTTPHeaderFieldName(rawValue: "X-Content-Type-Options")!
-  public static let xDeviceAccept = HTTPHeaderFieldName(rawValue: "X-Device-Accept")!
-  public static let xDeviceAcceptCharset = HTTPHeaderFieldName(rawValue: "X-Device-Accept-Charset")!
-  public static let xDeviceAcceptEncoding = HTTPHeaderFieldName(rawValue: "X-Device-Accept-Encoding")!
-  public static let xDeviceAcceptLanguage = HTTPHeaderFieldName(rawValue: "X-Device-Accept-Language")!
-  public static let xDeviceUserAgent = HTTPHeaderFieldName(rawValue: "X-Device-User-Agent")!
   public static let xFrameOptions = HTTPHeaderFieldName(rawValue: "X-Frame-Options")!
 }
