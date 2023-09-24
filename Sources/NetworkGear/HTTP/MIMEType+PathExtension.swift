@@ -4,8 +4,8 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types
-// Last-Modified: 2020-12-16T16:57:44Z
-// ETag: "1884511//httpd/httpd/trunk/docs/conf/mime.types"
+// Last-Modified: 2023-07-07T11:12:02Z
+// ETag: "1910849//httpd/httpd/trunk/docs/conf/mime.types"
 
 extension MIMEType {
   public enum PathExtension: String {
@@ -280,6 +280,7 @@ extension MIMEType {
      case geo = "geo"
      case gex = "gex"
      case ggb = "ggb"
+     case ggs = "ggs"
      case ggt = "ggt"
      case ghf = "ghf"
      case gif = "gif"
@@ -448,6 +449,7 @@ extension MIMEType {
      case mime = "mime"
      case mj2 = "mj2"
      case mjp2 = "mjp2"
+     case mjs = "mjs"
      case mk3d = "mk3d"
      case mka = "mka"
      case mks = "mks"
@@ -880,6 +882,7 @@ extension MIMEType {
      case vxml = "vxml"
      case w3d = "w3d"
      case wad = "wad"
+     case wasm = "wasm"
      case wav = "wav"
      case wax = "wax"
      case wbmp = "wbmp"
@@ -1026,7 +1029,6 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .application, tree: nil, subtype: "java-archive", suffix: nil): [.jar],
   MIMEType._Core(type: .application, tree: nil, subtype: "java-serialized-object", suffix: nil): [.ser],
   MIMEType._Core(type: .application, tree: nil, subtype: "java-vm", suffix: nil): [.`class`],
-  MIMEType._Core(type: .application, tree: nil, subtype: "javascript", suffix: nil): [.js],
   MIMEType._Core(type: .application, tree: nil, subtype: "json", suffix: nil): [.json],
   MIMEType._Core(type: .application, tree: nil, subtype: "jsonml", suffix: .json): [.jsonml],
   MIMEType._Core(type: .application, tree: nil, subtype: "lost", suffix: .xml): [.lostxml],
@@ -1104,6 +1106,7 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .application, tree: nil, subtype: "thraud", suffix: .xml): [.tfi],
   MIMEType._Core(type: .application, tree: nil, subtype: "timestamped-data", suffix: nil): [.tsd],
   MIMEType._Core(type: .application, tree: nil, subtype: "voicexml", suffix: .xml): [.vxml],
+  MIMEType._Core(type: .application, tree: nil, subtype: "wasm", suffix: nil): [.wasm],
   MIMEType._Core(type: .application, tree: nil, subtype: "widget", suffix: nil): [.wgt],
   MIMEType._Core(type: .application, tree: nil, subtype: "winhlp", suffix: nil): [.hlp],
   MIMEType._Core(type: .application, tree: nil, subtype: "wsdl", suffix: .xml): [.wsdl],
@@ -1322,6 +1325,7 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .application, tree: .vnd, subtype: "fuzzysheet", suffix: nil): [.fzs],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "genomatix.tuxedo", suffix: nil): [.txd],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "geogebra.file", suffix: nil): [.ggb],
+  MIMEType._Core(type: .application, tree: .vnd, subtype: "geogebra.slides", suffix: nil): [.ggs],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "geogebra.tool", suffix: nil): [.ggt],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "geometry-explorer", suffix: nil): [.gex, .gre],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "geonext", suffix: nil): [.gxt],
@@ -1688,6 +1692,7 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .text, tree: nil, subtype: "css", suffix: nil): [.css],
   MIMEType._Core(type: .text, tree: nil, subtype: "csv", suffix: nil): [.csv],
   MIMEType._Core(type: .text, tree: nil, subtype: "html", suffix: nil): [.htm, .html],
+  MIMEType._Core(type: .text, tree: nil, subtype: "javascript", suffix: nil): [.js, .mjs],
   MIMEType._Core(type: .text, tree: nil, subtype: "n3", suffix: nil): [.n3],
   MIMEType._Core(type: .text, tree: nil, subtype: "plain", suffix: nil): [.conf, .def, .`in`, .list, .log, .text, .txt],
   MIMEType._Core(type: .text, tree: nil, subtype: "richtext", suffix: nil): [.rtx],
@@ -2035,6 +2040,7 @@ internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
   .geo: MIMEType._Core(type: .application, tree: .vnd, subtype: "dynageo", suffix: nil),
   .gex: MIMEType._Core(type: .application, tree: .vnd, subtype: "geometry-explorer", suffix: nil),
   .ggb: MIMEType._Core(type: .application, tree: .vnd, subtype: "geogebra.file", suffix: nil),
+  .ggs: MIMEType._Core(type: .application, tree: .vnd, subtype: "geogebra.slides", suffix: nil),
   .ggt: MIMEType._Core(type: .application, tree: .vnd, subtype: "geogebra.tool", suffix: nil),
   .ghf: MIMEType._Core(type: .application, tree: .vnd, subtype: "groove-help", suffix: nil),
   .gif: MIMEType._Core(type: .image, tree: nil, subtype: "gif", suffix: nil),
@@ -2120,7 +2126,7 @@ internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
   .jpgm: MIMEType._Core(type: .video, tree: nil, subtype: "jpm", suffix: nil),
   .jpgv: MIMEType._Core(type: .video, tree: nil, subtype: "jpeg", suffix: nil),
   .jpm: MIMEType._Core(type: .video, tree: nil, subtype: "jpm", suffix: nil),
-  .js: MIMEType._Core(type: .application, tree: nil, subtype: "javascript", suffix: nil),
+  .js: MIMEType._Core(type: .text, tree: nil, subtype: "javascript", suffix: nil),
   .json: MIMEType._Core(type: .application, tree: nil, subtype: "json", suffix: nil),
   .jsonml: MIMEType._Core(type: .application, tree: nil, subtype: "jsonml", suffix: .json),
   .kar: MIMEType._Core(type: .audio, tree: nil, subtype: "midi", suffix: nil),
@@ -2203,6 +2209,7 @@ internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
   .mime: MIMEType._Core(type: .message, tree: nil, subtype: "rfc822", suffix: nil),
   .mj2: MIMEType._Core(type: .video, tree: nil, subtype: "mj2", suffix: nil),
   .mjp2: MIMEType._Core(type: .video, tree: nil, subtype: "mj2", suffix: nil),
+  .mjs: MIMEType._Core(type: .text, tree: nil, subtype: "javascript", suffix: nil),
   .mk3d: MIMEType._Core(type: .video, tree: nil, subtype: "x-matroska", suffix: nil),
   .mka: MIMEType._Core(type: .audio, tree: nil, subtype: "x-matroska", suffix: nil),
   .mks: MIMEType._Core(type: .video, tree: nil, subtype: "x-matroska", suffix: nil),
@@ -2635,6 +2642,7 @@ internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
   .vxml: MIMEType._Core(type: .application, tree: nil, subtype: "voicexml", suffix: .xml),
   .w3d: MIMEType._Core(type: .application, tree: nil, subtype: "x-director", suffix: nil),
   .wad: MIMEType._Core(type: .application, tree: nil, subtype: "x-doom", suffix: nil),
+  .wasm: MIMEType._Core(type: .application, tree: nil, subtype: "wasm", suffix: nil),
   .wav: MIMEType._Core(type: .audio, tree: nil, subtype: "x-wav", suffix: nil),
   .wax: MIMEType._Core(type: .audio, tree: nil, subtype: "x-ms-wax", suffix: nil),
   .wbmp: MIMEType._Core(type: .image, tree: .vnd, subtype: "wap.wbmp", suffix: nil),

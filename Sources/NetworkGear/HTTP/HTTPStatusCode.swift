@@ -4,7 +4,7 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/http-status-codes/http-status-codes-1.csv
-// Last-Modified: 2021-12-22T22:11:10Z
+// Last-Modified: 2022-06-08T20:55:44Z
 
 public enum HTTPStatusCode: UInt16 {
   case `continue` = 100
