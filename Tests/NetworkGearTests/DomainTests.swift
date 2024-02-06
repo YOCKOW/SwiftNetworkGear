@@ -43,5 +43,10 @@ final class DomainTests: XCTestCase {
     XCTAssertEqual(domain.prefix(2), Domain("foo.bar"))
     XCTAssertEqual(domain.suffix(2), Domain("example.com"))
   }
+
+  func test_static() {
+    let localhost = Domain.localhost
+    XCTAssertEqual(localhost.description, "localhost")
+  }
 }
 
