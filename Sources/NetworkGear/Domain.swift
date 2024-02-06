@@ -99,7 +99,14 @@ public struct Domain {
         try self.init(label._string, options: options)
       }
     }
-    
+
+    fileprivate init(_validatedString: Substring, length: Int, options: ValidityOptions) {
+      assert(_validatedString.unicodeScalars.count == length)
+      self._string = _validatedString
+      self._length = length
+      self._options = options
+    }
+
     /// Initialize with `string`.
     public init<S>(_ string: S,
                    options: ValidityOptions = .default) throws where S: StringProtocol, S.SubSequence == Substring {
@@ -331,6 +338,15 @@ public struct Domain {
               terminatedByDot: terminatedByDot,
               usedOptions: options)
   }
+}
+
+extension Domain {
+  public static let localhost: Domain = .init(
+    _validatedLabels: [.init(_validatedString: "localhost", length: 9, options: .default)],
+    calculatedLength: 9,
+    terminatedByDot: false,
+    usedOptions: .default
+  )
 }
 
 // MARK: - CustomStringConvertible
