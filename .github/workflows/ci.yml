@@ -21,9 +21,10 @@ jobs:
       matrix:
         os:
           - ubuntu-22.04
-          - macOS-13
+          - macOS-14
         swift-version:
-          - '5.9'
+          - '5.10'
+          - '5.9.2'
         swift-compat-ver:
           - '5'
           # - '4.2'
@@ -32,7 +33,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Use a cache for ".build" directory.
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: .build
         key: build-${{ github.workspace }}-${{ runner.os }}-${{ matrix.swift-version }}-${{ matrix.swift-compat-ver }}-${{ hashFiles('**/*.swift') }}

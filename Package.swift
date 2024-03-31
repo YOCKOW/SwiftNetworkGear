@@ -13,7 +13,8 @@ let package = Package(
   ],
   products: [
     // Products define the executables and libraries produced by a package, and make them visible to other packages.
-    .library(name: "SwiftNetworkGear", type: .dynamic, targets: ["NetworkGear"]),
+    .library(name: "CLibCURL", targets: ["CLibCURL"]),
+    .library(name: "SwiftNetworkGear", type: .dynamic, targets: ["URLClient", "NetworkGear"]),
   ],
   dependencies: [
     // Dependencies declare other packages that this package depends on.
@@ -26,7 +27,22 @@ let package = Package(
   targets: [
     // Targets are the basic building blocks of a package. A target can define a module or a test suite.
     // Targets can depend on other targets in this package, and on products in packages which this package depends on.
+    .systemLibrary(
+      name: "CLibCURL",
+      pkgConfig: "libcurl",
+      providers: [
+        .brew(["curl"]),
+        .apt(["libcurl4-openssl-dev"]),
+      ]
+    ),
+    .target(
+      name: "URLClient",
+      dependencies: [
+        "CLibCURL",
+      ]
+    ),
     .target(name: "NetworkGear", dependencies: [
+      "URLClient",
       "SwiftBootstring",
       "SwiftPublicSuffix",
       "SwiftRanges",
@@ -43,13 +59,18 @@ let package = Package(
 
 import Foundation
 if ProcessInfo.processInfo.environment["YOCKOW_USE_LOCAL_PACKAGES"] != nil {
+  let repoDirPath = String(#filePath).split(separator: "/", omittingEmptySubsequences: false).dropLast().joined(separator: "/")
   func localPath(with url: String) -> String {
     guard let url = URL(string: url) else { fatalError("Unexpected URL.") }
     let dirName = url.deletingPathExtension().lastPathComponent
     return "../\(dirName)"
   }
   package.dependencies = package.dependencies.map {
-    guard case .sourceControl(_, let location, _) = $0.kind else { fatalError("Unexpected dependency.") }
-    return .package(path: localPath(with: location))
+    guard case .sourceControl(_, let location, _) = $0.kind else { return $0 }
+    let depRelPath = localPath(with: location)
+    guard FileManager.default.fileExists(atPath: "\(repoDirPath)/\(depRelPath)") else {
+      return $0
+    }
+    return .package(path: depRelPath)
   }
 }
