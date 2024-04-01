@@ -14,7 +14,7 @@ let package = Package(
   products: [
     // Products define the executables and libraries produced by a package, and make them visible to other packages.
     .library(name: "CLibCURL", targets: ["CLibCURL"]),
-    .library(name: "SwiftNetworkGear", type: .dynamic, targets: ["URLClient", "NetworkGear"]),
+    .library(name: "SwiftNetworkGear", type: .dynamic, targets: ["CURLClient", "NetworkGear"]),
   ],
   dependencies: [
     // Dependencies declare other packages that this package depends on.
@@ -36,13 +36,13 @@ let package = Package(
       ]
     ),
     .target(
-      name: "URLClient",
+      name: "CURLClient",
       dependencies: [
         "CLibCURL",
       ]
     ),
     .target(name: "NetworkGear", dependencies: [
-      "URLClient",
+      "CURLClient",
       "SwiftBootstring",
       "SwiftPublicSuffix",
       "SwiftRanges",
@@ -50,6 +50,7 @@ let package = Package(
       "ySwiftExtensions",
     ]),
     .target(name: "sockaddr_tests", dependencies: [], path:"Tests/sockaddr-tests"),
+    .testTarget(name: "CURLTests", dependencies: ["CURLClient"]),
     .testTarget(name: "HTTPTests", dependencies: ["NetworkGear"]),
     .testTarget(name: "NGCExtensionsTests", dependencies: ["NetworkGear", "sockaddr_tests"]),
     .testTarget(name: "NetworkGearTests", dependencies: ["NetworkGear", "sockaddr_tests"]),
