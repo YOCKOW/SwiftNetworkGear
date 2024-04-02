@@ -15,12 +15,15 @@ import  Foundation
 
 public enum CURLClientError: Error {
   case failedToCreateClient
+  case failedToGenerateRequestHeaders
   case curlCode(CURLcode)
 
   public var description: String {
     switch self {
     case .failedToCreateClient:
       return "Failed to create a client."
+    case .failedToGenerateRequestHeaders:
+      return "Failed to generate request headers."
     case .curlCode(let code):
       return String(cString: curl_easy_strerror(code))
     }
@@ -86,6 +89,23 @@ public actor EasyClient {
     }
   }
 
+  public func setHTTPMethodToGet() throws {
+    try _throwIfFailed({ _NWG_curl_easy_set_http_method_to_get($0) })
+  }
+
+  private var _requestHeaders: Array<(name: String, value: String)>? = nil
+  public func setRequestHeaders(_ headers: Array<(name: String, value: String)>) {
+    _requestHeaders = headers
+  }
+
+  public func setURL(_ url: URL) throws {
+    try _throwIfFailed({ _NWG_curl_easy_set_url($0, url.absoluteString) })
+  }
+
+  public func setUserAgent(_ userAgent: String) throws {
+    try _throwIfFailed({ _NWG_curl_easy_set_ua($0, userAgent) })
+  }
+
   // MARK: - PERFORM
 
   private var _performed: Bool = false
@@ -112,6 +132,25 @@ public actor EasyClient {
     if _performed {
       return
     }
+
+    let requestHeaderList: UnsafeMutablePointer<CCURLStringList>? = try _requestHeaders.flatMap {
+      guard let firstField = $0.first else { return nil }
+      guard var currentList = _NWG_curl_slist_create("\(firstField.name): \(firstField.value)") else {
+        throw CURLClientError.failedToGenerateRequestHeaders
+      }
+      for field in $0.dropFirst() {
+        guard let newList = _NWG_curl_slist_append(currentList, "\(field.name): \(field.value)") else {
+          _NWG_curl_slist_free_all(currentList)
+          throw CURLClientError.failedToGenerateRequestHeaders
+        }
+        currentList = newList
+      }
+      return currentList
+    }
+    if let requestHeaderList {
+      try _throwIfFailed({ _NWG_curl_easy_set_http_request_headers($0, requestHeaderList) })
+    }
+    defer { _NWG_curl_slist_free_all(requestHeaderList) }
 
     var responseHeaders: Array<(name: String, value: String)> = []
     var responseBody = Data()
@@ -196,18 +235,6 @@ public actor EasyClient {
   }
 
   // MARK: /PERFORM -
-
-  public func setHTTPMethodToGet() throws {
-    try _throwIfFailed({ _NWG_curl_easy_set_http_method_to_get($0) })
-  }
-
-  public func setURL(_ url: URL) throws {
-    try _throwIfFailed({ _NWG_curl_easy_set_url($0, url.absoluteString) })
-  }
-
-  public func setUserAgent(_ userAgent: String) throws {
-    try _throwIfFailed({ _NWG_curl_easy_set_ua($0, userAgent) })
-  }
 }
 
 extension CURLManager {

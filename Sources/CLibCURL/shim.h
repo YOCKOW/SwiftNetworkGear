@@ -12,6 +12,8 @@
 // Note: `curl_easy_nextheader` is supported in curl >=7.84.0.
 //       But `apt` on Ubuntu 22.0 installs curl 7.81.0. 😭 (2nd Apr. 2024)
 
+typedef struct curl_slist CCURLStringList;
+
 static CURLcode _NWG_curl_easy_get_response_code(CURL * _Nonnull curl, long * _Nonnull codePointer) {
   return curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, codePointer);
 }
@@ -37,6 +39,11 @@ static CURLcode _NWG_curl_easy_set_http_method_to_get(CURL * _Nonnull curl) {
   return curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
 }
 
+static CURLcode _NWG_curl_easy_set_http_request_headers(CURL * _Nonnull curl,
+                                                        CCURLStringList * _Nullable headers) {
+  return curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+}
+
 static CURLcode _NWG_curl_easy_set_ua(CURL * _Nonnull curl, const char * _Nonnull ua) {
   return curl_easy_setopt(curl, CURLOPT_USERAGENT, ua);
 }
@@ -53,6 +60,19 @@ typedef size_t (* _NWGCURLWriteCallbackFunction)(char * _Nonnull, size_t, size_t
 static CURLcode _NWG_curl_easy_set_write_function(CURL * _Nonnull curl,
                                                   _NWGCURLWriteCallbackFunction _Nullable callback) {
   return curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callback);
+}
+
+static CCURLStringList * _Nullable _NWG_curl_slist_create(const char * _Nonnull string) {
+  return curl_slist_append(NULL, string);
+}
+
+static CCURLStringList * _Nullable _NWG_curl_slist_append(CCURLStringList * _Nonnull list,
+                                                          const char * _Nonnull newString) {
+  return curl_slist_append(list, newString);
+}
+
+void _NWG_curl_slist_free_all(CCURLStringList * _Nullable list) {
+  curl_slist_free_all(list);
 }
 
 #endif
