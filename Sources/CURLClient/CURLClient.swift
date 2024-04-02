@@ -86,8 +86,15 @@ public actor EasyClient {
     }
   }
 
+  // MARK: - PERFORM
+
   private var _performed: Bool = false
+  private var _responseCode: Int? = nil
   private var _responseBody: Data? = nil
+
+  public var responseCode: Int? {
+    return _responseCode
+  }
 
   public var responseBody: Data? {
     return _responseBody
@@ -119,9 +126,17 @@ public actor EasyClient {
       }
       try _throwIfFailed({ _NWG_curl_easy_perform($0) })
     }
+
+    let responseCodePointer = UnsafeMutablePointer<CLong>.allocate(capacity: 1)
+    defer { responseCodePointer.deallocate() }
+    try _throwIfFailed({ _NWG_curl_easy_get_response_code($0, responseCodePointer) })
+
+    _responseCode = Int(responseCodePointer.pointee)
     _responseBody = responseBody
     _performed = true
   }
+
+  // MARK: /PERFORM -
 
   public func setHTTPMethodToGet() throws {
     try _throwIfFailed({ _NWG_curl_easy_set_http_method_to_get($0) })

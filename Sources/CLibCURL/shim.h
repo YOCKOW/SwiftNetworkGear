@@ -9,6 +9,10 @@
 #define yCLibCURL
 #include <curl/curl.h>
 
+static CURLcode _NWG_curl_easy_get_response_code(CURL * _Nonnull curl, long * _Nonnull codePointer) {
+  return curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, codePointer);
+}
+
 static CURLcode _NWG_curl_easy_perform(CURL * _Nonnull curl) {
   return curl_easy_perform(curl);
 }
