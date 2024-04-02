@@ -90,10 +90,15 @@ public actor EasyClient {
 
   private var _performed: Bool = false
   private var _responseCode: Int? = nil
+  private var _responseHeaders: Array<(name: String, value: String)>? = nil
   private var _responseBody: Data? = nil
 
   public var responseCode: Int? {
     return _responseCode
+  }
+
+  public var responseHeaders: Array<(name: String, value: String)>? {
+    return _responseHeaders
   }
 
   public var responseBody: Data? {
@@ -131,7 +136,23 @@ public actor EasyClient {
     defer { responseCodePointer.deallocate() }
     try _throwIfFailed({ _NWG_curl_easy_get_response_code($0, responseCodePointer) })
 
+    var responseHeaders: Array<(name: String, value: String)> = []
+    var previousHeaderInfo: UnsafeMutablePointer<CCURLHeader>? = nil
+    while let headerInfo = _NWG_curl_easy_get_next_header(
+      _curlHandle,
+      UInt32(CURLH_HEADER | CURLH_1XX | CURLH_CONNECT | CURLH_TRAILER),
+      0,
+      previousHeaderInfo
+    ) {
+      responseHeaders.append((
+        name: String(cString: headerInfo.pointee.name),
+        value: String(cString: headerInfo.pointee.value)
+      ))
+      previousHeaderInfo = headerInfo
+    }
+
     _responseCode = Int(responseCodePointer.pointee)
+    _responseHeaders = responseHeaders
     _responseBody = responseBody
     _performed = true
   }

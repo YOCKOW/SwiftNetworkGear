@@ -9,6 +9,14 @@
 #define yCLibCURL
 #include <curl/curl.h>
 
+typedef struct curl_header CCURLHeader;
+static CCURLHeader * _Nullable _NWG_curl_easy_get_next_header(CURL * _Nonnull curl,
+                                                              unsigned int origin,
+                                                              int request,
+                                                              CCURLHeader * _Nullable prev) {
+  return curl_easy_nextheader(curl, origin, request, prev);
+}
+
 static CURLcode _NWG_curl_easy_get_response_code(CURL * _Nonnull curl, long * _Nonnull codePointer) {
   return curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, codePointer);
 }

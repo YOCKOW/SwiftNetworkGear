@@ -18,6 +18,11 @@ final class CURLTests: XCTestCase {
     let responseCode = await client.responseCode
     XCTAssertTrue(try XCTUnwrap(responseCode) / 100 == 2)
 
+    let responseHeaders = await client.responseHeaders
+    XCTAssertTrue(try XCTUnwrap(responseHeaders).contains(where: {
+      $0.name.lowercased() == "server" && $0.value.contains("Apache")
+    }))
+
     let responseString = await client.responseBody.flatMap({ String(data: $0, encoding: .utf8) })
     XCTAssertTrue(try XCTUnwrap(responseString).contains("YOCKOW"))
   }
