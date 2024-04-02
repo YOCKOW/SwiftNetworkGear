@@ -113,43 +113,81 @@ public actor EasyClient {
       return
     }
 
+    var responseHeaders: Array<(name: String, value: String)> = []
     var responseBody = Data()
-    try withUnsafeBytes(of: &responseBody) { (responseBodyPointer) -> Void in
-      try _throwIfFailed {
-        _NWG_curl_easy_set_write_user_info(
-          $0,
-          UnsafeMutableRawPointer(mutating: responseBodyPointer.baseAddress!)
-        )
-      }
-      try _throwIfFailed {
-        _NWG_curl_easy_set_write_function($0) { (chunk, _, length, maybeResponseBodyPointer) -> size_t in
-          guard let responseBodyPointer = maybeResponseBodyPointer else { return -1 }
-          let chunkAsData = Data(bytesNoCopy: chunk, count: length, deallocator: .none)
-          responseBodyPointer.assumingMemoryBound(to: Data.self).pointee.append(chunkAsData)
-          return chunkAsData.count
+    try withUnsafeBytes(of: &responseHeaders) { (responseHeadersPointer) -> Void in
+      try withUnsafeBytes(of: &responseBody) { (responseBodyPointer) -> Void in
+        // Headers
+        try _throwIfFailed {
+          _NWG_curl_easy_set_header_user_info(
+            $0,
+            UnsafeMutableRawPointer(mutating: responseHeadersPointer.baseAddress!)
+          )
         }
+        try _throwIfFailed {
+          _NWG_curl_easy_set_header_callback($0) { (line, _, length, maybeResponseHeadersPointer) -> size_t in
+            guard let responseHeadersPointer = maybeResponseHeadersPointer else { return -1 }
+            guard let lineString = String(
+              data: Data(bytesNoCopy: line, count: length, deallocator: .none),
+              encoding: .utf8
+            ) else {
+              return -1
+            }
+
+            // Skip if necessary.
+            if lineString.isEmpty || lineString.uppercased().hasPrefix("HTTP/") {
+              return length
+            }
+
+            let responseHeadersTypedPointer = responseHeadersPointer.assumingMemoryBound(
+              to: Array<(name: String, value: String)>.self
+            )
+            var responseHeaders = responseHeadersTypedPointer.pointee
+            defer { responseHeadersTypedPointer.pointee = responseHeaders }
+
+            // Folded header (actually deprecated...)
+            if lineString.first!.isWhitespace {
+              guard let lastField = responseHeaders.last else { return -1 }
+              responseHeaders = responseHeaders.dropLast()
+              responseHeaders.append((
+                name: lastField.name,
+                value: "\(lastField.value) \(lineString._trimmedHeaderLine)"
+              ))
+              return length
+            }
+
+            let nameAndValue = lineString.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+            guard nameAndValue.count == 2 else { return -1 }
+            responseHeaders.append((
+              name: String(nameAndValue[0]._trimmedHeaderLine),
+              value: String(nameAndValue[1]._trimmedHeaderLine)
+            ))
+            return length
+          }
+        }
+
+        // Body
+        try _throwIfFailed {
+          _NWG_curl_easy_set_write_user_info(
+            $0,
+            UnsafeMutableRawPointer(mutating: responseBodyPointer.baseAddress!)
+          )
+        }
+        try _throwIfFailed {
+          _NWG_curl_easy_set_write_function($0) { (chunk, _, length, maybeResponseBodyPointer) -> size_t in
+            guard let responseBodyPointer = maybeResponseBodyPointer else { return -1 }
+            let chunkAsData = Data(bytesNoCopy: chunk, count: length, deallocator: .none)
+            responseBodyPointer.assumingMemoryBound(to: Data.self).pointee.append(chunkAsData)
+            return chunkAsData.count
+          }
+        }
+        try _throwIfFailed({ _NWG_curl_easy_perform($0) })
       }
-      try _throwIfFailed({ _NWG_curl_easy_perform($0) })
     }
 
     let responseCodePointer = UnsafeMutablePointer<CLong>.allocate(capacity: 1)
     defer { responseCodePointer.deallocate() }
     try _throwIfFailed({ _NWG_curl_easy_get_response_code($0, responseCodePointer) })
-
-    var responseHeaders: Array<(name: String, value: String)> = []
-    var previousHeaderInfo: UnsafeMutablePointer<CCURLHeader>? = nil
-    while let headerInfo = _NWG_curl_easy_get_next_header(
-      _curlHandle,
-      UInt32(CURLH_HEADER | CURLH_1XX | CURLH_CONNECT | CURLH_TRAILER),
-      0,
-      previousHeaderInfo
-    ) {
-      responseHeaders.append((
-        name: String(cString: headerInfo.pointee.name),
-        value: String(cString: headerInfo.pointee.value)
-      ))
-      previousHeaderInfo = headerInfo
-    }
 
     _responseCode = Int(responseCodePointer.pointee)
     _responseHeaders = responseHeaders
@@ -175,5 +213,20 @@ public actor EasyClient {
 extension CURLManager {
   public func makeEasyClient() throws -> EasyClient {
     return try EasyClient()
+  }
+}
+
+
+private extension Character {
+  var _isNewlineOrWhitespace: Bool {
+    return isNewline || isWhitespace
+  }
+}
+
+private extension StringProtocol {
+  var _trimmedHeaderLine: SubSequence {
+    guard let firstIndex = self.firstIndex(where: { !$0._isNewlineOrWhitespace }) else { return "" }
+    guard let lastIndex = self.lastIndex(where: { !$0._isNewlineOrWhitespace }) else { return "" }
+    return self[firstIndex...lastIndex]
   }
 }
