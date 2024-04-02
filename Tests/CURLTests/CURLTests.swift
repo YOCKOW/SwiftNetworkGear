@@ -13,5 +13,9 @@ final class CURLTests: XCTestCase {
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToGet()
     try await client.setURL(try XCTUnwrap(URL(string: "https://example.com/")))
+    try await client.perform()
+
+    let responseString = await client.responseBody.flatMap({ String(data: $0, encoding: .utf8) })
+    XCTAssertTrue(try XCTUnwrap(responseString).lowercased().contains("example"))
   }
 }

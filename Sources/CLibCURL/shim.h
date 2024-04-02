@@ -25,4 +25,14 @@ static CURLcode _NWG_curl_easy_set_url(CURL * _Nonnull curl, const char * _Nonnu
   return curl_easy_setopt(curl, CURLOPT_URL, url);
 }
 
+static CURLcode _NWG_curl_easy_set_write_user_info(CURL * _Nonnull curl, void * _Nullable pointer) {
+  return curl_easy_setopt(curl, CURLOPT_WRITEDATA,  pointer);
+}
+
+typedef size_t (* _NWGCURLWriteCallbackFunction)(char * _Nonnull, size_t, size_t, void * _Nullable);
+static CURLcode _NWG_curl_easy_set_write_function(CURL * _Nonnull curl,
+                                                  _NWGCURLWriteCallbackFunction _Nullable callback) {
+  return curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callback);
+}
+
 #endif

@@ -62,7 +62,7 @@ public final class CURLManager {
 
 /// A wrapper of a CURL easy handle.
 public actor EasyClient {
-  private var _curlHandle: UnsafeMutableRawPointer
+  private let _curlHandle: UnsafeMutableRawPointer
 
   init() throws {
     guard let curlHandle = curl_easy_init() else {
@@ -86,8 +86,41 @@ public actor EasyClient {
     }
   }
 
+  private var _performed: Bool = false
+  private var _responseBody: Data? = nil
+
+  public var responseBody: Data? {
+    return _responseBody
+  }
+
+  /// Call `curl_easy_perform` with the handle.
+  ///
+  /// `responseBody` will be set in this method.
   public func perform() throws {
-    try _throwIfFailed({ _NWG_curl_easy_perform($0) })
+    if _performed {
+      return
+    }
+
+    var responseBody = Data()
+    try withUnsafeBytes(of: &responseBody) { (responseBodyPointer) -> Void in
+      try _throwIfFailed {
+        _NWG_curl_easy_set_write_user_info(
+          $0,
+          UnsafeMutableRawPointer(mutating: responseBodyPointer.baseAddress!)
+        )
+      }
+      try _throwIfFailed {
+        _NWG_curl_easy_set_write_function($0) { (chunk, _, length, maybeResponseBodyPointer) -> size_t in
+          guard let responseBodyPointer = maybeResponseBodyPointer else { return -1 }
+          let chunkAsData = Data(bytesNoCopy: chunk, count: length, deallocator: .none)
+          responseBodyPointer.assumingMemoryBound(to: Data.self).pointee.append(chunkAsData)
+          return chunkAsData.count
+        }
+      }
+      try _throwIfFailed({ _NWG_curl_easy_perform($0) })
+    }
+    _responseBody = responseBody
+    _performed = true
   }
 
   public func setHTTPMethodToGet() throws {
