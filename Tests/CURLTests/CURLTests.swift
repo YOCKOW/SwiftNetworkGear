@@ -12,7 +12,7 @@ final class CURLTests: XCTestCase {
   func test_performGet() async throws {
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToGet()
-    try await client.setURL(try XCTUnwrap(URL(string: "https://YOCKOW.jp/")))
+    try await client.setURL(try XCTUnwrap(URL(string: "https://storage.googleapis.com/public.data.yockow.jp/test-assets/test.txt")))
     try await client.perform()
 
     let responseCode = await client.responseCode
@@ -20,10 +20,10 @@ final class CURLTests: XCTestCase {
 
     let responseHeaders = await client.responseHeaders
     XCTAssertTrue(try XCTUnwrap(responseHeaders).contains(where: {
-      $0.name.lowercased() == "server" && $0.value.contains("Apache")
+      $0.name.lowercased() == "content-length" && $0.value.contains("4")
     }))
 
     let responseString = await client.responseBody.flatMap({ String(data: $0, encoding: .utf8) })
-    XCTAssertTrue(try XCTUnwrap(responseString).contains("YOCKOW"))
+    XCTAssertEqual(responseString, "test")
   }
 }
