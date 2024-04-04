@@ -226,16 +226,31 @@ public actor EasyClient {
         try _throwIfFailed {
           _NWG_curl_easy_set_header_callback($0) { (line, _, length, maybeResponseHeadersPointer) -> size_t in
             guard let responseHeadersPointer = maybeResponseHeadersPointer else { return -1 }
+
+            // Skip if empty
+            if length == 0 || line.pointee == 0 {
+              return length
+            }
+            // Skip if prefix is "HTTP/"
+            if length >= 5 {
+              let prefixIsHTTP: Bool = ({
+                guard $0[0] == 0x48 || $0[0] == 0x68 else { return false } // H
+                guard $0[1] == 0x54 || $0[1] == 0x74 else { return false } // T
+                guard $0[2] == 0x54 || $0[2] == 0x74 else { return false } // T
+                guard $0[3] == 0x50 || $0[3] == 0x70 else { return false } // P
+                guard $0[4] == 0x2F else { return false } // <slash>
+                return true
+              })(line)
+              if prefixIsHTTP {
+                return length
+              }
+            }
+
             guard let lineString = String(
               data: Data(bytesNoCopy: line, count: length, deallocator: .none),
               encoding: .utf8
             ) else {
               return -1
-            }
-
-            // Skip if necessary.
-            if lineString.isEmpty || lineString.uppercased().hasPrefix("HTTP/") {
-              return length
             }
 
             let responseHeadersTypedPointer = responseHeadersPointer.assumingMemoryBound(
