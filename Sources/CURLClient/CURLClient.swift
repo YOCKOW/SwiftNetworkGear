@@ -63,6 +63,31 @@ public final class CURLManager {
   })()
 }
 
+public protocol CURLResponseBodyReceiver {
+  /// Receives a part of response body.
+  ///
+  /// - returns: The number of bytes actually received.
+  mutating func receive(chunk: UnsafePointer<CChar>, length: size_t) -> size_t
+}
+
+extension Data: CURLResponseBodyReceiver {
+  @inlinable
+  public mutating func receive(chunk: UnsafePointer<CChar>, length: size_t) -> size_t {
+    self.append(UnsafeRawPointer(chunk).assumingMemoryBound(to: UInt8.self), count: length)
+    return length
+  }
+}
+
+extension OutputStream: CURLResponseBodyReceiver {
+  @inlinable
+  public func receive(chunk: UnsafePointer<CChar>, length: size_t) -> size_t {
+    return self.write(
+      UnsafeRawPointer(chunk).assumingMemoryBound(to: UInt8.self),
+      maxLength: length
+    )
+  }
+}
+
 /// A wrapper of a CURL easy handle.
 public actor EasyClient {
   private let _curlHandle: UnsafeMutableRawPointer
@@ -121,14 +146,50 @@ public actor EasyClient {
     return _responseHeaders
   }
 
+  /// Returns the content of the response body after `prform()`ed
+  /// if the type of its receiver is `Data`.
   public var responseBody: Data? {
     return _responseBody
   }
 
+  /// An odd type-erasure to pass the pointer of an instance of `CURLResponseBodyReceiver` to C-API.
+  private final class _ResponseBodyPointerContainer {
+    private class _Box {
+      func receive(chunk: UnsafePointer<CChar>, length: size_t) -> size_t {
+        return -1
+      }
+    }
+    private final class _BasePointer<T>: _Box where T: CURLResponseBodyReceiver {
+      private let _pointer: UnsafeMutablePointer<T>
+      init(_ pointer: UnsafeRawBufferPointer) {
+        self._pointer = UnsafeMutablePointer(
+          mutating: pointer.baseAddress!.assumingMemoryBound(to: T.self)
+        )
+      }
+      override func receive(chunk: UnsafePointer<CChar>, length: size_t) -> size_t {
+        return _pointer.pointee.receive(chunk: chunk, length: length)
+      }
+    }
+
+    private let _pointerBox: _Box
+
+    init<T>(_ pointer: UnsafeRawBufferPointer, of type: T.Type) where T: CURLResponseBodyReceiver {
+      self._pointerBox = _BasePointer<T>(pointer)
+    }
+
+    func receive(chunk: UnsafePointer<CChar>, length: size_t) -> size_t {
+      return _pointerBox.receive(chunk: chunk, length: length)
+    }
+  }
+
+
   /// Call `curl_easy_perform` with the handle.
   ///
-  /// `responseBody` will be set in this method.
-  public func perform() throws {
+  /// - parameters:
+  ///    * responseBody: A stream-like object that the response body willl be written to.
+  public func perform<ResponseBody>(
+    responseBody: inout ResponseBody
+  ) throws where ResponseBody: CURLResponseBodyReceiver {
     if _performed {
       return
     }
@@ -153,7 +214,6 @@ public actor EasyClient {
     defer { _NWG_curl_slist_free_all(requestHeaderList) }
 
     var responseHeaders: Array<(name: String, value: String)> = []
-    var responseBody = Data()
     try withUnsafeBytes(of: &responseHeaders) { (responseHeadersPointer) -> Void in
       try withUnsafeBytes(of: &responseBody) { (responseBodyPointer) -> Void in
         // Headers
@@ -206,21 +266,28 @@ public actor EasyClient {
         }
 
         // Body
-        try _throwIfFailed {
-          _NWG_curl_easy_set_write_user_info(
-            $0,
-            UnsafeMutableRawPointer(mutating: responseBodyPointer.baseAddress!)
-          )
-        }
-        try _throwIfFailed {
-          _NWG_curl_easy_set_write_function($0) { (chunk, _, length, maybeResponseBodyPointer) -> size_t in
-            guard let responseBodyPointer = maybeResponseBodyPointer else { return -1 }
-            let chunkAsData = Data(bytesNoCopy: chunk, count: length, deallocator: .none)
-            responseBodyPointer.assumingMemoryBound(to: Data.self).pointee.append(chunkAsData)
-            return chunkAsData.count
+        // ⚠️ Avoid "A C function pointer cannot be formed from a closure that captures generic parameters" error.
+        var responseBodyContainer = _ResponseBodyPointerContainer(responseBodyPointer, of: ResponseBody.self)
+        try withUnsafeBytes(of: &responseBodyContainer) { (responseBodyContainerPointer) -> Void in
+          try _throwIfFailed {
+            _NWG_curl_easy_set_write_user_info(
+              $0,
+              UnsafeMutableRawPointer(mutating: responseBodyContainerPointer.baseAddress!)
+            )
           }
+          try _throwIfFailed {
+            _NWG_curl_easy_set_write_function($0) { (chunk, _, length, maybeContainerPointer) -> size_t in
+              guard let responseBodyContainerPointer = maybeContainerPointer else { return -1 }
+              return responseBodyContainerPointer.assumingMemoryBound(
+                to: _ResponseBodyPointerContainer.self
+              ).pointee.receive(
+                chunk: chunk,
+                length: length
+              )
+            }
+          }
+          try _throwIfFailed({ _NWG_curl_easy_perform($0) })
         }
-        try _throwIfFailed({ _NWG_curl_easy_perform($0) })
       }
     }
 
@@ -230,8 +297,16 @@ public actor EasyClient {
 
     _responseCode = Int(responseCodePointer.pointee)
     _responseHeaders = responseHeaders
-    _responseBody = responseBody
+    _responseBody = responseBody as? Data
     _performed = true
+  }
+
+  /// Execute `perform(responseBody:)` with setting its `responseBody` to an instance of `Data`.
+  @discardableResult
+  public func perform() throws -> Data {
+    var responseBody = Data()
+    try self.perform(responseBody: &responseBody)
+    return responseBody
   }
 
   // MARK: /PERFORM -
