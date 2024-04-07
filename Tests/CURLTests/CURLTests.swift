@@ -9,6 +9,31 @@ import XCTest
 @testable import CURLClient
 
 struct HTTPBinResponse: Decodable {
+  enum StringOrArray: Decodable, Equatable, ExpressibleByStringLiteral, ExpressibleByArrayLiteral {
+    case string(String)
+    case array([String])
+
+    init(from decoder: any Decoder) throws {
+      let singleValueContainer = try decoder.singleValueContainer()
+      if let string = try? singleValueContainer.decode(String.self) {
+        self = .string(string)
+        return
+      }
+      self = .array(try singleValueContainer.decode(Array<String>.self))
+    }
+
+    typealias StringLiteralType = String
+    init(stringLiteral value: String) {
+      self = .string(value)
+    }
+
+    typealias ArrayLiteralElement = String
+    init(arrayLiteral elements: String...) {
+      self = .array(elements)
+    }
+  }
+
+  let form: Dictionary<String, StringOrArray>?
   let headers: Dictionary<String, String>
 
   func headerValue(for key: String) -> String? {
@@ -33,6 +58,23 @@ final class CURLTests: XCTestCase {
 
     let responseString = await client.responseBody.flatMap({ String(data: $0, encoding: .utf8) })
     XCTAssertEqual(responseString, "test")
+  }
+
+  func test_performPost() async throws {
+    let client = try CURLManager.shared.makeEasyClient()
+    try await client.setHTTPMethodToPost()
+    try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/post")))
+
+    let requestBodyString = "foo=foo&bar=bar"
+    let requestBodyData = Data(requestBodyString.utf8)
+    var requestBody = CURLRequestBodyByteSequence(requestBodyData)
+    try await client.perform(requestBody: &requestBody)
+
+    let response = try await client.responseBody.map {
+      try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
+    }
+    XCTAssertEqual(response?.form?["foo"], "foo")
+    XCTAssertEqual(response?.form?["bar"], "bar")
   }
 
   func test_requestHeaders() async throws {

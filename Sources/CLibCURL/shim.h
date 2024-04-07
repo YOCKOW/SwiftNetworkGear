@@ -39,9 +39,26 @@ static CURLcode _NWG_curl_easy_set_http_method_to_get(CURL * _Nonnull curl) {
   return curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
 }
 
+static CURLcode _NWG_curl_easy_set_http_method_to_post(CURL * _Nonnull curl) {
+  return curl_easy_setopt(curl, CURLOPT_POST, 1);
+}
+
 static CURLcode _NWG_curl_easy_set_http_request_headers(CURL * _Nonnull curl,
                                                         CCURLStringList * _Nullable headers) {
   return curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+}
+
+static CURLcode _NWG_curl_easy_set_read_user_info(CURL * _Nonnull curl, void * _Nullable userInfo) {
+  return curl_easy_setopt(curl, CURLOPT_READDATA, userInfo);
+}
+
+typedef size_t (* _NWGCURLReadCallbackFunction)(char * _Nonnull buffer,
+                                                size_t size,
+                                                size_t nitems,
+                                                void * _Nullable userdata);
+static CURLcode _NWG_curl_easy_set_read_function(CURL * _Nonnull curl,
+                                                 _NWGCURLReadCallbackFunction _Nullable callback) {
+  return curl_easy_setopt(curl, CURLOPT_READFUNCTION, callback);
 }
 
 static CURLcode _NWG_curl_easy_set_ua(CURL * _Nonnull curl, const char * _Nonnull ua) {
