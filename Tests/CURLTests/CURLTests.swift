@@ -77,6 +77,35 @@ final class CURLTests: XCTestCase {
     XCTAssertEqual(response?.form?["bar"], "bar")
   }
 
+  func test_performPost_asyncRequestBody() async throws {
+    struct __AsyncRequestBody: AsyncSequence {
+      typealias Element = UInt8
+      struct AsyncIterator: AsyncIteratorProtocol {
+        typealias Element = UInt8
+        var iterator: Data.Iterator
+        mutating func next() async throws -> UInt8? { iterator.next() }
+      }
+      let data: Data
+      func makeAsyncIterator() -> AsyncIterator { .init(iterator: data.makeIterator()) }
+    }
+
+    let client = try CURLManager.shared.makeEasyClient()
+    try await client.setHTTPMethodToPost()
+    try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/post")))
+
+    let requestBodyString = "async=async&test=test"
+    var requestBody = CURLRequestBodyByteSequence(
+      __AsyncRequestBody(data: Data(requestBodyString.utf8))
+    )
+    try await client.perform(requestBody: &requestBody)
+
+    let response = try await client.responseBody.map {
+      try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
+    }
+    XCTAssertEqual(response?.form?["async"], "async")
+    XCTAssertEqual(response?.form?["test"], "test")
+  }
+
   func test_requestHeaders() async throws {
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToGet()

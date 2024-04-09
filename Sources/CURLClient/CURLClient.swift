@@ -123,6 +123,41 @@ public struct CURLRequestBodyByteSequence: CURLRequestBodySender {
       return count
     }
   }
+
+  private final class _AsyncSequence<T>: _SomeSequence where T: AsyncSequence, T.Element == UInt8 {
+    private var iterator: T.AsyncIterator
+    init(_ sequence: T) {
+      self.iterator = sequence.makeAsyncIterator()
+    }
+
+    private var _currentBuffer: UnsafeMutablePointer<UInt8>!
+    private var _currentCount: size_t!
+    override func sendChunk(filling buffer: UnsafeMutablePointer<CChar>, maxLength: size_t) -> size_t {
+      _currentBuffer = UnsafeMutableRawPointer(buffer).assumingMemoryBound(to: UInt8.self)
+      _currentCount = 0
+
+      // Using semahore is generally a bad idea,
+      // but in this case (as a libcurl's callback) it isn't unsafe.
+      let semaphore = DispatchSemaphore(value: 0)
+      Task {
+        do {
+          for _ in 0..<maxLength {
+            guard let byte = try await iterator.next() else {
+              break
+            }
+            _currentBuffer[_currentCount] = byte
+            _currentCount += 1
+          }
+        } catch {
+          _currentCount = -1
+        }
+        semaphore.signal()
+      }
+      semaphore.wait()
+      return _currentCount
+    }
+  }
+
   private final class _Other<T>: _SomeSequence where T: Sequence, T.Element == UInt8 {
     var iterator: T.Iterator
     init(_ sequence: T) {
@@ -150,6 +185,10 @@ public struct CURLRequestBodyByteSequence: CURLRequestBodySender {
 
   public init<D>(_ data: D) where D: DataProtocol {
     self._sequence = _OtherData(data)
+  }
+
+  public init<AS>(_ sequence: AS) where AS: AsyncSequence, AS.Element == UInt8 {
+    self._sequence = _AsyncSequence(sequence)
   }
 
   public init<S>(_ sequence: S) where S: Sequence, S.Element == UInt8 {
