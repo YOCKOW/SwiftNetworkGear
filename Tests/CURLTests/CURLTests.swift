@@ -57,7 +57,9 @@ final class CURLTests: XCTestCase {
       $0.name.lowercased() == "content-length" && $0.value.contains("4")
     }))
 
-    let responseString = await client.responseBody.flatMap({ String(data: $0, encoding: .utf8) })
+    let responseString = (await client.responseBody as? Data).flatMap {
+      String(data: $0, encoding: .utf8)
+    }
     XCTAssertEqual(responseString, "test")
   }
 
@@ -68,10 +70,11 @@ final class CURLTests: XCTestCase {
 
     let requestBodyString = "foo=foo&bar=bar"
     let requestBodyData = Data(requestBodyString.utf8)
-    var requestBody = CURLRequestBodyByteSequence(requestBodyData)
-    try await client.perform(requestBody: &requestBody)
+    let requestBody = CURLRequestBodyByteSequence(requestBodyData)
+    await client.setRequsetBody(requestBody)
 
-    let response = try await client.responseBody.map {
+    try await client.perform()
+    let response = try (await client.responseBody as? Data).map {
       try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
     }
     XCTAssertEqual(response?.form?["foo"], "foo")
@@ -95,12 +98,13 @@ final class CURLTests: XCTestCase {
     try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/post")))
 
     let requestBodyString = "async=async&test=test"
-    var requestBody = CURLRequestBodyByteSequence(
+    let requestBody = CURLRequestBodyByteSequence(
       __AsyncRequestBody(data: Data(requestBodyString.utf8))
     )
-    try await client.perform(requestBody: &requestBody)
+    await client.setRequsetBody(requestBody)
 
-    let response = try await client.responseBody.map {
+    try await client.perform()
+    let response = try (await client.responseBody as? Data).map {
       try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
     }
     XCTAssertEqual(response?.form?["async"], "async")
@@ -126,7 +130,7 @@ final class CURLTests: XCTestCase {
     --\(boundary)--
 
     """.split(omittingEmptySubsequences: false, whereSeparator: { $0.isNewline }).joined(separator: "\u{0D}\u{0A}")
-    var requestBody = InputStream(data: Data(multipartFormDataString.utf8))
+    let requestBody = InputStream(data: Data(multipartFormDataString.utf8))
     requestBody.open()
 
     let client = try CURLManager.shared.makeEasyClient()
@@ -135,9 +139,10 @@ final class CURLTests: XCTestCase {
     await client.setRequestHeaders([
       (name: "Content-Type", value: "multipart/form-data; boundary=\(boundary)")
     ])
-    try await client.perform(requestBody: &requestBody)
+    await client.setRequsetBody(requestBody)
 
-    let response = try await client.responseBody.map {
+    try await client.perform()
+    let response = try (await client.responseBody as? Data).map {
       return try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
     }
     XCTAssertEqual(response?.files?["file"], "MY TEXT.")
@@ -158,7 +163,7 @@ final class CURLTests: XCTestCase {
     let responseCode = await client.responseCode
     XCTAssertTrue(try XCTUnwrap(responseCode) / 100 == 2)
 
-    let response = try await client.responseBody.map {
+    let response = try (await client.responseBody as? Data).map {
       try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
     }
     XCTAssertEqual(response?.headerValue(for: "X-FOO"), "FOO")
