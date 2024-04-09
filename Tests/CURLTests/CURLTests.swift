@@ -33,6 +33,7 @@ struct HTTPBinResponse: Decodable {
     }
   }
 
+  let files: Dictionary<String, String>?
   let form: Dictionary<String, StringOrArray>?
   let headers: Dictionary<String, String>
 
@@ -104,6 +105,44 @@ final class CURLTests: XCTestCase {
     }
     XCTAssertEqual(response?.form?["async"], "async")
     XCTAssertEqual(response?.form?["test"], "test")
+  }
+
+  func test_performPost_multipartFormData() async throws {
+    let boundary = "CURLTestsMultipartFormData"
+    let multipartFormDataString = """
+    --\(boundary)
+    Content-Disposition: form-data; name="file"; filename="text.txt"
+    Content-Type: text/plain
+
+    MY TEXT.
+    --\(boundary)
+    Content-Disposition: form-data; name="name1"
+
+    VALUE1
+    --\(boundary)
+    Content-Disposition: form-data; name="name2"
+
+    VALUE2
+    --\(boundary)--
+
+    """.split(omittingEmptySubsequences: false, whereSeparator: { $0.isNewline }).joined(separator: "\u{0D}\u{0A}")
+    var requestBody = InputStream(data: Data(multipartFormDataString.utf8))
+    requestBody.open()
+
+    let client = try CURLManager.shared.makeEasyClient()
+    try await client.setHTTPMethodToPost()
+    try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/post")))
+    await client.setRequestHeaders([
+      (name: "Content-Type", value: "multipart/form-data; boundary=\(boundary)")
+    ])
+    try await client.perform(requestBody: &requestBody)
+
+    let response = try await client.responseBody.map {
+      return try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
+    }
+    XCTAssertEqual(response?.files?["file"], "MY TEXT.")
+    XCTAssertEqual(response?.form?["name1"], "VALUE1")
+    XCTAssertEqual(response?.form?["name2"], "VALUE2")
   }
 
   func test_requestHeaders() async throws {
