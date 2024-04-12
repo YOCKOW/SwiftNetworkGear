@@ -125,73 +125,50 @@ public actor EasyClient {
     }
     defer { _performed = true }
 
-    var existentialDelegate: any CURLClientDelegate = delegate
-    defer {
-      delegate = existentialDelegate as! Delegate
-    }
+    typealias _Delegate = (any CURLClientDelegate)
 
-    try withUnsafeBytes(of: &existentialDelegate) {
-      typealias _Delegate = (any CURLClientDelegate)
-
-      guard let delegatePointer = UnsafeMutablePointer<_Delegate>(
-        mutating: $0.assumingMemoryBound(to: _Delegate.self).baseAddress
-      ) else {
-        fatalError("Unexpected pointer?!")
+    func __setRequestHeaderHandler(_ delegatePointer: UnsafeMutablePointer<_Delegate>) throws -> UnsafeMutablePointer<CCURLStringList>? {
+      guard let requestHeaderFields = delegatePointer.pointee.requestHeaderFields else {
+        return nil
       }
-
-      // Request Header
-      let requestHeaderFieldCURLList: UnsafeMutablePointer<CCURLStringList>? = try ({
-        guard let requestHeaderFields = delegatePointer.pointee.requestHeaderFields else {
-          return nil
-        }
-        guard let firstField = requestHeaderFields.first else {
-          return nil
-        }
-        guard var currentList = _NWG_curl_slist_create("\(firstField.name): \(firstField.value)") else {
+      guard let firstField = requestHeaderFields.first else {
+        return nil
+      }
+      guard var currentList = _NWG_curl_slist_create("\(firstField.name): \(firstField.value)") else {
+        throw CURLClientError.failedToGenerateRequestHeaders
+      }
+      for field in requestHeaderFields.dropFirst() {
+        guard let newList = _NWG_curl_slist_append(currentList, "\(field.name): \(field.value)") else {
+          _NWG_curl_slist_free_all(currentList)
           throw CURLClientError.failedToGenerateRequestHeaders
         }
-        for field in requestHeaderFields.dropFirst() {
-          guard let newList = _NWG_curl_slist_append(currentList, "\(field.name): \(field.value)") else {
-            _NWG_curl_slist_free_all(currentList)
-            throw CURLClientError.failedToGenerateRequestHeaders
-          }
-          currentList = newList
-        }
-        try _throwIfFailed({ _NWG_curl_easy_set_http_request_headers($0, currentList) })
-        return currentList
-      })()
-      defer {
-        _NWG_curl_slist_free_all(requestHeaderFieldCURLList)
+        currentList = newList
       }
-      // /Request Header
+      try _throwIfFailed({ _NWG_curl_easy_set_http_request_headers($0, currentList) })
+      return currentList
+    }
 
-      // Request Body
-      if delegatePointer.pointee.hasRequestBody {
-        try _throwIfFailed {
-          _NWG_curl_easy_set_read_user_info($0, UnsafeMutableRawPointer(delegatePointer))
-        }
-        try _throwIfFailed {
-          _NWG_curl_easy_set_read_function($0) { (buffer,
-                                                  _,
-                                                  maxLength,
-                                                  maybePointer) -> CSize in
-            return maybePointer?.assumingMemoryBound(
-              to: _Delegate.self
-            ).pointee.readNextPartialRequestBody(
-              buffer,
-              maxLength: maxLength
-            ) ?? -1
-          }
+    func __setRequestBodyHandler(_ delegatePointer: UnsafeMutablePointer<_Delegate>) throws {
+      guard delegatePointer.pointee.hasRequestBody else { return }
+      try _throwIfFailed {
+        _NWG_curl_easy_set_read_user_info($0, UnsafeMutableRawPointer(delegatePointer))
+      }
+      try _throwIfFailed {
+        _NWG_curl_easy_set_read_function($0) { (buffer,
+                                                _,
+                                                maxLength,
+                                                maybePointer) -> CSize in
+          return maybePointer?.assumingMemoryBound(
+            to: _Delegate.self
+          ).pointee.readNextPartialRequestBody(
+            buffer,
+            maxLength: maxLength
+          ) ?? -1
         }
       }
-      // /Request Body
+    }
 
-      // Response Header
-      let responseHeaderInfoPointer = UnsafeMutablePointer<_ResponseHeaderInfo<_Delegate>>.allocate(capacity: 1)
-      responseHeaderInfoPointer.pointee = .init(delegatePointer: delegatePointer)
-      defer {
-        responseHeaderInfoPointer.deallocate()
-      }
+    func __setResponseCodeHeaderHandler(_ responseHeaderInfoPointer: UnsafeMutablePointer<_ResponseHeaderInfo<_Delegate>>) throws {
       try _throwIfFailed {
         _NWG_curl_easy_set_header_user_info($0, UnsafeMutableRawPointer(responseHeaderInfoPointer))
       }
@@ -286,16 +263,14 @@ public actor EasyClient {
           return length
         }
       }
-      defer {
-        if let lastResponseHeaderField = responseHeaderInfoPointer.pointee.lastResponseHeaderField {
-          delegatePointer.pointee.appendResponseHeaderField(lastResponseHeaderField)
-        }
-      }
-      // /Response Header
+    }
 
-      // Response Body
+    func __setResponseBodyHandler(_ responseHeaderInfoPointer: UnsafeMutablePointer<_ResponseHeaderInfo<_Delegate>>) throws {
       try _throwIfFailed {
-        _NWG_curl_easy_set_write_user_info($0, UnsafeMutableRawPointer(delegatePointer))
+        _NWG_curl_easy_set_write_user_info(
+          $0,
+          UnsafeMutableRawPointer(responseHeaderInfoPointer.pointee.delegatePointer)
+        )
       }
       try _throwIfFailed {
         _NWG_curl_easy_set_write_function($0) { (chunk, _, length, maybePointer) -> CSize in
@@ -305,21 +280,61 @@ public actor EasyClient {
           return delegatePointer.pointee.writeNextPartialResponseBody(chunk, length: length)
         }
       }
-      // /Response Body
+    }
 
-      // PERFORM!
-      try _throwIfFailed({ _NWG_curl_easy_perform($0) })
-
-      // Response Code
-      if responseHeaderInfoPointer.pointee.responseCode == nil {
-        let responseCodePointer = UnsafeMutablePointer<CLong>.allocate(capacity: 1)
-        defer {
-          delegatePointer.pointee.setResponseCode(responseCodePointer.pointee)
-          responseCodePointer.deallocate()
-        }
-        try _throwIfFailed({ _NWG_curl_easy_get_response_code($0, responseCodePointer) })
+    var existentialDelegate: _Delegate = delegate
+    defer {
+      delegate = existentialDelegate as! Delegate
+    }
+    try withUnsafeBytes(of: &existentialDelegate) {
+      guard let delegatePointer = UnsafeMutablePointer<_Delegate>(
+        mutating: $0.assumingMemoryBound(to: _Delegate.self).baseAddress
+      ) else {
+        fatalError("Unexpected pointer?!")
       }
-      // /Response Code
+
+      // Request Header
+      let requestHeaderFieldCURLList = try __setRequestHeaderHandler(delegatePointer)
+      defer {
+        _NWG_curl_slist_free_all(requestHeaderFieldCURLList)
+      }
+
+      // Request Body
+      try __setRequestBodyHandler(delegatePointer)
+
+      // Response Code & Response Header & Response Body
+      var responseHeaderInfo = _ResponseHeaderInfo<_Delegate>(delegatePointer: delegatePointer)
+      try withUnsafeBytes(of: &responseHeaderInfo) {
+        guard let responseHeaderInfoPointer = UnsafeMutablePointer<_ResponseHeaderInfo<_Delegate>>(
+          mutating: $0.assumingMemoryBound(to: _ResponseHeaderInfo<_Delegate>.self).baseAddress
+        ) else {
+          fatalError("Unexpected pointer?!")
+        }
+
+        // Response Code & Header
+        try __setResponseCodeHeaderHandler(responseHeaderInfoPointer)
+        defer {
+          if let lastResponseHeaderField = responseHeaderInfoPointer.pointee.lastResponseHeaderField {
+            delegatePointer.pointee.appendResponseHeaderField(lastResponseHeaderField)
+          }
+        }
+
+        // Response Body
+        try __setResponseBodyHandler(responseHeaderInfoPointer)
+
+        // PERFORM!
+        try _throwIfFailed({ _NWG_curl_easy_perform($0) })
+
+        // Response Code if missing
+        if responseHeaderInfoPointer.pointee.responseCode == nil {
+          let responseCodePointer = UnsafeMutablePointer<CLong>.allocate(capacity: 1)
+          defer {
+            delegatePointer.pointee.setResponseCode(responseCodePointer.pointee)
+            responseCodePointer.deallocate()
+          }
+          try _throwIfFailed({ _NWG_curl_easy_get_response_code($0, responseCodePointer) })
+        }
+      }
     }
   }
 
