@@ -12,9 +12,13 @@
 // Note: `curl_easy_nextheader` is supported in curl >=7.84.0.
 //       But `apt` on Ubuntu 22.0 installs curl 7.81.0. 😭 (2nd Apr. 2024)
 
+// Swifty Names
+typedef size_t CSize;
+typedef long CURLResponseCode;
 typedef struct curl_slist CCURLStringList;
 
-static CURLcode _NWG_curl_easy_get_response_code(CURL * _Nonnull curl, long * _Nonnull codePointer) {
+static CURLcode _NWG_curl_easy_get_response_code(CURL * _Nonnull curl,
+                                                 CURLResponseCode * _Nonnull codePointer) {
   return curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, codePointer);
 }
 

@@ -44,37 +44,31 @@ struct HTTPBinResponse: Decodable {
 
 final class CURLTests: XCTestCase {
   func test_performGet() async throws {
+    var delegate = CURLClientGeneralDelegate()
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToGet()
     try await client.setURL(try XCTUnwrap(URL(string: "https://storage.googleapis.com/public.data.yockow.jp/test-assets/test.txt")))
-    try await client.perform()
+    try await client.perform(delegate: &delegate)
 
-    let responseCode = await client.responseCode
-    XCTAssertTrue(try XCTUnwrap(responseCode) / 100 == 2)
-
-    let responseHeaders = await client.responseHeaders
-    XCTAssertTrue(try XCTUnwrap(responseHeaders).contains(where: {
+    XCTAssertEqual(try XCTUnwrap(delegate.responseCode), 200)
+    XCTAssertTrue(delegate.responseHeaderFields.contains(where: {
       $0.name.lowercased() == "content-length" && $0.value.contains("4")
     }))
 
-    let responseString = (await client.responseBody as? Data).flatMap {
+    let responseString = delegate.responseBody(as: Data.self).flatMap {
       String(data: $0, encoding: .utf8)
     }
     XCTAssertEqual(responseString, "test")
   }
 
   func test_performPost() async throws {
+    var delegate = CURLClientGeneralDelegate(requestBody: .init(data: Data("foo=foo&bar=bar".utf8)))
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
     try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/post")))
+    try await client.perform(delegate: &delegate)
 
-    let requestBodyString = "foo=foo&bar=bar"
-    let requestBodyData = Data(requestBodyString.utf8)
-    let requestBody = CURLRequestBodyByteSequence(requestBodyData)
-    await client.setRequsetBody(requestBody)
-
-    try await client.perform()
-    let response = try (await client.responseBody as? Data).map {
+    let response = try delegate.responseBody(as: Data.self).map {
       try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
     }
     XCTAssertEqual(response?.form?["foo"], "foo")
@@ -92,19 +86,15 @@ final class CURLTests: XCTestCase {
       let data: Data
       func makeAsyncIterator() -> AsyncIterator { .init(iterator: data.makeIterator()) }
     }
-
+    var delegate = CURLClientGeneralDelegate(
+      requestBody: .init(__AsyncRequestBody(data: Data("async=async&test=test".utf8)))
+    )
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
     try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/post")))
+    try await client.perform(delegate: &delegate)
 
-    let requestBodyString = "async=async&test=test"
-    let requestBody = CURLRequestBodyByteSequence(
-      __AsyncRequestBody(data: Data(requestBodyString.utf8))
-    )
-    await client.setRequsetBody(requestBody)
-
-    try await client.perform()
-    let response = try (await client.responseBody as? Data).map {
+    let response = try delegate.responseBody(as: Data.self).map {
       try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
     }
     XCTAssertEqual(response?.form?["async"], "async")
@@ -133,16 +123,18 @@ final class CURLTests: XCTestCase {
     let requestBody = InputStream(data: Data(multipartFormDataString.utf8))
     requestBody.open()
 
+    var delegate = CURLClientGeneralDelegate(
+      requestHeaderFields: [
+        (name: "Content-Type", value: "multipart/form-data; boundary=\(boundary)"),
+      ],
+      requestBody: .init(stream: requestBody)
+    )
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
     try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/post")))
-    await client.setRequestHeaders([
-      (name: "Content-Type", value: "multipart/form-data; boundary=\(boundary)")
-    ])
-    await client.setRequsetBody(requestBody)
+    try await client.perform(delegate: &delegate)
 
-    try await client.perform()
-    let response = try (await client.responseBody as? Data).map {
+    let response = try delegate.responseBody(as: Data.self).map {
       return try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
     }
     XCTAssertEqual(response?.files?["file"], "MY TEXT.")
@@ -151,19 +143,20 @@ final class CURLTests: XCTestCase {
   }
 
   func test_requestHeaders() async throws {
+    var delegate = CURLClientGeneralDelegate(
+      requestHeaderFields: [
+        (name: "X-FOO", value: "FOO"),
+        (name: "X-BAR", value: "BAR"),
+      ]
+    )
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToGet()
     try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/get")))
-    await client.setRequestHeaders([
-      (name: "X-FOO", value: "FOO"),
-      (name: "X-BAR", value: "BAR"),
-    ])
-    try await client.perform()
+    try await client.perform(delegate: &delegate)
 
-    let responseCode = await client.responseCode
-    XCTAssertTrue(try XCTUnwrap(responseCode) / 100 == 2)
+    XCTAssertEqual(try XCTUnwrap(delegate.responseCode), 200)
 
-    let response = try (await client.responseBody as? Data).map {
+    let response = try delegate.responseBody(as: Data.self).map {
       try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
     }
     XCTAssertEqual(response?.headerValue(for: "X-FOO"), "FOO")

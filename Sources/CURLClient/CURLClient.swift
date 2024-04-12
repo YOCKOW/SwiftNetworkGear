@@ -63,182 +63,11 @@ public final class CURLManager {
   })()
 }
 
-public protocol CURLRequestBodySender {
-  /// Sends a part of request body.
-  /// The data area pointed at by `buffer` should be filled up with
-  /// at most `maxLength` number of bytes by your function.
-  ///
-  /// - Returns: The actual number of bytes that it stored in the data area pointed at
-  ///            by the pointer `buffer`.
-  mutating func sendChunk(filling buffer: UnsafeMutablePointer<CChar>, maxLength: size_t) -> size_t
-}
-
-public struct CURLRequestBodyByteSequence: CURLRequestBodySender {
-  private class _SomeSequence {
-    func sendChunk(filling buffer: UnsafeMutablePointer<CChar>, maxLength: size_t) -> size_t {
-      return -1
-    }
-  }
-  private final class _Data: _SomeSequence {
-    private var data: Data
-    private var currentIndex: Data.Index
-    init(_ data: Data ) {
-      self.data = data
-      self.currentIndex = data.startIndex
-    }
-    override func sendChunk(filling buffer: UnsafeMutablePointer<CChar>, maxLength: size_t) -> size_t {
-      guard currentIndex < data.endIndex else { return 0 }
-      let count = min(maxLength, data.endIndex - currentIndex)
-      let chunkEndIndex = currentIndex + count
-      data.copyBytes(
-        to: UnsafeMutableRawPointer(buffer).assumingMemoryBound(to: UInt8.self),
-        from: currentIndex..<chunkEndIndex
-      )
-      currentIndex = chunkEndIndex
-      return count
-    }
-  }
-  private final class _OtherData<T>: _SomeSequence where T: DataProtocol {
-    private var data: T
-    private var currentIndex: T.Index
-    init(_ data: T) {
-      self.data = data
-      self.currentIndex = data.startIndex
-    }
-    override func sendChunk(filling buffer: UnsafeMutablePointer<CChar>, maxLength: size_t) -> size_t {
-      guard currentIndex < data.endIndex else { return 0 }
-      var count: size_t = 0
-      var chunkEndIndex = currentIndex
-      for _ in 0..<maxLength {
-        chunkEndIndex = data.index(after: chunkEndIndex)
-        count += 1
-        if chunkEndIndex == data.endIndex {
-          break
-        }
-      }
-      data.copyBytes(
-        to: UnsafeMutableBufferPointer(start: buffer, count: Int(maxLength)),
-        from: currentIndex..<chunkEndIndex
-      )
-      return count
-    }
-  }
-
-  private final class _AsyncSequence<T>: _SomeSequence where T: AsyncSequence, T.Element == UInt8 {
-    private var iterator: T.AsyncIterator
-    init(_ sequence: T) {
-      self.iterator = sequence.makeAsyncIterator()
-    }
-
-    private var _currentBuffer: UnsafeMutablePointer<UInt8>!
-    private var _currentCount: size_t!
-    override func sendChunk(filling buffer: UnsafeMutablePointer<CChar>, maxLength: size_t) -> size_t {
-      _currentBuffer = UnsafeMutableRawPointer(buffer).assumingMemoryBound(to: UInt8.self)
-      _currentCount = 0
-
-      // Using semahore is generally a bad idea,
-      // but in this case (as a libcurl's callback) it isn't unsafe.
-      let semaphore = DispatchSemaphore(value: 0)
-      Task {
-        do {
-          for _ in 0..<maxLength {
-            guard let byte = try await iterator.next() else {
-              break
-            }
-            _currentBuffer[_currentCount] = byte
-            _currentCount += 1
-          }
-        } catch {
-          _currentCount = -1
-        }
-        semaphore.signal()
-      }
-      semaphore.wait()
-      return _currentCount
-    }
-  }
-
-  private final class _Other<T>: _SomeSequence where T: Sequence, T.Element == UInt8 {
-    var iterator: T.Iterator
-    init(_ sequence: T) {
-      self.iterator = sequence.makeIterator()
-    }
-    override func sendChunk(filling buffer: UnsafeMutablePointer<CChar>, maxLength: size_t) -> size_t {
-      let uint8Buffer = UnsafeMutableRawPointer(buffer).assumingMemoryBound(to: UInt8.self)
-      var count = 0
-      for _ in 0..<maxLength {
-        guard let byte = iterator.next() else {
-          break
-        }
-        uint8Buffer[count] = byte
-        count += 1
-      }
-      return count
-    }
-  }
-
-  private let _sequence: _SomeSequence
-
-  public init(_ data: Data) {
-    self._sequence = _Data(data)
-  }
-
-  public init<D>(_ data: D) where D: DataProtocol {
-    self._sequence = _OtherData(data)
-  }
-
-  public init<AS>(_ sequence: AS) where AS: AsyncSequence, AS.Element == UInt8 {
-    self._sequence = _AsyncSequence(sequence)
-  }
-
-  public init<S>(_ sequence: S) where S: Sequence, S.Element == UInt8 {
-    self._sequence = _Other<S>(sequence)
-  }
-
-  public mutating func sendChunk(filling buffer: UnsafeMutablePointer<CChar>, maxLength: size_t) -> size_t {
-    return self._sequence.sendChunk(filling: buffer, maxLength: maxLength)
-  }
-}
-
-extension InputStream: CURLRequestBodySender {
-  @inlinable
-  public func sendChunk(filling buffer: UnsafeMutablePointer<CChar>, maxLength: size_t) -> size_t {
-    return buffer.withMemoryRebound(to: UInt8.self, capacity: maxLength) {
-      return self.read($0, maxLength: maxLength)
-    }
-  }
-}
-
-public protocol CURLResponseBodyReceiver {
-  /// Receives a part of response body.
-  ///
-  /// - returns: The number of bytes actually received.
-  mutating func receive(chunk: UnsafePointer<CChar>, length: size_t) -> size_t
-}
-
-extension Data: CURLResponseBodyReceiver {
-  @inlinable
-  public mutating func receive(chunk: UnsafePointer<CChar>, length: size_t) -> size_t {
-    self.append(UnsafeRawPointer(chunk).assumingMemoryBound(to: UInt8.self), count: length)
-    return length
-  }
-}
-
-extension OutputStream: CURLResponseBodyReceiver {
-  @inlinable
-  public func receive(chunk: UnsafePointer<CChar>, length: size_t) -> size_t {
-    return self.write(
-      UnsafeRawPointer(chunk).assumingMemoryBound(to: UInt8.self),
-      maxLength: length
-    )
-  }
-}
-
 /// A wrapper of a CURL easy handle.
 public actor EasyClient {
   private let _curlHandle: UnsafeMutableRawPointer
 
-  init() throws {
+  fileprivate init() throws {
     guard let curlHandle = curl_easy_init() else {
       throw CURLClientError.failedToCreateClient
     }
@@ -276,198 +105,222 @@ public actor EasyClient {
     try _throwIfFailed({ _NWG_curl_easy_set_ua($0, userAgent) })
   }
 
-  // MARK: - REQUEST
-  public var requestHeaders: Array<(name: String, value: String)>? = nil
-  public func setRequestHeaders(_ requestHeaders: Array<(name: String, value: String)>) {
-    self.requestHeaders = requestHeaders
-  }
-
-  public var requestBody: (any CURLRequestBodySender)? = nil
-  public func setRequsetBody<T>(_ requestBody: T) where T: CURLRequestBodySender {
-    self.requestBody = requestBody
-  }
-
-  // MARK: /REQUEST -
-
-  // MARK: - RESPONSE
-
-  public private(set) var responseCode: Int? = nil
-
-  public private(set) var responseHeaders: Array<(name: String, value: String)>? = nil
-
-  /// The response body that the client will write to during `perform()`ing.
-  public var responseBody: any CURLResponseBodyReceiver = Data()
-  public func setResponseBody<T>(_ responseBody: T) where T: CURLResponseBodyReceiver {
-    self.responseBody = responseBody
-  }
-
-  // MARK: /RESPONSE -
-
   // MARK: - PERFORM
+
+  private struct _ResponseHeaderInfo<Delegate> {
+    let delegatePointer: UnsafeMutablePointer<Delegate>
+    var responseCode: CURLResponseCode? = nil
+    var lastResponseHeaderField: CURLHeaderField? = nil
+    init(delegatePointer: UnsafeMutablePointer<Delegate>) {
+      self.delegatePointer = delegatePointer
+    }
+  }
 
   private var _performed: Bool = false
 
   /// Call `curl_easy_perform` with the handle.
-  public func perform() throws {
+  public func perform<Delegate>(delegate: inout Delegate) throws where Delegate: CURLClientDelegate {
     if _performed {
       return
     }
     defer { _performed = true }
 
-    let requestHeaderList: UnsafeMutablePointer<CCURLStringList>? = try requestHeaders.flatMap {
-      guard let firstField = $0.first else { return nil }
-      guard var currentList = _NWG_curl_slist_create("\(firstField.name): \(firstField.value)") else {
-        throw CURLClientError.failedToGenerateRequestHeaders
+    var existentialDelegate: any CURLClientDelegate = delegate
+    defer {
+      delegate = existentialDelegate as! Delegate
+    }
+
+    try withUnsafeBytes(of: &existentialDelegate) {
+      typealias _Delegate = (any CURLClientDelegate)
+
+      guard let delegatePointer = UnsafeMutablePointer<_Delegate>(
+        mutating: $0.assumingMemoryBound(to: _Delegate.self).baseAddress
+      ) else {
+        fatalError("Unexpected pointer?!")
       }
-      for field in $0.dropFirst() {
-        guard let newList = _NWG_curl_slist_append(currentList, "\(field.name): \(field.value)") else {
-          _NWG_curl_slist_free_all(currentList)
+
+      // Request Header
+      let requestHeaderFieldCURLList: UnsafeMutablePointer<CCURLStringList>? = try ({
+        guard let requestHeaderFields = delegatePointer.pointee.requestHeaderFields else {
+          return nil
+        }
+        guard let firstField = requestHeaderFields.first else {
+          return nil
+        }
+        guard var currentList = _NWG_curl_slist_create("\(firstField.name): \(firstField.value)") else {
           throw CURLClientError.failedToGenerateRequestHeaders
         }
-        currentList = newList
-      }
-      return currentList
-    }
-    if let requestHeaderList {
-      try _throwIfFailed({ _NWG_curl_easy_set_http_request_headers($0, requestHeaderList) })
-    }
-    defer { _NWG_curl_slist_free_all(requestHeaderList) }
-
-    typealias RequestBodyResponseHeadersResponseBody = (
-      requestBody: (any CURLRequestBodySender)?,
-      responseHeaders: Array<(name: String, value: String)>,
-      responseBody: any CURLResponseBodyReceiver
-    )
-    var reqBodyResHeadersResBodyTuple: RequestBodyResponseHeadersResponseBody = (
-      self.requestBody,
-      [],
-      self.responseBody
-    )
-    try withUnsafeBytes(of: &reqBodyResHeadersResBodyTuple) {
-      guard let reqBodyResHeadersResBodyTuplePointer = $0.assumingMemoryBound(
-        to: RequestBodyResponseHeadersResponseBody.self
-      ).baseAddress.flatMap({
-        UnsafeMutablePointer<RequestBodyResponseHeadersResponseBody>(mutating: $0)
-      }) else {
-        fatalError("Unexpected Poitner?!")
-      }
-
-      REQUEST_BODY: do {
-        if reqBodyResHeadersResBodyTuplePointer.pointee.requestBody != nil {
-          try _throwIfFailed {
-            _NWG_curl_easy_set_read_user_info(
-              $0,
-              UnsafeMutableRawPointer(mutating: reqBodyResHeadersResBodyTuplePointer)
-            )
+        for field in requestHeaderFields.dropFirst() {
+          guard let newList = _NWG_curl_slist_append(currentList, "\(field.name): \(field.value)") else {
+            _NWG_curl_slist_free_all(currentList)
+            throw CURLClientError.failedToGenerateRequestHeaders
           }
-          try _throwIfFailed {
-            _NWG_curl_easy_set_read_function($0) { (buffer, _, maxLength, maybePointer) -> size_t in
-              return maybePointer?.assumingMemoryBound(
-                to: RequestBodyResponseHeadersResponseBody.self
-              ).pointee.requestBody?.sendChunk(filling: buffer, maxLength: maxLength) ?? -1
-            }
+          currentList = newList
+        }
+        try _throwIfFailed({ _NWG_curl_easy_set_http_request_headers($0, currentList) })
+        return currentList
+      })()
+      defer {
+        _NWG_curl_slist_free_all(requestHeaderFieldCURLList)
+      }
+      // /Request Header
+
+      // Request Body
+      if delegatePointer.pointee.hasRequestBody {
+        try _throwIfFailed {
+          _NWG_curl_easy_set_read_user_info($0, UnsafeMutableRawPointer(delegatePointer))
+        }
+        try _throwIfFailed {
+          _NWG_curl_easy_set_read_function($0) { (buffer,
+                                                  _,
+                                                  maxLength,
+                                                  maybePointer) -> CSize in
+            return maybePointer?.assumingMemoryBound(
+              to: _Delegate.self
+            ).pointee.readNextPartialRequestBody(
+              buffer,
+              maxLength: maxLength
+            ) ?? -1
           }
         }
       }
+      // /Request Body
 
-      RESPONSE_HEADRES: do {
-        try _throwIfFailed {
-          _NWG_curl_easy_set_header_user_info(
-            $0,
-            UnsafeMutableRawPointer(mutating: reqBodyResHeadersResBodyTuplePointer)
-          )
-        }
-        try _throwIfFailed {
-          _NWG_curl_easy_set_header_callback($0) { (line, _, length, maybePointer) -> size_t in
-            guard let reqBodyResHeadersResBodyTuplePointer = maybePointer?.assumingMemoryBound(
-              to: RequestBodyResponseHeadersResponseBody.self
-            ) else {
-              return -1
-            }
+      // Response Header
+      let responseHeaderInfoPointer = UnsafeMutablePointer<_ResponseHeaderInfo<_Delegate>>.allocate(capacity: 1)
+      responseHeaderInfoPointer.pointee = .init(delegatePointer: delegatePointer)
+      defer {
+        responseHeaderInfoPointer.deallocate()
+      }
+      try _throwIfFailed {
+        _NWG_curl_easy_set_header_user_info($0, UnsafeMutableRawPointer(responseHeaderInfoPointer))
+      }
+      try _throwIfFailed {
+        _NWG_curl_easy_set_header_callback($0) { (line, _, length, maybePointer) -> CSize in
+          guard let responseHeaderInfoPointer = maybePointer?.assumingMemoryBound(
+            to: _ResponseHeaderInfo<_Delegate>.self
+          ) else {
+            return -1
+          }
+          let delegatePointer = responseHeaderInfoPointer.pointee.delegatePointer
 
-            // Skip if empty
-            if length == 0 || line.pointee == 0 {
-              return length
-            }
-            // Skip if prefix is "HTTP/"
-            if length >= 5 {
-              let prefixIsHTTP: Bool = ({
-                guard $0[0] == 0x48 || $0[0] == 0x68 else { return false } // H
-                guard $0[1] == 0x54 || $0[1] == 0x74 else { return false } // T
-                guard $0[2] == 0x54 || $0[2] == 0x74 else { return false } // T
-                guard $0[3] == 0x50 || $0[3] == 0x70 else { return false } // P
-                guard $0[4] == 0x2F else { return false } // <slash>
-                return true
-              })(line)
-              if prefixIsHTTP {
-                return length
-              }
-            }
-
-            guard let lineString = String(
-              data: Data(bytesNoCopy: line, count: length, deallocator: .none),
-              encoding: .utf8
-            ) else {
-              return -1
-            }
-
-            var responseHeaders = reqBodyResHeadersResBodyTuplePointer.pointee.responseHeaders
-            defer { reqBodyResHeadersResBodyTuplePointer.pointee.responseHeaders = responseHeaders }
-
-            // Folded header (actually deprecated...)
-            if lineString.first!.isWhitespace {
-              guard let lastField = responseHeaders.last else { return -1 }
-              responseHeaders = responseHeaders.dropLast()
-              responseHeaders.append((
-                name: lastField.name,
-                value: "\(lastField.value) \(lineString._trimmedHeaderLine)"
-              ))
-              return length
-            }
-
-            let nameAndValue = lineString.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
-            guard nameAndValue.count == 2 else { return -1 }
-            responseHeaders.append((
-              name: String(nameAndValue[0]._trimmedHeaderLine),
-              value: String(nameAndValue[1]._trimmedHeaderLine)
-            ))
+          // Skip if empty
+          if length == 0 || line.pointee == 0 {
             return length
           }
-        }
-      }
 
-      RESPONSE_BODY: do {
-        try _throwIfFailed {
-          _NWG_curl_easy_set_write_user_info(
-            $0,
-            UnsafeMutableRawPointer(mutating: reqBodyResHeadersResBodyTuplePointer)
-          )
-        }
-        try _throwIfFailed {
-          _NWG_curl_easy_set_write_function($0) { (chunk, _, length, maybePointer) -> size_t in
-            guard let reqBodyResHeadersResBodyTuplePointer = maybePointer?.assumingMemoryBound(
-              to: RequestBodyResponseHeadersResponseBody.self
-            ) else {
+          // Skip if `line` is status line.
+          // https://datatracker.ietf.org/doc/html/rfc9112#section-4
+          if length >= 5 {
+            let prefixIsHTTP: Bool = ({
+              guard $0[0] == 0x48 else { return false } // H
+              guard $0[1] == 0x54 else { return false } // T
+              guard $0[2] == 0x54 else { return false } // T
+              guard $0[3] == 0x50 else { return false } // P
+              guard $0[4] == 0x2F else { return false } // <slash>
+              return true
+            })(line)
+            if prefixIsHTTP {
+              DETERMINE_RESPONSE_CODE_IF_POSSIBLE: do {
+                var firstSpaceIndex: CSize? = nil
+                for ii in 5..<length {
+                  if line[ii] == 0x20 {
+                    firstSpaceIndex = ii
+                    break
+                  }
+                }
+                func __isDigit(_ char: CChar) -> Bool {
+                  return 0x30 <= char && char <= 0x39
+                }
+                guard let firstSpaceIndex,
+                      firstSpaceIndex + 3 < length,
+                      __isDigit(line[firstSpaceIndex + 1]),
+                      __isDigit(line[firstSpaceIndex + 2]),
+                      __isDigit(line[firstSpaceIndex + 3]),
+                      (firstSpaceIndex + 4 == length || !__isDigit(line[firstSpaceIndex + 4]))
+                else {
+                  break DETERMINE_RESPONSE_CODE_IF_POSSIBLE
+                }
+                let responseCode: CURLResponseCode = (
+                  CURLResponseCode(line[firstSpaceIndex + 1] - 0x30) * 100 +
+                  CURLResponseCode(line[firstSpaceIndex + 2] - 0x30) * 10  +
+                  CURLResponseCode(line[firstSpaceIndex + 3] - 0x30)
+                )
+                responseHeaderInfoPointer.pointee.responseCode = responseCode
+                delegatePointer.pointee.setResponseCode(responseCode)
+              }
+              return length
+            }
+          }
+
+          guard let lineString = String(
+            data: Data(bytesNoCopy: line, count: length, deallocator: .none),
+            encoding: .utf8
+          ) else {
+            return -1
+          }
+
+          // Folded header (actually deprecated...)
+          if lineString.first!.isWhitespace {
+            guard let lastField = responseHeaderInfoPointer.pointee.lastResponseHeaderField else {
               return -1
             }
-            return reqBodyResHeadersResBodyTuplePointer.pointee.responseBody.receive(
-              chunk: chunk,
-              length: length
+            responseHeaderInfoPointer.pointee.lastResponseHeaderField = (
+              name: lastField.name,
+              value: "\(lastField.value) \(lineString._trimmedHeaderLine)"
+            )
+          } else {
+            if let lastField = responseHeaderInfoPointer.pointee.lastResponseHeaderField {
+              delegatePointer.pointee.appendResponseHeaderField(lastField)
+              responseHeaderInfoPointer.pointee.lastResponseHeaderField = nil
+            }
+            let nameAndValue = lineString.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+            guard nameAndValue.count == 2 else {
+              return -1
+            }
+            responseHeaderInfoPointer.pointee.lastResponseHeaderField = (
+              name: String(nameAndValue[0]._trimmedHeaderLine),
+              value: String(nameAndValue[1]._trimmedHeaderLine)
             )
           }
+          return length
         }
       }
+      defer {
+        if let lastResponseHeaderField = responseHeaderInfoPointer.pointee.lastResponseHeaderField {
+          delegatePointer.pointee.appendResponseHeaderField(lastResponseHeaderField)
+        }
+      }
+      // /Response Header
 
+      // Response Body
+      try _throwIfFailed {
+        _NWG_curl_easy_set_write_user_info($0, UnsafeMutableRawPointer(delegatePointer))
+      }
+      try _throwIfFailed {
+        _NWG_curl_easy_set_write_function($0) { (chunk, _, length, maybePointer) -> CSize in
+          guard let delegatePointer = maybePointer?.assumingMemoryBound(to: _Delegate.self) else {
+            return -1
+          }
+          return delegatePointer.pointee.writeNextPartialResponseBody(chunk, length: length)
+        }
+      }
+      // /Response Body
+
+      // PERFORM!
       try _throwIfFailed({ _NWG_curl_easy_perform($0) })
+
+      // Response Code
+      if responseHeaderInfoPointer.pointee.responseCode == nil {
+        let responseCodePointer = UnsafeMutablePointer<CLong>.allocate(capacity: 1)
+        defer {
+          delegatePointer.pointee.setResponseCode(responseCodePointer.pointee)
+          responseCodePointer.deallocate()
+        }
+        try _throwIfFailed({ _NWG_curl_easy_get_response_code($0, responseCodePointer) })
+      }
+      // /Response Code
     }
-
-    let responseCodePointer = UnsafeMutablePointer<CLong>.allocate(capacity: 1)
-    defer { responseCodePointer.deallocate() }
-    try _throwIfFailed({ _NWG_curl_easy_get_response_code($0, responseCodePointer) })
-
-    responseCode = Int(responseCodePointer.pointee)
-    responseHeaders = reqBodyResHeadersResBodyTuple.responseHeaders
-    responseBody = reqBodyResHeadersResBodyTuple.responseBody
   }
 
   // MARK: /PERFORM -
