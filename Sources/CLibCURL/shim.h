@@ -7,6 +7,8 @@
 
 #ifndef yCLibCURL
 #define yCLibCURL
+#include <stddef.h>
+#include <stdint.h>
 #include <curl/curl.h>
 
 // Note: `curl_easy_nextheader` is supported in curl >=7.84.0.
@@ -14,6 +16,7 @@
 
 // Swifty Names
 typedef size_t CSize;
+typedef curl_off_t CCURLOffset;
 typedef long CURLResponseCode;
 typedef struct curl_slist CCURLStringList;
 
@@ -40,11 +43,15 @@ static CURLcode _NWG_curl_easy_set_header_user_info(CURL * _Nonnull curl, void *
 }
 
 static CURLcode _NWG_curl_easy_set_http_method_to_get(CURL * _Nonnull curl) {
-  return curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
+  return curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
 }
 
 static CURLcode _NWG_curl_easy_set_http_method_to_post(CURL * _Nonnull curl) {
-  return curl_easy_setopt(curl, CURLOPT_POST, 1);
+  return curl_easy_setopt(curl, CURLOPT_POST, 1L);
+}
+
+static CURLcode _NWG_curl_easy_set_http_method_to_put(CURL * _Nonnull curl) {
+  return curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 }
 
 static CURLcode _NWG_curl_easy_set_http_request_headers(CURL * _Nonnull curl,
@@ -67,6 +74,14 @@ static CURLcode _NWG_curl_easy_set_read_function(CURL * _Nonnull curl,
 
 static CURLcode _NWG_curl_easy_set_ua(CURL * _Nonnull curl, const char * _Nonnull ua) {
   return curl_easy_setopt(curl, CURLOPT_USERAGENT, ua);
+}
+
+static CURLcode _NWG_curl_easy_set_upload_file_size(CURL * _Nonnull curl, CCURLOffset filesize) {
+  if (filesize <= ((CCURLOffset)INT32_MAX)) {
+    return curl_easy_setopt(curl, CURLOPT_INFILESIZE, (long)filesize);
+  } else {
+    return curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, filesize);
+  }
 }
 
 static CURLcode _NWG_curl_easy_set_url(CURL * _Nonnull curl, const char * _Nonnull url) {

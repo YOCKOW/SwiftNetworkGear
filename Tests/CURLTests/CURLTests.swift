@@ -33,6 +33,7 @@ struct HTTPBinResponse: Decodable {
     }
   }
 
+  let data: String?
   let files: Dictionary<String, String>?
   let form: Dictionary<String, StringOrArray>?
   let headers: Dictionary<String, String>
@@ -140,6 +141,27 @@ final class CURLTests: XCTestCase {
     XCTAssertEqual(response?.files?["file"], "MY TEXT.")
     XCTAssertEqual(response?.form?["name1"], "VALUE1")
     XCTAssertEqual(response?.form?["name2"], "VALUE2")
+  }
+
+  func test_performPut() async throws {
+    let text = "Hello, World!\n"
+    var delegate = CURLClientGeneralDelegate(
+      requestHeaderFields: [
+        (name: "Content-Type", value: "text/plain"),
+      ],
+      requestBody: .init(data: Data(text.utf8))
+    )
+    let client = try CURLManager.shared.makeEasyClient()
+    try await client.setHTTPMethodToPut()
+    try await client.setUploadFileSize(text.count)
+    try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/put")))
+    try await client.perform(delegate: &delegate)
+
+    XCTAssertTrue(try XCTUnwrap(delegate.responseCode) / 100 == 2)
+    let response = try delegate.responseBody(as: Data.self).map {
+      return try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
+    }
+    XCTAssertEqual(response?.data, text)
   }
 
   func test_requestHeaders() async throws {

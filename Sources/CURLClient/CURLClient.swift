@@ -97,6 +97,14 @@ public actor EasyClient {
     try _throwIfFailed({ _NWG_curl_easy_set_http_method_to_post($0) })
   }
 
+  public func setHTTPMethodToPut() throws {
+    try _throwIfFailed({ _NWG_curl_easy_set_http_method_to_put($0) })
+  }
+
+  public func setUploadFileSize(_ size: CCURLOffset) throws {
+    try _throwIfFailed({ _NWG_curl_easy_set_upload_file_size($0, size) })
+  }
+
   public func setURL(_ url: URL) throws {
     try _throwIfFailed({ _NWG_curl_easy_set_url($0, url.absoluteString) })
   }
