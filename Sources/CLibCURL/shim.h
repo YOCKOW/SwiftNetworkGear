@@ -42,6 +42,10 @@ static CURLcode _NWG_curl_easy_set_header_user_info(CURL * _Nonnull curl, void *
   return curl_easy_setopt(curl, CURLOPT_HEADERDATA, userInfo);
 }
 
+static CURLcode _NWG_curl_easy_set_http_method_to_custom(CURL * _Nonnull curl, char * _Nonnull method) {
+  return curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
+}
+
 static CURLcode _NWG_curl_easy_set_http_method_to_get(CURL * _Nonnull curl) {
   return curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
 }

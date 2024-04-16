@@ -44,6 +44,16 @@ struct HTTPBinResponse: Decodable {
 }
 
 final class CURLTests: XCTestCase {
+  func test_performDelete() async throws {
+    var delegate = CURLClientGeneralDelegate()
+    let client = try CURLManager.shared.makeEasyClient()
+    try await client.setHTTPMethodToCustom("DELETE")
+    try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/delete")))
+    try await client.perform(delegate: &delegate)
+
+    XCTAssertEqual(try XCTUnwrap(delegate.responseCode), 200)
+  }
+
   func test_performGet() async throws {
     var delegate = CURLClientGeneralDelegate()
     let client = try CURLManager.shared.makeEasyClient()

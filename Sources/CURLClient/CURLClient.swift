@@ -89,6 +89,14 @@ public actor EasyClient {
     }
   }
 
+  public func setHTTPMethodToCustom(_ method: String) throws {
+    try method.withCString { (cString) -> Void in
+      try _throwIfFailed {
+        _NWG_curl_easy_set_http_method_to_custom($0, UnsafeMutablePointer(mutating: cString))
+      }
+    }
+  }
+
   public func setHTTPMethodToGet() throws {
     try _throwIfFailed({ _NWG_curl_easy_set_http_method_to_get($0) })
   }
