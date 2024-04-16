@@ -93,6 +93,10 @@ public actor EasyClient {
     try _throwIfFailed({ _NWG_curl_easy_set_http_method_to_get($0) })
   }
 
+  public func setHTTPMethodToHead() throws {
+    try _throwIfFailed({ _NWG_curl_easy_set_http_method_to_head($0) })
+  }
+
   public func setHTTPMethodToPost() throws {
     try _throwIfFailed({ _NWG_curl_easy_set_http_method_to_post($0) })
   }

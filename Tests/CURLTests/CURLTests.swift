@@ -62,6 +62,17 @@ final class CURLTests: XCTestCase {
     XCTAssertEqual(responseString, "test")
   }
 
+  func test_performHead() async throws {
+    var delegate = CURLClientGeneralDelegate()
+    let client = try CURLManager.shared.makeEasyClient()
+    try await client.setHTTPMethodToHead()
+    try await client.setURL(try XCTUnwrap(URL(string: "https://storage.googleapis.com/public.data.yockow.jp/test-assets/test.txt")))
+    try await client.perform(delegate: &delegate)
+
+    XCTAssertEqual(try XCTUnwrap(delegate.responseCode), 200)
+    XCTAssertEqual(delegate.responseBody(as: Data.self)?.count, 0)
+  }
+
   func test_performPost() async throws {
     var delegate = CURLClientGeneralDelegate(requestBody: .init(data: Data("foo=foo&bar=bar".utf8)))
     let client = try CURLManager.shared.makeEasyClient()
