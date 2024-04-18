@@ -35,6 +35,8 @@ public final class CURLManager {
     curl_global_init(.init(CURL_GLOBAL_ALL))
   }
 
+  fileprivate private(set) lazy var _libcurlVersion = _NWG_curl_version_info_now()
+
   private var _cleaned: Bool = false
 
   private func clean() {
@@ -65,6 +67,11 @@ public final class CURLManager {
 
 /// A wrapper of a CURL easy handle.
 public actor EasyClient {
+  public static let defaultUserAgent: String = ({
+    let libcurlVersion = String(cString: CURLManager.shared._libcurlVersion.pointee.version)
+    return "SwiftNetworkGearClient/0.1 (libcurl/\(libcurlVersion)) https://GitHub.com/YOCKOW/SwiftNetworkGear"
+  })()
+
   private let _curlHandle: UnsafeMutableRawPointer
 
   fileprivate init() throws {
@@ -73,7 +80,7 @@ public actor EasyClient {
     }
     _NWG_curl_easy_set_ua(
       curlHandle,
-      "SwiftNetworkGearClient/0.1 https://GitHub.com/YOCKOW/SwiftNetworkGear"
+      EasyClient.defaultUserAgent
     )
     self._curlHandle = curlHandle
   }

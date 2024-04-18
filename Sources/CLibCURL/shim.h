@@ -19,6 +19,7 @@ typedef size_t CSize;
 typedef curl_off_t CCURLOffset;
 typedef long CURLResponseCode;
 typedef struct curl_slist CCURLStringList;
+typedef curl_version_info_data CCURLVersionInfo;
 
 static CURLcode _NWG_curl_easy_get_response_code(CURL * _Nonnull curl,
                                                  CURLResponseCode * _Nonnull codePointer) {
@@ -117,6 +118,14 @@ static CCURLStringList * _Nullable _NWG_curl_slist_append(CCURLStringList * _Non
 
 void _NWG_curl_slist_free_all(CCURLStringList * _Nullable list) {
   curl_slist_free_all(list);
+}
+
+static const CCURLVersionInfo * _Nonnull _NWG_curl_version_info(CURLversion age) {
+  return curl_version_info(age);
+}
+
+static const CCURLVersionInfo * _Nonnull _NWG_curl_version_info_now() {
+  return _NWG_curl_version_info(CURLVERSION_NOW);
 }
 
 #endif

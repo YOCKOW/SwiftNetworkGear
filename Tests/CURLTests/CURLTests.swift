@@ -45,6 +45,10 @@ struct HTTPBinResponse: Decodable {
 }
 
 final class CURLTests: XCTestCase {
+  func test_defaultUserAgent() {
+    XCTAssertTrue(EasyClient.defaultUserAgent.hasPrefix("SwiftNetworkGearClient/"))
+  }
+
   func test_performDelete() async throws {
     var delegate = CURLClientGeneralDelegate()
     let client = try CURLManager.shared.makeEasyClient()
