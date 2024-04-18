@@ -50,7 +50,7 @@ let package = Package(
       "ySwiftExtensions",
     ]),
     .target(name: "sockaddr_tests", dependencies: [], path:"Tests/sockaddr-tests"),
-    .testTarget(name: "CURLTests", dependencies: ["CURLClient"]),
+    .testTarget(name: "CURLTests", dependencies: ["CLibCURL", "CURLClient"]),
     .testTarget(name: "HTTPTests", dependencies: ["NetworkGear"]),
     .testTarget(name: "NGCExtensionsTests", dependencies: ["NetworkGear", "sockaddr_tests"]),
     .testTarget(name: "NetworkGearTests", dependencies: ["NetworkGear", "sockaddr_tests"]),

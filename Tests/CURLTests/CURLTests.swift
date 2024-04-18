@@ -6,6 +6,7 @@
  ************************************************************************************************ */
 
 import XCTest
+import CLibCURL
 @testable import CURLClient
 
 struct HTTPBinResponse: Decodable {
@@ -204,5 +205,49 @@ final class CURLTests: XCTestCase {
     }
     XCTAssertEqual(response?.headerValue(for: "X-FOO"), "FOO")
     XCTAssertEqual(response?.headerValue(for: "X-BAR"), "BAR")
+  }
+
+  func test_simultaneousHTTPRequestsWithoutCURLMultiInterface() async throws {
+    let urls: [String] = [
+      "https://www.Apple.com/",
+      "https://cURL.se/",
+      "https://www.Example.com/",
+      "https://www.Google.co.jp/",
+      "https://httpbin.org/",
+      "https://www.Swift.org/",
+      "https://www.Wikipedia.org/",
+      "https://www.Yahoo.co.jp/",
+      "https://Bot.YOCKOW.jp/",
+      "https://Choeropsis-liberiensis.YOCKOW.jp/",
+    ]
+
+    func __clientFromURL(_ url: String) async throws -> EasyClient {
+      let client = try CURLManager.shared.makeEasyClient()
+      try await client.setHTTPMethodToGet()
+      try await client.setURL(try XCTUnwrap(URL(string: url)))
+      return client
+    }
+
+    let results = try await withThrowingTaskGroup(of: (String, CURLResponseCode).self) { group in
+      var urlsAndClients: [(String, EasyClient)] = []
+      for url in urls {
+        urlsAndClients.append((url, try await __clientFromURL(url)))
+      }
+      for urlAndClient in urlsAndClients {
+        group.addTask {
+          var delegate = CURLClientGeneralDelegate()
+          try await urlAndClient.1.perform(delegate: &delegate)
+          return (urlAndClient.0, delegate.responseCode)
+        }
+      }
+      return try await group.reduce(into: []) { $0.append($1) }
+    }
+    for result in results {
+      let codeDivBy100 = result.1 / 100
+      XCTAssertTrue(
+        codeDivBy100 == 2 || codeDivBy100 == 3,
+        "Unexpected response code \(result.1) for URL \(result.0)"
+      )
+    }
   }
 }
