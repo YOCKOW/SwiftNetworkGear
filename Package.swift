@@ -14,7 +14,15 @@ let package = Package(
   products: [
     // Products define the executables and libraries produced by a package, and make them visible to other packages.
     .library(name: "CLibCURL", targets: ["CLibCURL"]),
-    .library(name: "SwiftNetworkGear", type: .dynamic, targets: ["CURLClient", "NetworkGear"]),
+    .library(
+      name: "SwiftNetworkGear",
+      type: .dynamic,
+      targets: [
+        "CURLClient",
+        "CNetworkGear",
+        "NetworkGear"
+      ]
+    ),
   ],
   dependencies: [
     // Dependencies declare other packages that this package depends on.
@@ -41,8 +49,16 @@ let package = Package(
         "CLibCURL",
       ]
     ),
+    .target(
+      name: "CNetworkGear",
+      dependencies: [],
+      exclude: [
+        "README.md",
+      ]
+    ),
     .target(name: "NetworkGear", dependencies: [
       "CURLClient",
+      "CNetworkGear",
       "SwiftBootstring",
       "SwiftPublicSuffix",
       "SwiftRanges",
