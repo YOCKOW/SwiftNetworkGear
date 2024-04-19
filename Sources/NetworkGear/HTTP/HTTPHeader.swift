@@ -38,7 +38,16 @@ public struct HTTPHeader {
       } else if newField.isAppendable {
         self._fieldTable[name]![0]._delegate.append(elementsIn:newField._delegate)
       } else {
-        fatalError("Header Field named \(name.rawValue) must be single.")
+        // Join the field values with ','
+        // https://www.rfc-editor.org/rfc/rfc9110.html#name-field-order
+        guard let existingField = self._fieldTable[name]?.first else {
+          fatalError("Doesn't exist?!")
+        }
+        guard let newValue = HTTPHeaderFieldValue(rawValue: "\(existingField.value.rawValue), \(newField.value.rawValue)") else {
+          fatalError("Can't combine the values?!")
+        }
+        let brandnewField = HTTPHeaderField(name: name, value: newValue)
+        self._fieldTable[name] = [brandnewField]
       }
     }
   }
