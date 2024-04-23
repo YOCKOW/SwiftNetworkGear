@@ -1,14 +1,11 @@
 /***************************************************************************************************
  CSocketAddressInformation.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
  
-import CoreFoundation
-import Foundation
-
-
+import CNetworkGear
 
 /// Extend `CSocketAddressInformation` (a.k.a. `addrinfo`)
 extension CSocketAddressInformation {

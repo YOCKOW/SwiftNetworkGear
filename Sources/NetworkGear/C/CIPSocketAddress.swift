@@ -1,10 +1,12 @@
 /* *************************************************************************************************
  CIPSocketAddress.swift
-   © 2017-2018, 2020 YOCKOW.
+   © 2017-2018,2020,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
  
+import CNetworkGear
+
 /// A type that can represent a socket address in C.
 ///
 /// Do not declare new conformances to `CIPAddress`.

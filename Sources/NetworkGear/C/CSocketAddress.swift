@@ -1,9 +1,11 @@
 /***************************************************************************************************
  CSocketAddress.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
+
+import CNetworkGear
 
 /// Extend `CSocketAddress` (a.k.a. `sockaddr`)
 extension CSocketAddress {

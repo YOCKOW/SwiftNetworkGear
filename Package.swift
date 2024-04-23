@@ -68,8 +68,22 @@ let package = Package(
     .target(name: "sockaddr_tests", dependencies: [], path:"Tests/sockaddr-tests"),
     .testTarget(name: "CURLTests", dependencies: ["CLibCURL", "CURLClient"]),
     .testTarget(name: "HTTPTests", dependencies: ["NetworkGear"]),
-    .testTarget(name: "NGCExtensionsTests", dependencies: ["NetworkGear", "sockaddr_tests"]),
-    .testTarget(name: "NetworkGearTests", dependencies: ["NetworkGear", "sockaddr_tests"]),
+    .testTarget(
+      name: "NGCExtensionsTests",
+      dependencies: [
+        "CNetworkGear",
+        "NetworkGear",
+        "sockaddr_tests"
+      ]
+    ),
+    .testTarget(
+      name: "NetworkGearTests",
+      dependencies: [
+        "CNetworkGear",
+        "NetworkGear",
+        "sockaddr_tests"
+      ]
+    ),
   ],
   swiftLanguageVersions: [.v5]
 )

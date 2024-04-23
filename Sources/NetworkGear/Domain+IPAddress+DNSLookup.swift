@@ -1,15 +1,11 @@
-/***************************************************************************************************
+/* *************************************************************************************************
  Domain+IPAddress+DNSLookup.swift
-   © 2018 YOCKOW.
+   © 2018,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
- **************************************************************************************************/
+ ************************************************************************************************ */
 
-#if os(Linux)
-import Glibc
-#else
-import Darwin
-#endif
+import CNetworkGear
 
 extension Domain {
   /// DNS Lookup
@@ -59,7 +55,7 @@ extension Domain {
 extension IPAddress {
   /// DNS reverse lookup
   public var domain: Domain? {
-    let domain_p = UnsafeMutablePointer<CChar>.allocate(capacity:Int(NI_MAXHOST))
+    let domain_p = UnsafeMutablePointer<CChar>.allocate(capacity: Int(cNWGNameInfoMaxHostnameLength))
     defer { domain_p.deallocate() }
     
     func __getNameInfo<T>(_ sockAddr: T) -> CInt where T: CIPSocketAddress {
@@ -67,7 +63,7 @@ extension IPAddress {
       return withUnsafePointer(to: sockAddr) {
         let asSockAddr = UnsafeRawPointer($0).bindMemory(to: CSocketAddress.self, capacity: 2)
         return getnameinfo(asSockAddr, size,
-                           domain_p, CSocketRelatedSize(NI_MAXHOST),
+                           domain_p, CSocketRelatedSize(cNWGNameInfoMaxHostnameLength),
                            nil, 0, NI_NAMEREQD)
       }
     }
