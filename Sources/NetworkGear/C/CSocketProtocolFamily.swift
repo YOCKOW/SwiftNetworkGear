@@ -8,13 +8,25 @@
 import CNetworkGear
 
 /// Wrapper for socket protocol.
-public struct CSocketProtocolFamily: RawRepresentable {
-  public let rawValue: CInt
-  public init(rawValue:CInt) { self.rawValue = rawValue }
-  public init(rawValue:Int)  { self.rawValue = CInt(rawValue) } // for Linux
-  public static let unspecified = CSocketProtocolFamily(rawValue:0)
-  public static let tcp         = CSocketProtocolFamily(rawValue:IPPROTO_TCP)
-  public static let udp         = CSocketProtocolFamily(rawValue:IPPROTO_UDP)
-}
+public struct CSocketProtocolFamily: RawRepresentable, Equatable {
+  public typealias RawValue = CInt
 
-extension CSocketProtocolFamily: Equatable {}
+  public let rawValue: CInt
+
+  public init(rawValue: CInt) {
+    self.rawValue = rawValue
+  }
+
+  public init(rawValue: Int)  {
+    self.rawValue = CInt(rawValue)
+  }
+
+  @inlinable
+  public init(_ cProtocol: CNWGIPProtocol) {
+    self.rawValue = CInt(cProtocol.rawValue)
+  }
+
+  public static let unspecified = CSocketProtocolFamily(rawValue:0)
+  public static let tcp         = CSocketProtocolFamily(cNWGTransmissionControlProtocol)
+  public static let udp         = CSocketProtocolFamily(cNWGUserDatagramProtocol)
+}

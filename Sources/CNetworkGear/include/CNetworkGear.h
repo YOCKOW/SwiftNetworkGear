@@ -52,6 +52,29 @@ static const size_t cNWGNameInfoMaxHostnameLength = NI_MAXHOST;
 /// `NI_MAXSERV`
 static const size_t cNWGNameInfoMaxServericeNameLength = NI_MAXSERV;
 
+/// `IPPROTO_*`
+typedef enum _CNWGIPProtocol {
+  /// `IPPROTO_IP`
+  cNWGInternetProtocol = IPPROTO_IP,
+  /// `IPPROTO_ICMP`
+  cNWGControlMessageProtocol = IPPROTO_ICMP,
+  /// `IPPROTO_TCP`
+  cNWGTransmissionControlProtocol = IPPROTO_TCP,
+#ifdef IPPROTO_IPV4
+  /// `IPPROTO_IPV4`
+  cNWGIPv4EncapsulationProtocol = IPPROTO_IPV4,
+#elif defined(IPPROTO_IPIP)
+  /// `IPPROTO_IPIP`
+  cNWGIPv4EncapsulationProtocol = IPPROTO_IPIP,
+#endif
+  /// `IPPROTO_UDP`
+  cNWGUserDatagramProtocol = IPPROTO_UDP,
+  /// `IPPROTO_IPV6`
+  cNWGIPv6HeaderProtocol = IPPROTO_IPV6,
+  /// `IPPROTO_RAW`
+  cNWGRawIPPacketProtocol = IPPROTO_RAW,
+} CNWGIPProtocol;
+
 typedef enum {
   // MARK: - Darwin & Linux
   cNWGUnspecifiedAddressFamily = AF_UNSPEC,
@@ -253,6 +276,17 @@ typedef enum {
   cNWGManagementComponentTransportProtocolAddressFamily = AF_MCTP,
 #endif
 } CNWGSocketAddressFamily;
+
+/// `AI_*`
+typedef enum _CNWGSocketAddressInformationFlag {
+  cNWGAIFlagPassive = AI_PASSIVE,
+  cNWGAIFlagCanonicalNameRequest = AI_CANONNAME,
+  cNWGAIFlagDisallowHostnameResolution = AI_NUMERICHOST,
+  cNWGAIFLagAcceptIPv4MappedAddress = AI_V4MAPPED,
+  cNWGAIFlagIncludeBothIPv4MappedAndIPv6Address = AI_ALL,
+  cNWGAIFlagUseHostConfiguration = AI_ADDRCONFIG,
+  cNWGAIFlagDisallowServiceNameResolution = AI_NUMERICSERV,
+} CNWGSocketAddressInformationFlag;
 
 typedef enum {
   cNWGStreamSocket = SOCK_STREAM,

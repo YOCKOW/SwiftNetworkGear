@@ -46,7 +46,7 @@ extension CIPv4Address: CIPAddress {
         cNWGIPv4AddressFamily,
         $0,
         address_p,
-        CSocketRelatedSize(INET_ADDRSTRLEN)
+        CSocketRelatedSize(cNWGIPv4AddressStringLength)
       ) != nil else {
         fatalError("Failed to convert IP address to String")
       }

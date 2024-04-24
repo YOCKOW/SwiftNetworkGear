@@ -12,15 +12,24 @@ extension CSocketAddressInformation {
   public struct Options: OptionSet {
     public let rawValue:CInt
     public init(rawValue:CInt) { self.rawValue = rawValue }
-    
+
+    @inlinable
+    public init(_ cFlags: CNWGSocketAddressInformationFlag) {
+      self.rawValue = CInt(cFlags.rawValue)
+    }
+
     public static let none = Options([])
-    public static let passive = Options(rawValue:AI_PASSIVE)
-    public static let requestForCanonicalName = Options(rawValue:AI_CANONNAME)
-    public static let disallowHostNameResolution = Options(rawValue:AI_NUMERICHOST)
-    public static let acceptIPv4MappedAddress = Options(rawValue:AI_V4MAPPED)
-    public static let includeBothIPv4MappedAndIPv6Address = Options(rawValue:AI_ALL)
-    public static let useHostConfiguration = Options(rawValue:AI_ADDRCONFIG)
-    public static let disallowServiceNameResolution = Options(rawValue:AI_NUMERICSERV)
+    public static let passive = Options(cNWGAIFlagPassive)
+    public static let canonicalNameRequest = Options(cNWGAIFlagCanonicalNameRequest)
+    @available(*, deprecated, renamed: "canonicalNameRequest")
+    public static let requestForCanonicalName = canonicalNameRequest
+    public static let disallowHostnameResolution = Options(cNWGAIFlagDisallowHostnameResolution)
+    @available(*, deprecated, renamed: "disallowHostnameResolution")
+    public static let disallowHostNameResolution = Options(cNWGAIFlagDisallowHostnameResolution)
+    public static let acceptIPv4MappedAddress = Options(cNWGAIFLagAcceptIPv4MappedAddress)
+    public static let includeBothIPv4MappedAndIPv6Address = Options(cNWGAIFlagIncludeBothIPv4MappedAndIPv6Address)
+    public static let useHostConfiguration = Options(cNWGAIFlagUseHostConfiguration)
+    public static let disallowServiceNameResolution = Options(cNWGAIFlagDisallowServiceNameResolution)
   }
   
   public var options: Options {
