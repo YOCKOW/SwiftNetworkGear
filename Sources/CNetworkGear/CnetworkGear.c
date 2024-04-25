@@ -50,6 +50,30 @@ void CNWGIPv6AddressSetBytes(CIPv6Address * _Nonnull address,
 #endif
 }
 
+bool CNWGGetAddressInformation(const char * _Nonnull hostname,
+                              const char * _Nonnull serviceName,
+                              const CSocketAddressInformation * _Nonnull hints,
+                              CSocketAddressInformation * _Nullable * _Nonnull result) {
+  return (getaddrinfo(hostname, serviceName, hints, result) == 0) ? true : false;
+}
+
+void CNWGFreeAddressInformation(CSocketAddressInformation * _Nonnull ai) {
+  freeaddrinfo(ai);
+}
+
+bool CNWGGetNameInformation(const CSocketAddress * _Nonnull socketAddress,
+                            CSocketRelatedSize length,
+                           char * _Nullable hostname,
+                           CSocketRelatedSize hostnameLength,
+                           char * _Nullable service,
+                           CSocketRelatedSize serviceNameLength,
+                           CNWGSocketNameInformationFlag flags) {
+  return (getnameinfo(socketAddress, length,
+                      hostname, hostnameLength,
+                      service, serviceNameLength,
+                      (int)flags) == 0) ? true : false;
+}
+
 void CNWGUNIXSocketAddressGetPath(const CUNIXSocketAddress * _Nonnull address,
                                   char * _Nonnull buffer) {
   strcpy(buffer, address->sun_path);

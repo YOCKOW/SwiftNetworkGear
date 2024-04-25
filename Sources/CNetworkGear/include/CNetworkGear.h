@@ -288,6 +288,24 @@ typedef enum _CNWGSocketAddressInformationFlag {
   cNWGAIFlagDisallowServiceNameResolution = AI_NUMERICSERV,
 } CNWGSocketAddressInformationFlag;
 
+/// `NI_*` flags
+typedef enum _CNWGSocketNameInformationFlag {
+  /// `NI_NAMEREQD`
+  cNWGNIFlagRequireName = NI_NAMEREQD,
+
+  /// `NI_DGRAM`
+  cNWGNIFlagUDPBased = NI_DGRAM,
+
+  /// `NI_NOFQDN`
+  cNWGNIFlagNoFullyQualifiedDomainName = NI_NOFQDN,
+
+  /// `NI_NUMERICHOST`
+  cNWGNIFlagNumericHostname = NI_NUMERICHOST,
+
+  /// `NI_NUMERICSERV`
+  cNWGNIFlagNumericServiceName = NI_NUMERICSERV,
+} CNWGSocketNameInformationFlag;
+
 typedef enum {
   cNWGStreamSocket = SOCK_STREAM,
   cNWGDatagramSocket = SOCK_DGRAM,
@@ -316,13 +334,21 @@ void CNWGIPv6AddressGetBytes(CIPv6Address const * _Nonnull address,
 void CNWGIPv6AddressSetBytes(CIPv6Address * _Nonnull address,
                              uint8_t const * _Nonnull source);
 
-static inline CSocketAddressSize CNWGSocketAddressSizeOf(const CSocketAddress * _Nonnull addr) {
-#ifdef __linux__
-  return (CSocketAddressSize)sizeof(CSocketAddress);
-#else
-  return addr->sa_len;
-#endif
-}
+bool CNWGGetAddressInformation(const char * _Nonnull hostname,
+                               const char * _Nonnull serviceName,
+                               const CSocketAddressInformation * _Nonnull hints,
+                               CSocketAddressInformation * _Nullable * _Nonnull result);
+
+void CNWGFreeAddressInformation(CSocketAddressInformation * _Nonnull ai);
+
+bool CNWGGetNameInformation(const CSocketAddress * _Nonnull socketAddress,
+                            CSocketRelatedSize length,
+                            char * _Nullable hostname,
+                            CSocketRelatedSize hostnameLength,
+                            char * _Nullable service,
+                            CSocketRelatedSize serviceNameLength,
+                            CNWGSocketNameInformationFlag flags);
+
 
 static inline CSocketAddressSize CNWGIPv4SocketAddressSizeOf(const CIPv4SocketAddress *  _Nonnull addr) {
 #ifdef __linux__
