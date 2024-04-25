@@ -7,25 +7,44 @@
 
 import CNetworkGear
 
-/// Extend `CSocketAddress` (a.k.a. `sockaddr`)
-extension CSocketAddress {
-  internal static func actualSocketAddress(`for` pointer:UnsafePointer<CSocketAddress>) -> CSocketAddressStructure {
-    let family = pointer.pointee.family
-    if family == .unix {
-      return pointer.withMemoryRebound(to:CUNIXSocketAddress.self, capacity:1) {
+extension UnsafePointer where Pointee == CSocketAddress {
+  public var family: CSocketAddressFamily {
+    return CSocketAddressFamily(rawValue: pointee.sa_family)
+  }
+
+  internal var actualSocketAddress: any CSocketAddressStructure {
+    switch family {
+    case .unix:
+      return withMemoryRebound(to: CUNIXSocketAddress.self, capacity: 1) {
         return $0.pointee
       }
-    } else if family == .ipv4 {
-      return pointer.withMemoryRebound(to:CIPv4SocketAddress.self, capacity:1) {
+    case .ipv4:
+      return withMemoryRebound(to: CIPv4SocketAddress.self, capacity: 1) {
         return $0.pointee
       }
-    } else if family == .ipv6 {
-      return pointer.withMemoryRebound(to:CIPv6SocketAddress.self, capacity:1) {
+    case .ipv6:
+      return withMemoryRebound(to: CIPv6SocketAddress.self, capacity: 1) {
         return $0.pointee
       }
-    } else {
+    default:
       fatalError("Unimplemented family: \(family)")
     }
+  }
+
+  public var size: CSocketAddressSize {
+    #if !os(Linux)
+    return pointee.sa_len
+    #else
+    return actualSocketAddress.size
+    #endif
+  }
+}
+
+/// Extend `CSocketAddress` (a.k.a. `sockaddr`)
+@available(*, deprecated, message: "Use `UnsafePointer<CSocketAddress>` extension instead.")
+extension CSocketAddress {
+  internal static func actualSocketAddress(`for` pointer: UnsafePointer<CSocketAddress>) -> any CSocketAddressStructure {
+    return pointer.actualSocketAddress
   }
   
   public var family: CSocketAddressFamily {
