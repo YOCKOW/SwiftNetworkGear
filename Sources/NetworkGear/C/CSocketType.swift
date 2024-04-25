@@ -1,26 +1,38 @@
 /***************************************************************************************************
  CSocketType.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
  
-import CoreFoundation
-import Foundation
+import CNetworkGear
 
 /// Wrapper for `__socket_type`
-public struct CSocketType: RawRepresentable {
-  public let rawValue: CInt
-  public init(rawValue:CInt) { self.rawValue = rawValue }
-  #if os(Linux)
-  public init(rawValue:__socket_type) { self.rawValue = CInt(rawValue.rawValue) }
-  #endif
-  
-  public static let stream = CSocketType(rawValue:SOCK_STREAM)
-  public static let datagram = CSocketType(rawValue:SOCK_DGRAM)
-  public static let raw = CSocketType(rawValue:SOCK_RAW)
-  public static let reliablyDeliveredMessage = CSocketType(rawValue:SOCK_RDM)
-  public static let sequencedPacket = CSocketType(rawValue:SOCK_SEQPACKET)
-}
+public struct CSocketType: RawRepresentable, Equatable {
+  public typealias RawValue = CInt
 
-extension CSocketType: Equatable {}
+  public let rawValue: CInt
+
+  public init(rawValue: CInt) {
+    self.rawValue = rawValue
+  }
+
+  public init(_ cSocketType: CNWGSocketType) {
+    self.init(rawValue: CInt(cSocketType.rawValue))
+  }
+
+  /// Stream socket
+  public static let stream = CSocketType(cNWGStreamSocket)
+
+  /// Datagram socket
+  public static let datagram = CSocketType(cNWGDatagramSocket)
+
+  /// Raw protocol socket
+  public static let raw = CSocketType(cNWGRawProtocolSocket)
+
+  /// Reliably-delivered message socket
+  public static let reliablyDeliveredMessage = CSocketType(cNWGReliablyDeliveredMessageSocket)
+
+  /// Sequenced packet stream socket
+  public static let sequencedPacket = CSocketType(cNWGSequencedPacketStreamSocket)
+}

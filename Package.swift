@@ -14,7 +14,15 @@ let package = Package(
   products: [
     // Products define the executables and libraries produced by a package, and make them visible to other packages.
     .library(name: "CLibCURL", targets: ["CLibCURL"]),
-    .library(name: "SwiftNetworkGear", type: .dynamic, targets: ["CURLClient", "NetworkGear"]),
+    .library(
+      name: "SwiftNetworkGear",
+      type: .dynamic,
+      targets: [
+        "CURLClient",
+        "CNetworkGear",
+        "NetworkGear"
+      ]
+    ),
   ],
   dependencies: [
     // Dependencies declare other packages that this package depends on.
@@ -41,8 +49,16 @@ let package = Package(
         "CLibCURL",
       ]
     ),
+    .target(
+      name: "CNetworkGear",
+      dependencies: [],
+      exclude: [
+        "README.md",
+      ]
+    ),
     .target(name: "NetworkGear", dependencies: [
       "CURLClient",
+      "CNetworkGear",
       "SwiftBootstring",
       "SwiftPublicSuffix",
       "SwiftRanges",
@@ -52,8 +68,22 @@ let package = Package(
     .target(name: "sockaddr_tests", dependencies: [], path:"Tests/sockaddr-tests"),
     .testTarget(name: "CURLTests", dependencies: ["CLibCURL", "CURLClient"]),
     .testTarget(name: "HTTPTests", dependencies: ["NetworkGear"]),
-    .testTarget(name: "NGCExtensionsTests", dependencies: ["NetworkGear", "sockaddr_tests"]),
-    .testTarget(name: "NetworkGearTests", dependencies: ["NetworkGear", "sockaddr_tests"]),
+    .testTarget(
+      name: "NGCExtensionsTests",
+      dependencies: [
+        "CNetworkGear",
+        "NetworkGear",
+        "sockaddr_tests"
+      ]
+    ),
+    .testTarget(
+      name: "NetworkGearTests",
+      dependencies: [
+        "CNetworkGear",
+        "NetworkGear",
+        "sockaddr_tests"
+      ]
+    ),
   ],
   swiftLanguageVersions: [.v5]
 )
