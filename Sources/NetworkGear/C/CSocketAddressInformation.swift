@@ -70,10 +70,10 @@ extension CSocketAddressInformation {
   }
   
   /// Returns the pointee of `.ai_addr`, or nil if the pointer is null.
-  public var socketAddress: CSocketAddressStructure? {
+  public var socketAddress: (any CSocketAddressStructure)? {
     get {
       guard let pointer = self.ai_addr  else { return nil }
-      return CSocketAddress.actualSocketAddress(for:UnsafePointer(pointer))
+      return UnsafePointer<CSocketAddress>(pointer).actualSocketAddress
     }
   }
 }
