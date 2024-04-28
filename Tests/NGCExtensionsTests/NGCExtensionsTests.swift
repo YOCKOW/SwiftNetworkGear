@@ -1,16 +1,15 @@
 /***************************************************************************************************
  NGCExtensionsTests.swift
-   © 2018, 2022 YOCKOW.
+   © 2018,2022,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
 
 import XCTest
+import CNetworkGear
 @testable import NetworkGear
 import sockaddr_tests
 
-// Disable these tests due to https://github.com/YOCKOW/SwiftNetworkGear/issues/36
-#if canImport(Darwin) || SR15822Fixed
 final class NGCExtensionsTests: XCTestCase {
   func testCIPAddress() {
     let v4_1 = CIPv4Address((127,0,0,1))
@@ -86,4 +85,3 @@ final class NGCExtensionsTests: XCTestCase {
     _sat_free(_in6)
   }
 }
-#endif

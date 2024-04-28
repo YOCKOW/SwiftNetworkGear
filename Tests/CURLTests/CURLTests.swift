@@ -102,6 +102,25 @@ final class CURLTests: XCTestCase {
     XCTAssertEqual(response?.form?["bar"], "bar")
   }
 
+  func test_performPostRedirection() async throws {
+    var delegate = CURLClientGeneralDelegate(
+      requestHeaderFields: [
+        (name: "X-Y-POST-Redirection", value: "yes"),
+      ],
+      requestBody: .init(data: Data("redirected=yes".utf8))
+    )
+    let client = try CURLManager.shared.makeEasyClient()
+    try await client.setHTTPMethodToPost()
+    try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/redirect-to?url=%2Fpost&status_code=308")))
+    try await client.setMaxNumberOfRedirectsAllowed(30)
+    try await client.perform(delegate: &delegate)
+
+    let response = try delegate.responseBody(as: Data.self).map {
+      try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
+    }
+    XCTAssertEqual(response?.form?["redirected"], "yes")
+  }
+
   func test_performPost_asyncRequestBody() async throws {
     struct __AsyncRequestBody: AsyncSequence {
       typealias Element = UInt8

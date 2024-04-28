@@ -1,12 +1,11 @@
 /* *************************************************************************************************
  CIPv6Address.swift
-   © 2017-2018, 2020 YOCKOW.
+   © 2017-2018,2020,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
- 
-import CoreFoundation
-import Foundation
+
+import CNetworkGear
 
 extension CIPv6Address: CIPAddress {
   public static let size: Int = 16
@@ -16,18 +15,23 @@ extension CIPv6Address: CIPAddress {
   
   public var address: Address {
     get {
-      #if !os(Linux)
-      return self.__u6_addr.__u6_addr8
-      #else
-      return self.__in6_u.__u6_addr8
-      #endif
+      var address: Address = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+      withUnsafeMutableBytes(of: &address) { (addressPointer) in
+        withUnsafePointer(to: self) { (selfPointer) in
+          CNWGIPv6AddressGetBytes(
+            selfPointer,
+            addressPointer.assumingMemoryBound(to: UInt8.self).baseAddress!
+          )
+        }
+      }
+      return address
     }
     set {
-      #if !os(Linux)
-      self.__u6_addr.__u6_addr8 = newValue
-      #else
-      self.__in6_u.__u6_addr8 = newValue
-      #endif
+      withUnsafePointer(to: newValue) { (newValuePointer) in
+        withUnsafeMutablePointer(to: &self) { (selfPointer) in
+          CNWGIPv6AddressSetBytes(selfPointer, newValuePointer)
+        }
+      }
     }
   }
   
@@ -52,17 +56,23 @@ extension CIPv6Address: CIPAddress {
   /// Returns `nil` if the string is not valid for IPv6 Address.
   public init?(_ string: String) {
     self.init()
-    guard inet_pton(AF_INET6, string, &self) == 1 else { return nil }
+    guard CNWGStringToIPAddress(cNWGIPv6AddressFamily, string, &self) == 1 else { return nil }
   }
   
   public var description: String {
-    let address_p = UnsafeMutablePointer<CChar>.allocate(capacity:Int(INET6_ADDRSTRLEN))
+    let address_p = UnsafeMutablePointer<CChar>.allocate(capacity: Int(cNWGIPv6AddressStringLength))
     defer { address_p.deallocate() }
     
-    var myself = self
-    guard inet_ntop(AF_INET6, &myself.address, address_p, CSocketRelatedSize(INET6_ADDRSTRLEN)) != nil else {
-      fatalError("Failed to convert IP address to String")
+    return withUnsafePointer(to: self.address) { (selfAddressPointer) -> String in
+      guard CNWGIPAddressToString(
+        cNWGIPv6AddressFamily,
+        selfAddressPointer,
+        address_p,
+        CSocketRelatedSize(cNWGIPv6AddressStringLength)
+      ) != nil else {
+        fatalError("Failed to convert IP address to String")
+      }
+      return String(utf8String: address_p)!
     }
-    return String(utf8String:address_p)!
   }
 }

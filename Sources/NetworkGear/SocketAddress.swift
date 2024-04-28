@@ -1,9 +1,11 @@
-/***************************************************************************************************
+/* *************************************************************************************************
  SocketAddress.swift
-   © 2018 YOCKOW.
+   © 2018,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
- **************************************************************************************************/
+ ************************************************************************************************ */
+
+import CNetworkGear
 
 ///
 /**
@@ -17,8 +19,8 @@ This class is necessary because `CSocketAddress()` or `sockaddr()` may allocate 
 public class SocketAddress {
   private var _size: Int
   private var _pointer: UnsafeMutableRawPointer
-  private var _boundPointer: UnsafeMutablePointer<CSocketAddress> {
-    return self._pointer.assumingMemoryBound(to:CSocketAddress.self)
+  private var _boundPointer: UnsafePointer<CSocketAddress> {
+    return UnsafePointer<CSocketAddress>(_pointer.assumingMemoryBound(to: CSocketAddress.self))
   }
   
   deinit {
@@ -34,7 +36,7 @@ public class SocketAddress {
   }
   
   internal init(_ pointer:UnsafeMutablePointer<CSocketAddress>) {
-    self._size = Int(pointer.pointee.size)
+    self._size = Int(UnsafePointer<CSocketAddress>(pointer).size)
     self._pointer = UnsafeMutableRawPointer.allocate(byteCount:self._size,
                                                      alignment:MemoryLayout<Int8>.alignment)
     self._pointer.copyMemory(from:UnsafeRawPointer(pointer), byteCount:self._size)
@@ -42,15 +44,15 @@ public class SocketAddress {
   
   /// Returns the actual size of `sockaddr_*`
   public var size: CSocketAddressSize {
-    return self._boundPointer.pointee.size
+    return _boundPointer.size
   }
   
   /// Returns the family of `sockaddr_*`
   public var family: CSocketAddressFamily {
-    return self._boundPointer.pointee.family
+    return _boundPointer.family
   }
   
-  public var cSocketAddress: CSocketAddressStructure {
-    return CSocketAddress.actualSocketAddress(for:UnsafePointer(self._boundPointer))
+  public var cSocketAddress: any CSocketAddressStructure {
+    return _boundPointer.actualSocketAddress
   }
 }

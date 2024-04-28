@@ -1,20 +1,16 @@
-/***************************************************************************************************
+/* *************************************************************************************************
  CUNIXSocketAddress.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
  
-import Foundation
+import CNetworkGear
 
 extension CUNIXSocketAddress: CSocketAddressStructure {
   public private(set) var size: CSocketAddressSize {
     get {
-      #if !os(Linux)
-      return self.sun_len
-      #else
-      return CSocketAddressSize(MemoryLayout<CUNIXSocketAddress>.size)
-      #endif
+      return withUnsafePointer(to: self) { CNWGUNIXSocketAddressSizeOf($0) }
     }
     set {
       #if !os(Linux)
@@ -34,42 +30,29 @@ extension CUNIXSocketAddress: CSocketAddressStructure {
 }
 
 extension CUNIXSocketAddress {
-  private var _pathLength: Int { return MemoryLayout.size(ofValue:self.sun_path) }
-  
-  private var _data: Data {
-    get {
-      var path = self.sun_path
-      return withUnsafePointer(to:&path) {
-        return Data(bytes:UnsafeRawPointer($0), count:self._pathLength)
-      }
-    }
-    set(newData) {
-      guard newData.count <= self._pathLength else { fatalError("Too long") }
-      withUnsafeMutableBytes(of:&self.sun_path) {
-        for ii in 0..<newData.count {
-          $0[ii] = newData[ii]
-        }
-      }
-    }
-  }
-  
   public var path: String {
     get {
-      return String(data:self._data, encoding:.utf8)!
+      let buffer = UnsafeMutablePointer<CChar>.allocate(capacity: Int(cNWGUNIXSocketAddressPathLength))
+      defer { buffer.deallocate() }
+
+      withUnsafePointer(to: self, { CNWGUNIXSocketAddressGetPath($0, buffer) })
+      return String(cString: buffer)
     }
     set {
-      guard let data = newValue.data(using:.utf8) else { fatalError("Invalid String") }
-      self._data = data
+      guard withUnsafeMutablePointer(to: &self, { CNWGUNIXSocketAddressSetPath($0, newValue) }) else {
+        fatalError("Unxpected path for \(Self.self)")
+      }
     }
   }
   
   public init?(path:String) {
     self.init()
-    guard let data = path.data(using:.utf8), data.count <= self._pathLength else { return nil }
+
+    guard withUnsafeMutablePointer(to: &self, { CNWGUNIXSocketAddressSetPath($0, path) }) else {
+      return nil
+    }
     self.size = CSocketAddressSize(MemoryLayout<CUNIXSocketAddress>.size)
     self.family = .unix
-    self._data = Data(repeating:0, count:self._pathLength) // reset
-    self._data = data
   }
 }
 

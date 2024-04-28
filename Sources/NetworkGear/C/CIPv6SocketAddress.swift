@@ -1,22 +1,18 @@
 /***************************************************************************************************
  CIPv6SocketAddress.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
- 
-import CoreFoundation
+
+import CNetworkGear
 
 extension CIPv6SocketAddress: CIPSocketAddress {
   public typealias ConcreteIPAddress = CIPv6Address
   
   public private(set) var size: CSocketAddressSize {
     get {
-      #if !os(Linux)
-      return self.sin6_len
-      #else
-      return CSocketAddressSize(MemoryLayout<CIPv6SocketAddress>.size)
-      #endif
+      return withUnsafePointer(to: self) { CNWGIPv6SocketAddressSizeOf($0) }
     }
     set {
       #if !os(Linux)
@@ -36,10 +32,10 @@ extension CIPv6SocketAddress: CIPSocketAddress {
   
   public var port: CSocketPortNumber {
     get {
-      return CFSwapInt16BigToHost(self.sin6_port)
+      return .init(bigEndian: self.sin6_port)
     }
     set {
-      self.sin6_port = CFSwapInt16HostToBig(newValue)
+      self.sin6_port = newValue.bigEndian
     }
   }
   
@@ -62,20 +58,20 @@ extension CIPv6SocketAddress {
   /// Returns flow identifier of IPv6
   public var flowIdentifier: CIPv6FlowIdentifier {
     get {
-      return CFSwapInt32BigToHost(self.sin6_flowinfo)
+      return .init(bigEndian: self.sin6_flowinfo)
     }
     set {
-      self.sin6_flowinfo = CFSwapInt32HostToBig(newValue)
+      self.sin6_flowinfo = newValue.bigEndian
     }
   }
   
   /// Returns Scope ID of IPv6
   public var scopeIdentifier: CIPv6ScopeIdentifier {
     get {
-      return CFSwapInt32BigToHost(self.sin6_scope_id)
+      return .init(bigEndian: self.sin6_scope_id)
     }
     set {
-      self.sin6_scope_id = CFSwapInt32HostToBig(newValue)
+      self.sin6_scope_id = newValue.bigEndian
     }
   }
   

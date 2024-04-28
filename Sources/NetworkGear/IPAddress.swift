@@ -1,11 +1,11 @@
 /***************************************************************************************************
  IPAddress.swift
-   © 2017-2019 YOCKOW.
+   © 2017-2019,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
  
-import Foundation
+import CNetworkGear
 
 /**
  
