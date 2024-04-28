@@ -7,6 +7,7 @@
 
 #ifndef yCLibCURL
 #define yCLibCURL
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <curl/curl.h>
@@ -30,6 +31,10 @@ static CURLcode _NWG_curl_easy_perform(CURL * _Nonnull curl) {
   return curl_easy_perform(curl);
 }
 
+static CURLcode _NWG_curl_easy_set_follow_location(CURL * _Nonnull curl, bool enable) {
+  return curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, (enable) ? 1L : 0L);
+}
+
 typedef size_t (* _NWGCURLHeaderCallbackFunction)(char * _Nonnull buffer,
                                                   size_t size,
                                                   size_t nitems,
@@ -41,6 +46,10 @@ static CURLcode _NWG_curl_easy_set_header_callback(CURL * _Nonnull curl,
 
 static CURLcode _NWG_curl_easy_set_header_user_info(CURL * _Nonnull curl, void * _Nullable userInfo) {
   return curl_easy_setopt(curl, CURLOPT_HEADERDATA, userInfo);
+}
+
+static CURLcode _NWG_curl_easy_set_max_redirects(CURL * _Nonnull curl, long amount) {
+  return curl_easy_setopt(curl, CURLOPT_MAXREDIRS, amount);
 }
 
 static CURLcode _NWG_curl_easy_set_http_method_to_custom(CURL * _Nonnull curl, char * _Nonnull method) {
@@ -79,6 +88,30 @@ typedef size_t (* _NWGCURLReadCallbackFunction)(char * _Nonnull buffer,
 static CURLcode _NWG_curl_easy_set_read_function(CURL * _Nonnull curl,
                                                  _NWGCURLReadCallbackFunction _Nullable callback) {
   return curl_easy_setopt(curl, CURLOPT_READFUNCTION, callback);
+}
+
+typedef enum _NWGCURLSeekResult {
+  NWGCURLSeekOK = CURL_SEEKFUNC_OK,
+  NWGCURLSeekFail = CURL_SEEKFUNC_FAIL,
+  NWGCURLSeekUndone = CURL_SEEKFUNC_CANTSEEK,
+} NWGCURLSeekResult;
+
+typedef enum _NWGCURLSeekOrigin {
+  NWGCURLSeekOriginStart = SEEK_SET,
+  NWGCURLSeekOriginCurrent = SEEK_CUR,
+  NWGCURLSeekOriginEnd = SEEK_END,
+} NWGCURLSeekOrigin;
+
+typedef int (* _NWGCURLSeekCallbackFunction)(void * _Nullable clientp,
+                                             CCURLOffset offset,
+                                             int origin);
+static CURLcode _NWG_curl_easy_set_seek_function(CURL * _Nonnull curl,
+                                                 _NWGCURLSeekCallbackFunction _Nullable callback) {
+  return curl_easy_setopt(curl, CURLOPT_SEEKFUNCTION, callback);
+}
+
+static CURLcode _NWG_curl_easy_set_seek_user_info(CURL * _Nonnull curl, void * _Nullable userInfo) {
+  return curl_easy_setopt(curl, CURLOPT_SEEKDATA, userInfo);
 }
 
 static CURLcode _NWG_curl_easy_set_ua(CURL * _Nonnull curl, const char * _Nonnull ua) {

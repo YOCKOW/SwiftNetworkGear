@@ -52,6 +52,17 @@ public actor SimpleHTTPConnection {
       }
     }
 
+    public enum RedirectStrategy {
+      /// Refuse any redirect.
+      case noFollow
+
+      /// Follow redirects within `maxCount` times.
+      case followRedirects(maxCount: Int)
+
+      /// Follow redirects within 30 times.
+      public static let followRedirects: RedirectStrategy = .followRedirects(maxCount: 30)
+    }
+
     /// The URL to send the request to.
     public let url: URL
 
@@ -66,12 +77,21 @@ public actor SimpleHTTPConnection {
     /// Request body.
     public let body: Body?
 
+    public let redirectStrategy: RedirectStrategy
+
     /// Initializes the instance with given parameters.
-    public init(url: URL, method: HTTPMethod = .get, header: HTTPHeader? = nil, body: Body? = nil) {
+    public init(
+      url: URL,
+      method: HTTPMethod = .get,
+      header: HTTPHeader? = nil,
+      body: Body? = nil,
+      redirectStrategy: RedirectStrategy = .noFollow
+    ) {
       self.url = url
       self.method = method
       self.header = header
       self.body = body
+      self.redirectStrategy = redirectStrategy
     }
   }
 
@@ -83,8 +103,20 @@ public actor SimpleHTTPConnection {
   }
 
   /// Creates a connection with given parameters.
-  public init(url: URL, method: HTTPMethod = .get, header: HTTPHeader? = nil, body: Request.Body? = nil) {
-    self.init(request: .init(url: url, method: method, header: header, body: body))
+  public init(
+    url: URL,
+    method: HTTPMethod = .get,
+    header: HTTPHeader? = nil,
+    body: Request.Body? = nil,
+    redirectStrategy: Request.RedirectStrategy = .noFollow
+  ) {
+    self.init(request: .init(
+      url: url,
+      method: method,
+      header: header,
+      body: body,
+      redirectStrategy: redirectStrategy
+    ))
   }
 
   // MARK: - Fetch the response
@@ -133,9 +165,18 @@ public actor SimpleHTTPConnection {
     default:
       try await client.setHTTPMethodToCustom(request.method.rawValue)
     }
+
+    switch request.redirectStrategy {
+    case .noFollow:
+      try await client.setMaxNumberOfRedirectsAllowed(0)
+    case .followRedirects(let maxCount):
+      try await client.setMaxNumberOfRedirectsAllowed(maxCount)
+    }
+
     let requestHeaderFields: [CURLHeaderField]? = request.header?.reduce(into: [], {
       $0.append((name: $1.name.rawValue, value: $1.value.rawValue))
     })
+
     let delegate = CURLClientGeneralDelegate(
       requestHeaderFields: requestHeaderFields,
       requestBody: request.body?._body,

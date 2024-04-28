@@ -29,6 +29,7 @@ let package = Package(
     .package(url:"https://github.com/YOCKOW/SwiftBootstring.git", from: "1.1.0"),
     .package(url:"https://github.com/YOCKOW/SwiftPublicSuffix.git", from: "2.0.1"),
     .package(url:"https://github.com/YOCKOW/SwiftRanges.git", from: "3.1.0"),
+    .package(url:"https://github.com/YOCKOW/SwiftTemporaryFile.git", from: "4.0.7"),
     .package(url:"https://github.com/YOCKOW/SwiftUnicodeSupplement.git", from: "1.1.1"),
     .package(url:"https://github.com/YOCKOW/ySwiftExtensions.git", from: "1.9.0"),
   ],
@@ -47,6 +48,8 @@ let package = Package(
       name: "CURLClient",
       dependencies: [
         "CLibCURL",
+        "SwiftTemporaryFile",
+        "ySwiftExtensions",
       ]
     ),
     .target(
@@ -67,7 +70,14 @@ let package = Package(
     ]),
     .target(name: "sockaddr_tests", dependencies: [], path:"Tests/sockaddr-tests"),
     .testTarget(name: "CURLTests", dependencies: ["CLibCURL", "CURLClient"]),
-    .testTarget(name: "HTTPTests", dependencies: ["NetworkGear"]),
+    .testTarget(
+      name: "HTTPTests",
+      dependencies: [
+        "CLibCURL",
+        "CURLClient",
+        "NetworkGear",
+      ]
+    ),
     .testTarget(
       name: "NGCExtensionsTests",
       dependencies: [
