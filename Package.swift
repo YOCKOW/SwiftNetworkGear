@@ -71,19 +71,19 @@ let package = Package(
     .target(name: "sockaddr_tests", dependencies: [], path:"Tests/sockaddr-tests"),
     .testTarget(name: "CURLTests", dependencies: ["CLibCURL", "CURLClient"]),
     .testTarget(
+      name: "CNetworkGearTests",
+      dependencies: [
+        "CNetworkGear",
+        "NetworkGear",
+        "sockaddr_tests"
+      ]
+    ),
+    .testTarget(
       name: "HTTPTests",
       dependencies: [
         "CLibCURL",
         "CURLClient",
         "NetworkGear",
-      ]
-    ),
-    .testTarget(
-      name: "NGCExtensionsTests",
-      dependencies: [
-        "CNetworkGear",
-        "NetworkGear",
-        "sockaddr_tests"
       ]
     ),
     .testTarget(
