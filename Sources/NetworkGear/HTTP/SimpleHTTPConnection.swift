@@ -5,6 +5,7 @@
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
+import CLibCURL
 import CURLClient
 import Foundation
 
@@ -208,4 +209,47 @@ public actor SimpleHTTPConnection {
     let responseBody = CURLClientGeneralDelegate.ResponseBody(data: Data())
     return try await _response(responseBody: responseBody)
   }
+
+  /// Perform the HTTP request and write the response body on the given stream.
+  nonisolated
+  public func response(body: OutputStream) async throws -> Response<OutputStream> {
+    let responseBody = CURLClientGeneralDelegate.ResponseBody(stream: body)
+    return try await _response(responseBody: responseBody)
+  }
 }
+
+/// A type that is a kind of stream on which the response body will write.
+public protocol SimpleHTTPConnectionResponseBodyReceiver {
+  /// Write a part of response body given as `data`.
+  func write<D>(contentsOf data: D) throws where D: DataProtocol
+}
+
+extension SimpleHTTPConnection {
+  private final class _ResponseBodyReceiverWrapper<T>: CURLResponseBodyReceiver where T: SimpleHTTPConnectionResponseBodyReceiver {
+    let _base: T
+
+    init(_ base: T) {
+      self._base = base
+    }
+
+    func writeNextPartialResponseBody(_ bodyPart: UnsafeMutablePointer<CChar>, length: CSize) -> CSize {
+      do {
+        try bodyPart.withMemoryRebound(to: UInt8.self, capacity: length) {
+          try _base.write(contentsOf: UnsafeRawBufferPointer(start: $0, count: length))
+        }
+        return length
+      } catch {
+        return -1
+      }
+    }
+  }
+
+  /// Perform the HTTP request and write the response body on the given `body`.
+  nonisolated
+  public func response<Body>(body: Body) async throws -> Response<Body> where Body: SimpleHTTPConnectionResponseBodyReceiver {
+    let responseBody = CURLClientGeneralDelegate.ResponseBody(_ResponseBodyReceiverWrapper(body))
+    return try await _response(responseBody: responseBody)
+  }
+}
+
+

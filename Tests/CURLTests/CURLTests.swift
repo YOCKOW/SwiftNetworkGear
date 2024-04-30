@@ -6,43 +6,9 @@
  ************************************************************************************************ */
 
 import XCTest
+import _NetworkGearTestSupport
 import CLibCURL
 @testable import CURLClient
-
-struct HTTPBinResponse: Decodable {
-  enum StringOrArray: Decodable, Equatable, ExpressibleByStringLiteral, ExpressibleByArrayLiteral {
-    case string(String)
-    case array([String])
-
-    init(from decoder: any Decoder) throws {
-      let singleValueContainer = try decoder.singleValueContainer()
-      if let string = try? singleValueContainer.decode(String.self) {
-        self = .string(string)
-        return
-      }
-      self = .array(try singleValueContainer.decode(Array<String>.self))
-    }
-
-    typealias StringLiteralType = String
-    init(stringLiteral value: String) {
-      self = .string(value)
-    }
-
-    typealias ArrayLiteralElement = String
-    init(arrayLiteral elements: String...) {
-      self = .array(elements)
-    }
-  }
-
-  let data: String?
-  let files: Dictionary<String, String>?
-  let form: Dictionary<String, StringOrArray>?
-  let headers: Dictionary<String, String>
-
-  func headerValue(for key: String) -> String? {
-    return headers.first(where: { $0.key.lowercased() == key.lowercased() })?.value
-  }
-}
 
 final class CURLTests: XCTestCase {
   func test_defaultUserAgent() {

@@ -6,6 +6,7 @@
  ************************************************************************************************ */
 
 import XCTest
+import _NetworkGearTestSupport
 import CLibCURL
 import CURLClient
 @testable import NetworkGear
@@ -43,5 +44,30 @@ final class SimpleHTTPConnectionTests: XCTestCase {
     let connection3 = SimpleHTTPConnection(url: url, redirectStrategy: .followRedirects(maxCount: 10))
     let response3 = try await connection3.response()
     XCTAssertEqual(response3.statusCode, .ok)
+  }
+
+  func test_streams() async throws {
+    let requestBodyStringData = Data("foo=bar".utf8)
+    let requestBodyStream = InputStream(data: requestBodyStringData)
+    let responseBodyStream = OutputStream(toMemory: ())
+    requestBodyStream.open()
+    responseBodyStream.open()
+
+    let url = try XCTUnwrap(URL(string: "https://httpbin.org/post"))
+    let connection = SimpleHTTPConnection(
+      url: url,
+      method: .post,
+      header: [
+        .contentLength(UInt(requestBodyStringData.count)),
+        .contentType(.wwwFormURLEncoded),
+      ],
+      body: .init(stream: requestBodyStream),
+      redirectStrategy: .noFollow
+    )
+    let response = try await connection.response(body: responseBodyStream)
+    XCTAssertEqual(response.statusCode, .ok)
+    let content = try XCTUnwrap(response.content?.property(forKey: .dataWrittenToMemoryStreamKey) as? NSData)
+    let httpbin = try JSONDecoder().decode(HTTPBinResponse.self, from: content as Data)
+    XCTAssertEqual(httpbin.form?["foo"], "bar")
   }
 }
