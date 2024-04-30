@@ -60,6 +60,7 @@ let package = Package(
       ]
     ),
     .target(name: "NetworkGear", dependencies: [
+      "CLibCURL",
       "CURLClient",
       "CNetworkGear",
       "SwiftBootstring",
@@ -69,7 +70,19 @@ let package = Package(
       "ySwiftExtensions",
     ]),
     .target(name: "sockaddr_tests", dependencies: [], path:"Tests/sockaddr-tests"),
-    .testTarget(name: "CURLTests", dependencies: ["CLibCURL", "CURLClient"]),
+    .target(
+      name: "_NetworkGearTestSupport",
+      dependencies: [],
+      path: "Tests/NetworkGearTestSupport"
+    ),
+    .testTarget(
+      name: "CURLTests",
+      dependencies: [
+        "CLibCURL",
+        "CURLClient",
+        "_NetworkGearTestSupport",
+      ]
+    ),
     .testTarget(
       name: "CNetworkGearTests",
       dependencies: [
@@ -84,6 +97,7 @@ let package = Package(
         "CLibCURL",
         "CURLClient",
         "NetworkGear",
+        "_NetworkGearTestSupport",
       ]
     ),
     .testTarget(

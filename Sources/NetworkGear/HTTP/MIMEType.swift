@@ -246,3 +246,7 @@ extension MIMEType: CustomStringConvertible {
     return desc
   }
 }
+
+extension MIMEType {
+  public static let wwwFormURLEncoded: MIMEType = .init(type: .application, subtype: "x-www-form-urlencoded")!
+}

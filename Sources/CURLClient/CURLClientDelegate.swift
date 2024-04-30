@@ -276,6 +276,10 @@ public struct CURLClientGeneralDelegate: CURLClientDelegate {
       self.init(data: Data())
     }
 
+    public init(stream: OutputStream) {
+      self._base = _SomeResponseBodyReceiver<OutputStream>(stream)
+    }
+
     public init<T>(_ receiver: T) where T: CURLResponseBodyReceiver {
       self._base = _SomeResponseBodyReceiver<T>(receiver)
     }
