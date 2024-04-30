@@ -57,11 +57,11 @@ final class SimpleHTTPConnectionTests: XCTestCase {
     let connection = SimpleHTTPConnection(
       url: url,
       method: .post,
-      header: [
+      requestHeader: [
         .contentLength(UInt(requestBodyStringData.count)),
         .contentType(.wwwFormURLEncoded),
       ],
-      body: .init(stream: requestBodyStream),
+      requestBody: .init(stream: requestBodyStream),
       redirectStrategy: .noFollow
     )
     let response = try await connection.response(body: responseBodyStream)

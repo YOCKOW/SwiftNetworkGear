@@ -107,15 +107,15 @@ public actor SimpleHTTPConnection {
   public init(
     url: URL,
     method: HTTPMethod = .get,
-    header: HTTPHeader? = nil,
-    body: Request.Body? = nil,
+    requestHeader: HTTPHeader? = nil,
+    requestBody: Request.Body? = nil,
     redirectStrategy: Request.RedirectStrategy = .noFollow
   ) {
     self.init(request: .init(
       url: url,
       method: method,
-      header: header,
-      body: body,
+      header: requestHeader,
+      body: requestBody,
       redirectStrategy: redirectStrategy
     ))
   }
