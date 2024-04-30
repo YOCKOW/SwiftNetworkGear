@@ -43,6 +43,29 @@ Domain("YOCKOW.JP")!.publicSuffix!.description
 //// -> jp
 ```
 
+## `SimpleHTTPConnection`
+
+There is a type named `SimpleHTTPConnection` that doesn't depend on `URLSession` but directly use
+[libcurl](https://curl.se/libcurl/) as its backend.
+
+```Swift
+import NetworkGear
+
+let url = URL(string: "https://httpbin.org/post")!
+let connection = SimpleHTTPConnection(
+  url: url,
+  method: .post,
+  requestHeader: [
+    .contentLength(7),
+    .contentType(.wwwFormURLEncoded),
+  ],
+  requestBody: .init(data: Data("foo=bar".utf8)),
+  redirectStrategy: .noFollow
+)
+let response = try await connection.response()
+let content = response.content
+```
+
 # License
 
 MIT License.  
