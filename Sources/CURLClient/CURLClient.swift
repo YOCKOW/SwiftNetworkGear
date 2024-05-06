@@ -271,6 +271,32 @@ public actor EasyClient {
       }
     }
 
+    // `Apache + HTTP/2 + CGI + HEAD` may cause stream error in the HTTP/2 framing layer.
+    func __ignoreHTTP2HeadError(_ error: any Error, userInfo: _UserInfo) throws -> Bool {
+      guard case CURLClientError.curlCode(let curlCode) = error,
+            curlCode == CURLE_HTTP2_STREAM else {
+        return false
+      }
+      guard let statusLine = userInfo._statusLine,
+            statusLine.httpVersion.major == 2 else {
+        return false
+      }
+      var methodStringPointer: UnsafeMutablePointer<CChar>? = nil
+      try withUnsafeMutablePointer(to: &methodStringPointer) { (methodStringPointerPointer) in
+        try _throwIfFailed {
+          _NWG_curl_easy_get_effective_method($0, methodStringPointerPointer)
+        }
+      }
+      guard let methodStringPointer else {
+        return false
+      }
+      let isHEAD = String(cString: methodStringPointer, encoding: .utf8) == "HEAD"
+      if isHEAD {
+        userInfo.finalizeResponseHeader()
+      }
+      return isHEAD
+    }
+
     func __withUserInfoPointer<T>(_ job: (UnsafeMutablePointer<_UserInfo>) throws -> T) rethrows -> T {
       return try withUnsafeBytes(of: &delegate, {
         guard let delegatePointer = UnsafeMutablePointer<Delegate>(
@@ -313,7 +339,20 @@ public actor EasyClient {
       try __setResponseBodyHandler(userInfoPointer)
 
       // PERFORM!
-      try _throwIfFailed({ _NWG_curl_easy_perform($0) })
+      do {
+        try _throwIfFailed({ _NWG_curl_easy_perform($0) })
+      } catch {
+        // Ad-hoc error handling...
+        var unignorableError: (any Error)? = error
+
+        if try __ignoreHTTP2HeadError(error, userInfo: userInfoPointer.pointee) {
+          unignorableError = nil
+        }
+
+        if let unignorableError {
+          throw unignorableError
+        }
+      }
     }
   }
 

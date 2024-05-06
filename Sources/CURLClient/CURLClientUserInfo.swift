@@ -197,10 +197,14 @@ internal final class _UserInfo {
 
   private var _responseCodeIs3xx: Bool = false
 
-  private var _responseCode: CURLResponseCode? = nil {
+  internal private(set) var _statusLine: StatusLine? = nil {
     didSet {
-      _responseCodeIs3xx = _responseCode.map({ $0 / 100 == 3 }) ?? false
+      _responseCodeIs3xx = _statusLine.map({ $0.responseCode / 100 == 3 }) ?? false
     }
+  }
+
+  private var _responseCode: CURLResponseCode? {
+    return _statusLine?.responseCode
   }
 
   private var _isFinalDestination: Bool {
@@ -289,7 +293,7 @@ internal final class _UserInfo {
         return false
       }
       _responseCount += 1
-      _responseCode = statusLine.responseCode
+      _statusLine = statusLine
       if let requestBodyCache = _requestBodyCache {
         try requestBodyCache.seekToStart()
       }
@@ -340,7 +344,7 @@ internal final class _UserInfo {
     return true
   }
 
-  private func _finalizeResponseHeader() {
+  func finalizeResponseHeader() {
     guard let lastResponseHeaderField = _lastResponseHeaderField else {
       return
     }
@@ -354,7 +358,7 @@ internal final class _UserInfo {
 
     // Call delegate's `writeNextPartialResponseBody` only if it is final destination
     guard _isFinalDestination else { return length }
-    _finalizeResponseHeader()
+    finalizeResponseHeader()
     return _delegatePointer.writeNextPartialResponseBody(bodyPart, length: length)
   }
 
