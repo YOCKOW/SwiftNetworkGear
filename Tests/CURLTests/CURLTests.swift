@@ -239,4 +239,15 @@ final class CURLTests: XCTestCase {
       )
     }
   }
+
+  func test_adhocErrorHandling_HTTP2Head() async throws {
+    var delegate = CURLClientGeneralDelegate()
+    let client = try CURLManager.shared.makeEasyClient()
+    try await client.setHTTPMethodToHead()
+    try await client.setURL(try XCTUnwrap(URL(string: "https://bot.yockow.jp/-/eTag/weak:foo")))
+    try await client.perform(delegate: &delegate)
+
+    XCTAssertEqual(try XCTUnwrap(delegate.responseCode), 200)
+    XCTAssertEqual(delegate.responseBody(as: Data.self)?.count, 0)
+  }
 }

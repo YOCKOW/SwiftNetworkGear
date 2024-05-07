@@ -22,6 +22,11 @@ typedef long CURLResponseCode;
 typedef struct curl_slist CCURLStringList;
 typedef curl_version_info_data CCURLVersionInfo;
 
+static CURLcode _NWG_curl_easy_get_effective_method(CURL * _Nonnull curl,
+                                                    char * _Nullable * _Nonnull methodPointer) {
+  return curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_METHOD, methodPointer);
+}
+
 static CURLcode _NWG_curl_easy_get_response_code(CURL * _Nonnull curl,
                                                  CURLResponseCode * _Nonnull codePointer) {
   return curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, codePointer);
