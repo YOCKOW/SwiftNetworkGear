@@ -151,9 +151,17 @@ internal final class _UserInfo {
     func writeNextPartialResponseBody(_ bodyPart: UnsafeMutablePointer<CChar>, length: CSize) -> CSize {
       fatalError("Must be overridden.")
     }
+
+    func delegate<D>(as type: D.Type) throws -> D where D: CURLClientDelegate {
+      fatalError("Must be overridden.")
+    }
   }
 
   private class _DelegatePointer<Delegate>: _DelegatePointerBox where Delegate: CURLClientDelegate {
+    enum _Error: Error {
+      case unmatcedDelegateType
+    }
+
     private let _pointer: UnsafeMutablePointer<Delegate>
     init(_ pointer: UnsafeMutablePointer<Delegate>) {
       self._pointer = pointer
@@ -181,6 +189,13 @@ internal final class _UserInfo {
 
     override func writeNextPartialResponseBody(_ bodyPart: UnsafeMutablePointer<CChar>, length: CSize) -> CSize {
       return _pointer.pointee.writeNextPartialResponseBody(bodyPart, length: length)
+    }
+
+    override func delegate<D>(as type: D.Type) throws -> D where D : CURLClientDelegate {
+      guard case let delegate as D = _pointer.pointee else {
+        throw _Error.unmatcedDelegateType
+      }
+      return delegate
     }
   }
 
@@ -373,6 +388,10 @@ internal final class _UserInfo {
       delegatePointer.pointee.hasRequestBody && maxNumberOfRedirectsAllowed != 0
     ) ? try _RequestBodyCache(requestBodySize: requestBodySize) : nil
     self._maxNumberOfRedirectsAllowed = maxNumberOfRedirectsAllowed
+  }
+
+  func delegate<D>(as type: D.Type) throws -> D where D: CURLClientDelegate {
+    return try _delegatePointer.delegate(as: type)
   }
 }
 

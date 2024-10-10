@@ -16,22 +16,23 @@ final class CURLTests: XCTestCase {
   }
 
   func test_performDelete() async throws {
-    var delegate = CURLClientGeneralDelegate()
+    let delegate = CURLClientGeneralDelegate()
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToCustom("DELETE")
     try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/delete")))
-    try await client.perform(delegate: &delegate)
+    try await client.perform(delegate: delegate)
 
     XCTAssertEqual(try XCTUnwrap(delegate.responseCode), 200)
   }
 
   func test_performGet() async throws {
-    var delegate = CURLClientGeneralDelegate()
+    let delegate = CURLClientGeneralDelegate()
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToGet()
     try await client.setURL(try XCTUnwrap(URL(string: "https://storage.googleapis.com/public.data.yockow.jp/test-assets/test.txt")))
-    try await client.perform(delegate: &delegate)
+    try await client.perform(delegate: delegate)
 
+    XCTAssertTrue(delegate.didFinish)
     XCTAssertEqual(try XCTUnwrap(delegate.responseCode), 200)
     XCTAssertTrue(delegate.responseHeaderFields.contains(where: {
       $0.name.lowercased() == "content-length" && $0.value.contains("4")
@@ -44,22 +45,22 @@ final class CURLTests: XCTestCase {
   }
 
   func test_performHead() async throws {
-    var delegate = CURLClientGeneralDelegate()
+    let delegate = CURLClientGeneralDelegate()
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToHead()
     try await client.setURL(try XCTUnwrap(URL(string: "https://storage.googleapis.com/public.data.yockow.jp/test-assets/test.txt")))
-    try await client.perform(delegate: &delegate)
+    try await client.perform(delegate: delegate)
 
     XCTAssertEqual(try XCTUnwrap(delegate.responseCode), 200)
     XCTAssertEqual(delegate.responseBody(as: Data.self)?.count, 0)
   }
 
   func test_performPost() async throws {
-    var delegate = CURLClientGeneralDelegate(requestBody: .init(data: Data("foo=foo&bar=bar".utf8)))
+    let delegate = CURLClientGeneralDelegate(requestBody: .init(data: Data("foo=foo&bar=bar".utf8)))
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
     try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/post")))
-    try await client.perform(delegate: &delegate)
+    try await client.perform(delegate: delegate)
 
     let response = try delegate.responseBody(as: Data.self).map {
       try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
@@ -69,7 +70,7 @@ final class CURLTests: XCTestCase {
   }
 
   func test_performPostRedirection() async throws {
-    var delegate = CURLClientGeneralDelegate(
+    let delegate = CURLClientGeneralDelegate(
       requestHeaderFields: [
         (name: "X-Y-POST-Redirection", value: "yes"),
       ],
@@ -79,7 +80,7 @@ final class CURLTests: XCTestCase {
     try await client.setHTTPMethodToPost()
     try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/redirect-to?url=%2Fpost&status_code=308")))
     try await client.setMaxNumberOfRedirectsAllowed(30)
-    try await client.perform(delegate: &delegate)
+    try await client.perform(delegate: delegate)
 
     let response = try delegate.responseBody(as: Data.self).map {
       try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
@@ -98,13 +99,13 @@ final class CURLTests: XCTestCase {
       let data: Data
       func makeAsyncIterator() -> AsyncIterator { .init(iterator: data.makeIterator()) }
     }
-    var delegate = CURLClientGeneralDelegate(
+    let delegate = CURLClientGeneralDelegate(
       requestBody: .init(__AsyncRequestBody(data: Data("async=async&test=test".utf8)))
     )
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
     try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/post")))
-    try await client.perform(delegate: &delegate)
+    try await client.perform(delegate: delegate)
 
     let response = try delegate.responseBody(as: Data.self).map {
       try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
@@ -135,7 +136,7 @@ final class CURLTests: XCTestCase {
     let requestBody = InputStream(data: Data(multipartFormDataString.utf8))
     requestBody.open()
 
-    var delegate = CURLClientGeneralDelegate(
+    let delegate = CURLClientGeneralDelegate(
       requestHeaderFields: [
         (name: "Content-Type", value: "multipart/form-data; boundary=\(boundary)"),
       ],
@@ -144,7 +145,7 @@ final class CURLTests: XCTestCase {
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
     try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/post")))
-    try await client.perform(delegate: &delegate)
+    try await client.perform(delegate: delegate)
 
     let response = try delegate.responseBody(as: Data.self).map {
       return try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
@@ -156,7 +157,7 @@ final class CURLTests: XCTestCase {
 
   func test_performPut() async throws {
     let text = "Hello, World!\n"
-    var delegate = CURLClientGeneralDelegate(
+    let delegate = CURLClientGeneralDelegate(
       requestHeaderFields: [
         (name: "Content-Type", value: "text/plain"),
       ],
@@ -166,7 +167,7 @@ final class CURLTests: XCTestCase {
     try await client.setHTTPMethodToPut()
     try await client.setUploadFileSize(text.count)
     try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/put")))
-    try await client.perform(delegate: &delegate)
+    try await client.perform(delegate: delegate)
 
     XCTAssertTrue(try XCTUnwrap(delegate.responseCode) / 100 == 2)
     let response = try delegate.responseBody(as: Data.self).map {
@@ -176,7 +177,7 @@ final class CURLTests: XCTestCase {
   }
 
   func test_requestHeaders() async throws {
-    var delegate = CURLClientGeneralDelegate(
+    let delegate = CURLClientGeneralDelegate(
       requestHeaderFields: [
         (name: "X-FOO", value: "FOO"),
         (name: "X-BAR", value: "BAR"),
@@ -185,7 +186,7 @@ final class CURLTests: XCTestCase {
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToGet()
     try await client.setURL(try XCTUnwrap(URL(string: "https://httpbin.org/get")))
-    try await client.perform(delegate: &delegate)
+    try await client.perform(delegate: delegate)
 
     XCTAssertEqual(try XCTUnwrap(delegate.responseCode), 200)
 
@@ -224,8 +225,8 @@ final class CURLTests: XCTestCase {
       }
       for urlAndClient in urlsAndClients {
         group.addTask {
-          var delegate = CURLClientGeneralDelegate()
-          try await urlAndClient.1.perform(delegate: &delegate)
+          let delegate = CURLClientGeneralDelegate()
+          try await urlAndClient.1.perform(delegate: delegate)
           return (urlAndClient.0, delegate.responseCode)
         }
       }
@@ -241,11 +242,11 @@ final class CURLTests: XCTestCase {
   }
 
   func test_adhocErrorHandling_HTTP2Head() async throws {
-    var delegate = CURLClientGeneralDelegate()
+    let delegate = CURLClientGeneralDelegate()
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToHead()
     try await client.setURL(try XCTUnwrap(URL(string: "https://bot.yockow.jp/-/eTag/weak:foo")))
-    try await client.perform(delegate: &delegate)
+    try await client.perform(delegate: delegate)
 
     XCTAssertEqual(try XCTUnwrap(delegate.responseCode), 200)
     XCTAssertEqual(delegate.responseBody(as: Data.self)?.count, 0)

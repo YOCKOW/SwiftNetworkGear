@@ -16,7 +16,7 @@ extension ContentDisposition: HTTPHeaderFieldValueConvertible {
 }
 
 /// Represents "Content-Disposition:"
-public struct ContentDispositionHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate {
+public struct ContentDispositionHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate, Sendable {
   public typealias HTTPHeaderFieldValueSource = ContentDisposition
   
   public static let name: HTTPHeaderFieldName = .contentDisposition

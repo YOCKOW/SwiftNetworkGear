@@ -6,12 +6,17 @@
  **************************************************************************************************/
 
 import CLibCURL
+import Dispatch
 import Foundation
 
 public typealias CURLHeaderField = (name: String, value: String)
 
 /// A delegate that is used during client's `perform()`ing.
-public protocol CURLClientDelegate {
+public protocol CURLClientDelegate: Sendable, AnyObject {
+  func willStartPerforming(client: EasyClient) async throws
+
+  func didFinishPerforming(client: EasyClient) async throws
+
   var requestHeaderFields: Array<CURLHeaderField>? { get }
 
   var hasRequestBody: Bool { get }
@@ -22,16 +27,16 @@ public protocol CURLClientDelegate {
   ///
   /// - Returns: The actual number of bytes that it stored in the data area pointed at
   ///            by the pointer `buffer`.
-  mutating func readNextPartialRequestBody(_ buffer: UnsafeMutablePointer<CChar>, maxLength: CSize) -> CSize
+  func readNextPartialRequestBody(_ buffer: UnsafeMutablePointer<CChar>, maxLength: CSize) -> CSize
 
-  mutating func setResponseCode(_ responseCode: CURLResponseCode)
+  func setResponseCode(_ responseCode: CURLResponseCode)
 
-  mutating func appendResponseHeaderField(_ responseHeaderField: CURLHeaderField)
+  func appendResponseHeaderField(_ responseHeaderField: CURLHeaderField)
 
   /// Receives a part of response body.
   ///
   /// - Returns: The number of bytes actually received.
-  mutating func writeNextPartialResponseBody(_ bodyPart: UnsafeMutablePointer<CChar>, length: CSize) -> CSize
+  func writeNextPartialResponseBody(_ bodyPart: UnsafeMutablePointer<CChar>, length: CSize) -> CSize
 }
 
 public protocol CURLRequestBodySender {
@@ -52,16 +57,16 @@ public protocol CURLResponseBodyReceiver {
 }
 
 /// A simple implementation of `CURLClientDelegate`.
-public struct CURLClientGeneralDelegate: CURLClientDelegate {
+open class CURLClientGeneralDelegate: CURLClientDelegate, @unchecked Sendable {
   ///  A wrapper of `CURLRequestBodySender` or something like that.
-  public struct RequestBody {
-    private class _RequestBodyBase {
+  public struct RequestBody: Sendable {
+    private class _RequestBodyBase: @unchecked Sendable {
       func readNextPartialRequestBody(_ buffer: UnsafeMutablePointer<CChar>, maxLength: CSize) -> CSize {
         return -1
       }
     }
 
-    private class _SomeRequestBodySender<T>: _RequestBodyBase where T: CURLRequestBodySender {
+    private class _SomeRequestBodySender<T>: _RequestBodyBase, @unchecked Sendable where T: CURLRequestBodySender {
       var _base: T
       init(_ base: T) {
         self._base = base
@@ -71,7 +76,7 @@ public struct CURLClientGeneralDelegate: CURLClientDelegate {
       }
     }
 
-    private final class _InputStream: _RequestBodyBase {
+    private final class _InputStream: _RequestBodyBase, @unchecked Sendable {
       private let stream: InputStream
       init(_ stream: InputStream) {
         self.stream = stream
@@ -83,7 +88,7 @@ public struct CURLClientGeneralDelegate: CURLClientDelegate {
       }
     }
 
-    private final class _Data: _RequestBodyBase {
+    private final class _Data: _RequestBodyBase, @unchecked Sendable {
       private var data: Data
       private var currentIndex: Data.Index
       init(_ data: Data ) {
@@ -103,7 +108,7 @@ public struct CURLClientGeneralDelegate: CURLClientDelegate {
       }
     }
 
-    private final class _SomeDataProtocol<T>: _RequestBodyBase where T: DataProtocol {
+    private final class _SomeDataProtocol<T>: _RequestBodyBase, @unchecked Sendable where T: DataProtocol {
       private var data: T
       private var currentIndex: T.Index
       init(_ data: T) {
@@ -129,7 +134,7 @@ public struct CURLClientGeneralDelegate: CURLClientDelegate {
       }
     }
 
-    private final class _SomeAsyncSequence<T>: _RequestBodyBase where T: AsyncSequence, T.Element == UInt8 {
+    private final class _SomeAsyncSequence<T>: _RequestBodyBase, @unchecked Sendable where T: AsyncSequence, T.Element == UInt8 {
       private var iterator: T.AsyncIterator
       init(_ sequence: T) {
         self.iterator = sequence.makeAsyncIterator()
@@ -163,7 +168,7 @@ public struct CURLClientGeneralDelegate: CURLClientDelegate {
       }
     }
     
-    private final class _SomeSequence<T>: _RequestBodyBase where T: Sequence, T.Element == UInt8 {
+    private final class _SomeSequence<T>: _RequestBodyBase, @unchecked Sendable where T: Sequence, T.Element == UInt8 {
       var iterator: T.Iterator
       init(_ sequence: T) {
         self.iterator = sequence.makeIterator()
@@ -289,37 +294,85 @@ public struct CURLClientGeneralDelegate: CURLClientDelegate {
     }
   }
 
-  public var requestHeaderFields: Array<CURLHeaderField>?
+  public enum Error: Swift.Error {
+    case requestHasNotStarted
+    case requestIsOngoing
+    case requestFinished
+  }
+
+  private struct _State {
+    var isPerforming: Bool
+    var didFinish: Bool
+  }
+  private var __state: _State
+  private let _stateQueue: DispatchQueue = .init(
+    label: "jp.YOCKOW.CURLClient.CURLClientGeneralDelegate.\(UUID().uuidString)",
+    attributes: .concurrent
+  )
+  private func _withState<T>(_ work: (inout _State) throws -> T) rethrows -> T {
+    return try _stateQueue.sync(flags: .barrier) { try work(&__state) }
+  }
+
+  open var isPerforming: Bool {
+    return _withState(\.isPerforming)
+  }
+
+  open var didFinish: Bool {
+    return _withState(\.didFinish)
+  }
+
+  open func willStartPerforming(client: EasyClient) throws {
+    try _withState {
+      if $0.isPerforming { throw Error.requestIsOngoing }
+      if $0.didFinish { throw Error.requestFinished }
+      $0.isPerforming = true
+    }
+  }
+
+  open func didFinishPerforming(client: EasyClient) throws {
+    try _withState {
+      guard $0.isPerforming else { throw Error.requestHasNotStarted }
+      $0.isPerforming = false
+      $0.didFinish = true
+    }
+  }
+
+
+  open var requestHeaderFields: Array<CURLHeaderField>?
 
   private var _requestBody: RequestBody?
 
-  public var hasRequestBody: Bool {
+  open var hasRequestBody: Bool {
     return _requestBody != nil
   }
 
-  public mutating func readNextPartialRequestBody(_ buffer: UnsafeMutablePointer<CChar>, maxLength: CSize) -> CSize {
+  open func readNextPartialRequestBody(_ buffer: UnsafeMutablePointer<CChar>, maxLength: CSize) -> CSize {
+    assert(isPerforming)
     return _requestBody?.readNextPartialRequestBody(buffer, maxLength: maxLength) ?? -1
   }
 
-  public private(set) var responseCode: CURLResponseCode!
+  open private(set) var responseCode: CURLResponseCode!
 
-  public mutating func setResponseCode(_ responseCode: CURLResponseCode) {
+  open func setResponseCode(_ responseCode: CURLResponseCode) {
+    assert(isPerforming)
     self.responseCode = responseCode
   }
 
   public private(set) var responseHeaderFields: Array<CURLHeaderField> = []
 
-  public mutating func appendResponseHeaderField(_ responseHeaderField: CURLHeaderField) {
+  open func appendResponseHeaderField(_ responseHeaderField: CURLHeaderField) {
+    assert(isPerforming)
     responseHeaderFields.append(responseHeaderField)
   }
 
   private var _responseBody: ResponseBody
 
-  public func responseBody<T>(`as` type: T.Type) -> T? {
+  open func responseBody<T>(`as` type: T.Type) -> T? {
     return _responseBody._base.base as? T
   }
 
-  public mutating func writeNextPartialResponseBody(_ bodyPart: UnsafeMutablePointer<CChar>, length: CSize) -> CSize {
+  open func writeNextPartialResponseBody(_ bodyPart: UnsafeMutablePointer<CChar>, length: CSize) -> CSize {
+    assert(isPerforming)
     return _responseBody.writeNextPartialResponseBody(bodyPart, length: length)
   }
 
@@ -328,6 +381,7 @@ public struct CURLClientGeneralDelegate: CURLClientDelegate {
     requestBody: RequestBody? = nil,
     responseBody: ResponseBody = .init()
   ) {
+    self.__state = .init(isPerforming: false, didFinish: false)
     self.requestHeaderFields = requestHeaderFields
     self._requestBody = requestBody
     self._responseBody = responseBody

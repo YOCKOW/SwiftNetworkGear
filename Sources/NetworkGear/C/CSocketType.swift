@@ -8,7 +8,7 @@
 import CNetworkGear
 
 /// Wrapper for `__socket_type`
-public struct CSocketType: RawRepresentable, Equatable {
+public struct CSocketType: RawRepresentable, Equatable, Sendable {
   public typealias RawValue = CInt
 
   public let rawValue: CInt

@@ -6,7 +6,7 @@
 // URL: https://www.iana.org/assignments/cont-disp/cont-disp-1.csv
 // Last-Modified: 2021-09-14T16:50:48Z
 
-public enum ContentDispositionValue: String {
+public enum ContentDispositionValue: String, Sendable {
   case inline = "inline"
   case attachment = "attachment"
   case formData = "form-data"

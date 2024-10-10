@@ -10,7 +10,7 @@ private func _mustBeOverriden(file:StaticString = #file, line:UInt = #line) -> N
 }
 
 /// Type-erasure for `HeaderFieldDelegate`.
-internal struct _AnyHTTPHeaderFieldDelegate {
+internal struct _AnyHTTPHeaderFieldDelegate: @unchecked Sendable {
   internal class _Box {
     internal var type: HTTPHeaderField.PresenceType { _mustBeOverriden() }
     internal var name: HTTPHeaderFieldName { _mustBeOverriden() }

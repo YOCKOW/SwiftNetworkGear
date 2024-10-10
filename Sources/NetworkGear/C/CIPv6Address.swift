@@ -7,7 +7,7 @@
 
 import CNetworkGear
 
-extension CIPv6Address: CIPAddress {
+extension CNetworkGear.CIPv6Address: NetworkGear.CIPAddress {
   public static let size: Int = 16
   
   public typealias Address = (UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
