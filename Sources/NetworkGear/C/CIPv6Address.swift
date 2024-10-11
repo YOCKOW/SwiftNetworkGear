@@ -56,7 +56,14 @@ extension CNetworkGear.CIPv6Address: NetworkGear.CIPAddress {
   /// Returns `nil` if the string is not valid for IPv6 Address.
   public init?(_ string: String) {
     self.init()
-    guard CNWGStringToIPAddress(cNWGIPv6AddressFamily, string, &self) == 1 else { return nil }
+
+    // https://github.com/swiftlang/swift-foundation/issues/957
+    let bareIPv6String: Substring = (string.hasPrefix("[") && string.hasSuffix("]")) ? string.dropFirst().dropLast() : string[...]
+    guard bareIPv6String.withCString({
+      CNWGStringToIPAddress(cNWGIPv6AddressFamily, $0, &self)
+    }) == 1 else {
+      return nil
+    }
   }
   
   public var description: String {
