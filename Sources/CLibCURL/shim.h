@@ -154,7 +154,7 @@ static CCURLStringList * _Nullable _NWG_curl_slist_append(CCURLStringList * _Non
   return curl_slist_append(list, newString);
 }
 
-void _NWG_curl_slist_free_all(CCURLStringList * _Nullable list) {
+static void _NWG_curl_slist_free_all(CCURLStringList * _Nullable list) {
   curl_slist_free_all(list);
 }
 
