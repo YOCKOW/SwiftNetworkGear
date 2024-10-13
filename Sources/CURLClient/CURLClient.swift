@@ -16,15 +16,12 @@ import  Foundation
 
 public enum CURLClientError: Error, Equatable {
   case failedToCreateClient
-  case failedToGenerateRequestHeaders
   case curlCode(CURLcode)
 
   public var description: String {
     switch self {
     case .failedToCreateClient:
       return "Failed to create a client."
-    case .failedToGenerateRequestHeaders:
-      return "Failed to generate request headers."
     case .curlCode(let code):
       return String(cString: curl_easy_strerror(code))
     }
@@ -177,23 +174,9 @@ public actor EasyClient {
 
   private func __setRequestHeaderHandler(
     _ userInfoPointer: UnsafeMutablePointer<_UserInfo>
-  ) throws -> UnsafeMutablePointer<CCURLStringList>? {
-    guard let requestHeaderFields = userInfoPointer.pointee.requestHeaderFields,
-          let firstField = requestHeaderFields.first else {
-      return nil
-    }
-    guard var currentList = _NWG_curl_slist_create("\(firstField.name): \(firstField.value)") else {
-      throw CURLClientError.failedToGenerateRequestHeaders
-    }
-    for field in requestHeaderFields.dropFirst() {
-      guard let newList = _NWG_curl_slist_append(currentList, "\(field.name): \(field.value)") else {
-        _NWG_curl_slist_free_all(currentList)
-        throw CURLClientError.failedToGenerateRequestHeaders
-      }
-      currentList = newList
-    }
-    try _throwIfFailed({ _NWG_curl_easy_set_http_request_headers($0, currentList) })
-    return currentList
+  ) throws {
+    let list = try userInfoPointer.pointee.requestHeaderFieldList
+    try _throwIfFailed({ _NWG_curl_easy_set_http_request_headers($0, list) })
   }
 
   private func __setRequestBodyHandler(_ userInfoPointer: UnsafeMutablePointer<_UserInfo>) throws {
@@ -336,10 +319,9 @@ public actor EasyClient {
         maxNumberOfRedirectsAllowed: _maxNumberOfRedirectsAllowed
       )
       try withUnsafeMutablePointer(to: &userInfo) { userInfoPointer in
-        let requestHeaderFieldCURLList = try __setRequestHeaderHandler(userInfoPointer)
-        defer {
-          _NWG_curl_slist_free_all(requestHeaderFieldCURLList)
-        }
+        // Note: Somehow `defer` can't be used here in Swift 6.0.1 on macOS😭
+        // https://github.com/YOCKOW/SwiftNetworkGear/issues/57
+        try __setRequestHeaderHandler(userInfoPointer)
         try __setRequestBodyHandler(userInfoPointer)
         try __setRequestBodyRewinder(userInfoPointer)
         try __setResponseCodeHeaderHandler(userInfoPointer)

@@ -127,6 +127,10 @@ struct StatusLine {
 /// An odd type-erasure for `CURLClientDelegate`
 /// to avoid using generics in `@convention(c)` closure.
 internal final class _UserInfo {
+  enum Error: Swift.Error {
+    case failedToGenerateRequestHeaders
+  }
+
   private class _DelegatePointerBox {
     var requestHeaderFields: Array<CURLHeaderField>? {
       fatalError("Must be overridden.")
@@ -158,7 +162,7 @@ internal final class _UserInfo {
   }
 
   private class _DelegatePointer<Delegate>: _DelegatePointerBox where Delegate: CURLClientDelegate {
-    enum _Error: Error {
+    enum _Error: Swift.Error {
       case unmatcedDelegateType
     }
 
@@ -228,12 +232,37 @@ internal final class _UserInfo {
 
   private var _lastResponseHeaderField: CURLHeaderField? = nil
 
-  var requestHeaderFields: Array<CURLHeaderField>? {
-    return _delegatePointer.requestHeaderFields
+  private var _requestHeaderFieldList: UnsafeMutablePointer<CCURLStringList>? = nil
+  var requestHeaderFieldList: UnsafePointer<CCURLStringList>? {
+    get throws {
+      if _requestHeaderFieldList == nil {
+        guard let fields = _delegatePointer.requestHeaderFields,
+              let firstField = fields.first else {
+          return nil
+        }
+        guard var currentList = _NWG_curl_slist_create("\(firstField.name): \(firstField.value)") else {
+          throw Error.failedToGenerateRequestHeaders
+        }
+        for field in fields.dropFirst() {
+          guard let newList = _NWG_curl_slist_append(currentList, "\(field.name): \(field.value)") else {
+            _NWG_curl_slist_free_all(currentList)
+            throw Error.failedToGenerateRequestHeaders
+          }
+          currentList = newList
+        }
+        _requestHeaderFieldList = currentList
+      }
+      return UnsafePointer<CCURLStringList>(_requestHeaderFieldList)
+    }
   }
+
 
   var hasRequestBody: Bool {
     return _delegatePointer.hasRequestBody
+  }
+
+  deinit {
+    _NWG_curl_slist_free_all(_requestHeaderFieldList)
   }
 
   func readNextPartialRequestBody(_ buffer: UnsafeMutablePointer<CChar>, maxLength: CSize) -> CSize {

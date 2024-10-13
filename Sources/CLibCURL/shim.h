@@ -78,8 +78,8 @@ static CURLcode _NWG_curl_easy_set_http_method_to_put(CURL * _Nonnull curl) {
 }
 
 static CURLcode _NWG_curl_easy_set_http_request_headers(CURL * _Nonnull curl,
-                                                        CCURLStringList * _Nullable headers) {
-  return curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+                                                        const CCURLStringList * _Nullable headers) {
+  return curl_easy_setopt(curl, CURLOPT_HTTPHEADER, (CCURLStringList *)headers);
 }
 
 static CURLcode _NWG_curl_easy_set_read_user_info(CURL * _Nonnull curl, void * _Nullable userInfo) {
