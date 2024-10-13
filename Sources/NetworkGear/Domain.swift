@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  Domain.swift
-   © 2018-2020 YOCKOW.
+   © 2018-2020,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
@@ -9,11 +9,11 @@ import Foundation
 import Bootstring
 
 /// Represents domain name.
-public struct Domain {
+public struct Domain: Sendable {
   /// Represents Domain Label
-  public struct Label {
+  public struct Label: Sendable {
     /// Represents "Unicode IDNA Validity Options"
-    public struct ValidityOptions: OptionSet {
+    public struct ValidityOptions: OptionSet, Sendable {
       public let rawValue: Int
       public init(rawValue:Int) { self.rawValue = rawValue }
       

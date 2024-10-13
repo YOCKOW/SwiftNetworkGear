@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  MIMEType.swift
-   © 2017-2019 YOCKOW.
+   © 2017-2019,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -17,8 +17,8 @@ import yExtensions
 /// - `subtype`: Sub-type name
 /// - `suffix`: Suffix
 /// - `parameters`: Companion data such as *charset=UTF-8*
-public struct MIMEType {
-  public enum TopLevelType: String, Comparable {
+public struct MIMEType: Sendable {
+  public enum TopLevelType: String, Comparable, Sendable {
     case application
     case audio
     case example
@@ -36,7 +36,7 @@ public struct MIMEType {
     }
   }
   
-  public enum Tree: String, Comparable {
+  public enum Tree: String, Comparable, Sendable {
     case vnd
     case prs
     case x
@@ -48,7 +48,7 @@ public struct MIMEType {
   
   public typealias Subtype = String
   
-  public enum Suffix: String, Comparable {
+  public enum Suffix: String, Comparable, Sendable {
     case xml
     case json
     case ber
@@ -66,7 +66,7 @@ public struct MIMEType {
   public typealias Parameters = Dictionary<String, String>
   
   /// Holds properties of `MIMEType` except parameters.
-  internal struct _Core: Hashable {
+  internal struct _Core: Hashable, Sendable {
     internal var _type: TopLevelType
     
     internal var _tree: Tree?

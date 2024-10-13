@@ -18,7 +18,7 @@ public actor SimpleHTTPConnection {
   /// A representation of HTTP request.
   public struct Request {
     /// An abstract representation of HTTP request body.
-    public struct Body {
+    public struct Body: Sendable {
       fileprivate let _body: CURLClientGeneralDelegate.RequestBody
 
       public init(_ body: CURLClientGeneralDelegate.RequestBody) {
@@ -53,7 +53,7 @@ public actor SimpleHTTPConnection {
       }
     }
 
-    public enum RedirectStrategy {
+    public enum RedirectStrategy: Sendable {
       /// Refuse any redirect.
       case noFollow
 
@@ -123,7 +123,7 @@ public actor SimpleHTTPConnection {
   // MARK: - Fetch the response
 
   /// A representation of HTTP response body.
-  public struct Response<Body> {
+  public struct Response<Body>: Sendable {
     private let _delegate: CURLClientGeneralDelegate
 
     fileprivate init(_ delegate: CURLClientGeneralDelegate) {
@@ -199,8 +199,8 @@ public actor SimpleHTTPConnection {
 
     let clientAndDelegate = try await _makeClientAndDelegate(responseBody: responseBody)
     let client = clientAndDelegate.0
-    var delegate = clientAndDelegate.1
-    try await client.perform(delegate: &delegate)
+    let delegate = clientAndDelegate.1
+    try await client.perform(delegate: delegate)
     return Response<T>(delegate)
   }
 
@@ -211,7 +211,6 @@ public actor SimpleHTTPConnection {
   }
 
   /// Perform the HTTP request and write the response body on the given stream.
-  nonisolated
   public func response(body: OutputStream) async throws -> Response<OutputStream> {
     let responseBody = CURLClientGeneralDelegate.ResponseBody(stream: body)
     return try await _response(responseBody: responseBody)
@@ -245,7 +244,6 @@ extension SimpleHTTPConnection {
   }
 
   /// Perform the HTTP request and write the response body on the given `body`.
-  nonisolated
   public func response<Body>(body: Body) async throws -> Response<Body> where Body: SimpleHTTPConnectionResponseBodyReceiver {
     let responseBody = CURLClientGeneralDelegate.ResponseBody(_ResponseBodyReceiverWrapper(body))
     return try await _response(responseBody: responseBody)

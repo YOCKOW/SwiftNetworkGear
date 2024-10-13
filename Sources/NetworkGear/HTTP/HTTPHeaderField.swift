@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  HeaderField.swift
-   © 2018 YOCKOW.
+   © 2018,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -8,9 +8,9 @@
 
 /// # HeaderField
 /// Represents each HTTP Header Field.
-public struct HTTPHeaderField {
+public struct HTTPHeaderField: Sendable {
   /// Represents how it can be in the header.
-  public enum PresenceType {
+  public enum PresenceType: Sendable {
     /// There are no other fields of the same name in the same header.
     /// e.g.) "ETag"
     case single

@@ -1,13 +1,13 @@
 /* *************************************************************************************************
  HTTPHeader.swift
-   © 2017-2018,2023 YOCKOW.
+   © 2017-2018,2023-2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
 /// Represents HTTP Header.
 /// Some header fields are contained.
-public struct HTTPHeader {
+public struct HTTPHeader: Sendable {
   private var _fieldTable: [HTTPHeaderFieldName:[HTTPHeaderField]]
   private init(_ fieldTable:[HTTPHeaderFieldName:[HTTPHeaderField]]) {
     self._fieldTable = fieldTable

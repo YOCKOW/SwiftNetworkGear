@@ -7,7 +7,7 @@
 
 /// Represents the key for parameter of Content Disposition.
 /// It is almost always "filename"
-public struct ContentDispositionParameterKey: RawRepresentable {
+public struct ContentDispositionParameterKey: RawRepresentable, Sendable {
   public typealias RawValue = String
   public let rawValue: String
   public init(rawValue:String) {

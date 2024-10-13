@@ -9,7 +9,7 @@ import CNetworkGear
 
 /// Extend `CSocketAddressInformation` (a.k.a. `addrinfo`)
 extension CSocketAddressInformation {
-  public struct Options: OptionSet {
+  public struct Options: OptionSet, Sendable {
     public let rawValue:CInt
     public init(rawValue:CInt) { self.rawValue = rawValue }
 

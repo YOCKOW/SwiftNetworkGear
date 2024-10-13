@@ -9,7 +9,7 @@ import yExtensions
 import Foundation
 
 /// Represents "Content-Disposition"
-public struct ContentDisposition {
+public struct ContentDisposition: Sendable {
   public typealias Value = ContentDispositionValue
   public typealias ParameterKey = ContentDispositionParameterKey
   

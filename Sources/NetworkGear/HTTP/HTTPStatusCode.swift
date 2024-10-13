@@ -6,7 +6,7 @@
 // URL: https://www.iana.org/assignments/http-status-codes/http-status-codes-1.csv
 // Last-Modified: 2022-06-08T20:55:44Z
 
-public enum HTTPStatusCode: UInt16 {
+public enum HTTPStatusCode: UInt16, Sendable {
   case `continue` = 100
   case switchingProtocols = 101
   case processing = 102

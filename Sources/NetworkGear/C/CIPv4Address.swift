@@ -7,7 +7,7 @@
  
 import CNetworkGear
 
-extension CIPv4Address: CIPAddress {
+extension CNetworkGear.CIPv4Address: NetworkGear.CIPAddress {
   public static let size: Int = 4
   
   public typealias Address = CIPv4AddressBase

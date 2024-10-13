@@ -1,22 +1,23 @@
 /* *************************************************************************************************
  HTTPHeaderField+DelegateSelector.swift
-   © 2018,2020,2023 YOCKOW.
+   © 2018,2020,2023-2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
+import Dispatch
 import yExtensions
 
 extension HTTPHeaderField {
   /// Metatype-erasure for `HeaderFieldDelegate`
-  private class _TypeBox {
+  private class _TypeBox: @unchecked Sendable {
     fileprivate func headerField(with value: HTTPHeaderFieldValue,
                                  userInfo: [AnyHashable: Any]?) -> HTTPHeaderField?
     {
       fatalError("Must be overridden.")
     }
     
-    fileprivate class _Normal<Delegate>: _TypeBox where Delegate:HTTPHeaderFieldDelegate {
+    fileprivate class _Normal<Delegate>: _TypeBox, @unchecked Sendable where Delegate:HTTPHeaderFieldDelegate {
       private let _type: Delegate.Type
       fileprivate init(_ type:Delegate.Type) {
         self._type = type
@@ -30,7 +31,7 @@ extension HTTPHeaderField {
       }
     }
 
-    fileprivate class _ExtInfo<Delegate>: _Normal<Delegate> where Delegate: ExternalInformationReferenceableHTTPHeaderFieldDelegate {
+    fileprivate class _ExtInfo<Delegate>: _Normal<Delegate>, @unchecked Sendable where Delegate: ExternalInformationReferenceableHTTPHeaderFieldDelegate {
       override func headerField(with value: HTTPHeaderFieldValue,
                                 userInfo: [AnyHashable: Any]?) -> HTTPHeaderField? {
         guard let delegate = Delegate(value, userInfo: userInfo) else { return nil }
@@ -38,7 +39,7 @@ extension HTTPHeaderField {
       }
     }
     
-    fileprivate class _Appendable<Delegate>: _Normal<Delegate>
+    fileprivate class _Appendable<Delegate>: _Normal<Delegate>, @unchecked Sendable
       where Delegate:AppendableHTTPHeaderFieldDelegate
     {
       fileprivate override func headerField(with value: HTTPHeaderFieldValue,
@@ -50,7 +51,7 @@ extension HTTPHeaderField {
     }
   }
   
-  public final class DelegateSelector {
+  public final class DelegateSelector: @unchecked Sendable {
     private init() {}
     public static let `default` = DelegateSelector()
     
@@ -68,13 +69,22 @@ extension HTTPHeaderField {
       .location: _TypeBox._Normal(LocationHTTPHeaderFieldDelegate.self),
       .setCookie: _TypeBox._ExtInfo(SetCookieHTTPHeaderFieldDelegate.self),
     ]
-    
+    private let _queue: DispatchQueue = .init(
+      label: "jp.YOCKOW.NetworkGear.HTTPHeaderField.DelegateSelector",
+      attributes: .concurrent
+    )
+    private func _withList<T>(_ work: (inout [HTTPHeaderFieldName: _TypeBox]) throws -> T) rethrows -> T {
+      return try _queue.sync(flags: .barrier) { try work(&_list) }
+    }
+
     private func _register(_ box:_TypeBox, for name:HTTPHeaderFieldName) -> Bool {
-      if let _ = _list[name] {
-        return false
+      return _withList {
+        if let _ = $0[name] {
+          return false
+        }
+        $0[name] = box
+        return true
       }
-      _list[name] = box
-      return true
     }
     
     /// Register the type for the delegate that generates the header field named `name`.
@@ -97,8 +107,10 @@ extension HTTPHeaderField {
                                   value: HTTPHeaderFieldValue,
                                   userInfo: [AnyHashable: Any]?) -> HTTPHeaderField?
     {
-      guard let box = self._list[name] else { return nil }
-      return box.headerField(with: value, userInfo: userInfo)
+      return _withList {
+        guard let box = $0[name] else { return nil }
+        return box.headerField(with: value, userInfo: userInfo)
+      }
     }
   }
   

@@ -8,7 +8,7 @@
 import CNetworkGear
 
 /// Wrapper for `sa_family_t`
-public struct CSocketAddressFamily: RawRepresentable, Equatable {
+public struct CSocketAddressFamily: RawRepresentable, Equatable, Sendable {
   public typealias RawValue = CSocketAddressFamilyValue
 
   public let rawValue: CSocketAddressFamilyValue

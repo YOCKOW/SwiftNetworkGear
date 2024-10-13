@@ -6,6 +6,7 @@
  **************************************************************************************************/
 
 import CLibCURL
+import Dispatch
 #if canImport(Darwin)
 import Darwin
 #elseif canImport(Glibc)
@@ -15,15 +16,12 @@ import  Foundation
 
 public enum CURLClientError: Error, Equatable {
   case failedToCreateClient
-  case failedToGenerateRequestHeaders
   case curlCode(CURLcode)
 
   public var description: String {
     switch self {
     case .failedToCreateClient:
       return "Failed to create a client."
-    case .failedToGenerateRequestHeaders:
-      return "Failed to generate request headers."
     case .curlCode(let code):
       return String(cString: curl_easy_strerror(code))
     }
@@ -50,19 +48,25 @@ public final class CURLManager {
     clean()
   }
 
-  private static var _shared: CURLManager? = nil
+  nonisolated(unsafe) private static var _shared: CURLManager? = nil
+  private static let _sharedQueue: DispatchQueue = .init(
+    label: "jp.YOCKOW.CURLClient.sharedQueue",
+    attributes: .concurrent
+  )
 
-  public static let shared: CURLManager = ({ () -> CURLManager in
-    guard let singleton = _shared else {
-      _shared = CURLManager()
-      atexit {
-        _shared?.clean()
-        _shared = nil
+  public static var shared: CURLManager {
+    return _sharedQueue.sync(flags: .barrier) {
+      guard let singleton = _shared else {
+        _shared = CURLManager()
+        atexit {
+          CURLManager._shared?.clean()
+          CURLManager._shared = nil
+        }
+        return _shared!
       }
-      return _shared!
+      return singleton
     }
-    return singleton
-  })()
+  }
 }
 
 /// A wrapper of a CURL easy handle.
@@ -72,7 +76,9 @@ public actor EasyClient {
     return "SwiftNetworkGearClient/0.1 (libcurl/\(libcurlVersion)) https://GitHub.com/YOCKOW/SwiftNetworkGear"
   })()
 
-  private let _curlHandle: UnsafeMutableRawPointer
+  nonisolated(unsafe) private let _curlHandle: UnsafeMutableRawPointer
+
+  private var _cleaned: Bool = false
 
   fileprivate init() throws {
     guard let curlHandle = curl_easy_init() else {
@@ -86,7 +92,10 @@ public actor EasyClient {
   }
 
   deinit {
-    curl_easy_cleanup(_curlHandle)
+    if !_cleaned {
+      curl_easy_cleanup(_curlHandle)
+      _cleaned = true
+    }
   }
 
   private func _throwIfFailed(_ job: (UnsafeMutableRawPointer) -> CURLcode) throws {
@@ -163,114 +172,92 @@ public actor EasyClient {
 
   private var _performed: Bool = false
 
-  /// Call `curl_easy_perform` with the handle.
-  public func perform<Delegate>(delegate: inout Delegate) throws where Delegate: CURLClientDelegate {
-    if _performed {
-      return
+  private func __setRequestHeaderHandler(
+    _ userInfoPointer: UnsafeMutablePointer<_UserInfo>
+  ) throws {
+    let list = try userInfoPointer.pointee.requestHeaderFieldList
+    try _throwIfFailed({ _NWG_curl_easy_set_http_request_headers($0, list) })
+  }
+
+  private func __setRequestBodyHandler(_ userInfoPointer: UnsafeMutablePointer<_UserInfo>) throws {
+    guard userInfoPointer.pointee.hasRequestBody else { return }
+    try _throwIfFailed {
+      _NWG_curl_easy_set_read_user_info($0, UnsafeMutableRawPointer(userInfoPointer))
     }
-    defer { _performed = true }
+    try _throwIfFailed {
+      _NWG_curl_easy_set_read_function($0) { (buffer,
+                                              _,
+                                              maxLength,
+                                              maybePointer) -> CSize in
+        return maybePointer?.assumingMemoryBound(
+          to: _UserInfo.self
+        ).pointee.readNextPartialRequestBody(
+          buffer,
+          maxLength: maxLength
+        ) ?? -1
+      }
+    }
+  }
 
-    // Avoid "⛔️the compiler is unable to type-check this expression in reasonable time" 😓
-
-    func __setRequestHeaderHandler(_ userInfoPointer: UnsafeMutablePointer<_UserInfo>) throws -> UnsafeMutablePointer<CCURLStringList>? {
-      guard let requestHeaderFields = userInfoPointer.pointee.requestHeaderFields else {
-        return nil
-      }
-      guard let firstField = requestHeaderFields.first else {
-        return nil
-      }
-      guard var currentList = _NWG_curl_slist_create("\(firstField.name): \(firstField.value)") else {
-        throw CURLClientError.failedToGenerateRequestHeaders
-      }
-      for field in requestHeaderFields.dropFirst() {
-        guard let newList = _NWG_curl_slist_append(currentList, "\(field.name): \(field.value)") else {
-          _NWG_curl_slist_free_all(currentList)
-          throw CURLClientError.failedToGenerateRequestHeaders
+  private func __setRequestBodyRewinder(_ userInfoPointer: UnsafeMutablePointer<_UserInfo>) throws {
+    try _throwIfFailed { _NWG_curl_easy_set_seek_user_info($0, userInfoPointer) }
+    try _throwIfFailed {
+      _NWG_curl_easy_set_seek_function($0) { (maybePointer, offset, origin) -> CInt in
+        guard let userInfoPointer = maybePointer?.assumingMemoryBound(to: _UserInfo.self) else {
+          return CInt(NWGCURLSeekFail.rawValue)
         }
-        currentList = newList
-      }
-      try _throwIfFailed({ _NWG_curl_easy_set_http_request_headers($0, currentList) })
-      return currentList
-    }
-
-    func __setRequestBodyHandler(_ userInfoPointer: UnsafeMutablePointer<_UserInfo>) throws {
-      guard userInfoPointer.pointee.hasRequestBody else { return }
-      try _throwIfFailed {
-        _NWG_curl_easy_set_read_user_info($0, UnsafeMutableRawPointer(userInfoPointer))
-      }
-      try _throwIfFailed {
-        _NWG_curl_easy_set_read_function($0) { (buffer,
-                                                _,
-                                                maxLength,
-                                                maybePointer) -> CSize in
-          return maybePointer?.assumingMemoryBound(
-            to: _UserInfo.self
-          ).pointee.readNextPartialRequestBody(
-            buffer,
-            maxLength: maxLength
-          ) ?? -1
+        do {
+          let result = try userInfoPointer.pointee.rewindRequestBody(
+            toOffset: UInt64(offset),
+            from: NWGCURLSeekOrigin(UInt32(origin))
+          )
+          return result ? CInt(NWGCURLSeekOK.rawValue) : CInt(NWGCURLSeekUndone.rawValue)
+        } catch {
+          return CInt(NWGCURLSeekFail.rawValue)
         }
       }
     }
+  }
 
-    func __setRequestBodyRewinder(_ userInfoPointer: UnsafeMutablePointer<_UserInfo>) throws {
-      try _throwIfFailed { _NWG_curl_easy_set_seek_user_info($0, userInfoPointer) }
-      try _throwIfFailed {
-        _NWG_curl_easy_set_seek_function($0) { (maybePointer, offset, origin) -> CInt in
-          guard let userInfoPointer = maybePointer?.assumingMemoryBound(to: _UserInfo.self) else {
-            return CInt(NWGCURLSeekFail.rawValue)
-          }
-          do {
-            let result = try userInfoPointer.pointee.rewindRequestBody(
-              toOffset: UInt64(offset),
-              from: NWGCURLSeekOrigin(UInt32(origin))
-            )
-            return result ? CInt(NWGCURLSeekOK.rawValue) : CInt(NWGCURLSeekUndone.rawValue)
-          } catch {
-            return CInt(NWGCURLSeekFail.rawValue)
-          }
-        }
-      }
+  private func __setResponseCodeHeaderHandler(_ userInfoPointer: UnsafeMutablePointer<_UserInfo>) throws {
+    try _throwIfFailed {
+      _NWG_curl_easy_set_header_user_info($0, UnsafeMutableRawPointer(userInfoPointer))
     }
-
-    func __setResponseCodeHeaderHandler(_ userInfoPointer: UnsafeMutablePointer<_UserInfo>) throws {
-      try _throwIfFailed {
-        _NWG_curl_easy_set_header_user_info($0, UnsafeMutableRawPointer(userInfoPointer))
-      }
-      try _throwIfFailed {
-        _NWG_curl_easy_set_header_callback($0) { (line, _, length, maybePointer) -> CSize in
-          guard let userInfoPointer = maybePointer?.assumingMemoryBound(to: _UserInfo.self) else {
+    try _throwIfFailed {
+      _NWG_curl_easy_set_header_callback($0) { (line, _, length, maybePointer) -> CSize in
+        guard let userInfoPointer = maybePointer?.assumingMemoryBound(to: _UserInfo.self) else {
+          return -1
+        }
+        do {
+          guard try userInfoPointer.pointee.handleResponseHeaderLine(line, length: length) else {
             return -1
           }
-          do {
-            guard try userInfoPointer.pointee.handleResponseHeaderLine(line, length: length) else {
-              return -1
-            }
-            return length
-          } catch {
-            return -1
-          }
+          return length
+        } catch {
+          return -1
         }
       }
     }
+  }
 
-    func __setResponseBodyHandler(_ userInfoPointer: UnsafeMutablePointer<_UserInfo>) throws {
-      try _throwIfFailed {
-        _NWG_curl_easy_set_write_user_info(
-          $0,
-          UnsafeMutableRawPointer(userInfoPointer)
-        )
-      }
-      try _throwIfFailed {
-        _NWG_curl_easy_set_write_function($0) { (chunk, _, length, maybePointer) -> CSize in
-          guard let userInfoPointer = maybePointer?.assumingMemoryBound(to: _UserInfo.self) else {
-            return -1
-          }
-          return userInfoPointer.pointee.writeNextPartialResponseBody(chunk, length: length)
+  private func __setResponseBodyHandler(_ userInfoPointer: UnsafeMutablePointer<_UserInfo>) throws {
+    try _throwIfFailed {
+      _NWG_curl_easy_set_write_user_info(
+        $0,
+        UnsafeMutableRawPointer(userInfoPointer)
+      )
+    }
+    try _throwIfFailed {
+      _NWG_curl_easy_set_write_function($0) { (chunk, _, length, maybePointer) -> CSize in
+        guard let userInfoPointer = maybePointer?.assumingMemoryBound(to: _UserInfo.self) else {
+          return -1
         }
+        return userInfoPointer.pointee.writeNextPartialResponseBody(chunk, length: length)
       }
     }
+  }
 
+  private func __performImpl(_ userInfoPointer: UnsafeMutablePointer<_UserInfo>) throws {
     // `Apache + HTTP/2 + CGI + HEAD` may cause stream error in the HTTP/2 framing layer.
     func __ignoreHTTP2HeadError(_ error: any Error, userInfo: _UserInfo) throws -> Bool {
       guard case CURLClientError.curlCode(let curlCode) = error,
@@ -297,63 +284,53 @@ public actor EasyClient {
       return isHEAD
     }
 
-    func __withUserInfoPointer<T>(_ job: (UnsafeMutablePointer<_UserInfo>) throws -> T) rethrows -> T {
-      return try withUnsafeBytes(of: &delegate, {
-        guard let delegatePointer = UnsafeMutablePointer<Delegate>(
-          mutating: $0.assumingMemoryBound(to: Delegate.self).baseAddress
-        ) else {
-          fatalError("Unexpected pointer?!")
-        }
+    do {
+      try _throwIfFailed({ _NWG_curl_easy_perform($0) })
+    } catch {
+      // Ad-hoc error handling...
+      var unignorableError: (any Error)? = error
 
-        var userInfo = try _UserInfo(
-          delegatePointer: delegatePointer,
-          requestBodySize: _requestBodySize,
-          maxNumberOfRedirectsAllowed: _maxNumberOfRedirectsAllowed
-        )
-        return try withUnsafeBytes(of: &userInfo, {
-          guard let userInfoPointer = UnsafeMutablePointer<_UserInfo>(
-            mutating: $0.assumingMemoryBound(to: _UserInfo.self).baseAddress
-          ) else {
-            fatalError("Unexpected pointer?!")
-          }
-          return try job(userInfoPointer)
-        })
-      })
-    }
-
-    try __withUserInfoPointer { (userInfoPointer) -> Void in
-      // Request Header
-      let requestHeaderFieldCURLList = try __setRequestHeaderHandler(userInfoPointer)
-      defer {
-        _NWG_curl_slist_free_all(requestHeaderFieldCURLList)
+      if try __ignoreHTTP2HeadError(error, userInfo: userInfoPointer.pointee) {
+        unignorableError = nil
       }
 
-      // Request Body
-      try __setRequestBodyHandler(userInfoPointer)
-      try __setRequestBodyRewinder(userInfoPointer)
-
-      // Response Code & Header
-      try __setResponseCodeHeaderHandler(userInfoPointer)
-
-      // Response Body
-      try __setResponseBodyHandler(userInfoPointer)
-
-      // PERFORM!
-      do {
-        try _throwIfFailed({ _NWG_curl_easy_perform($0) })
-      } catch {
-        // Ad-hoc error handling...
-        var unignorableError: (any Error)? = error
-
-        if try __ignoreHTTP2HeadError(error, userInfo: userInfoPointer.pointee) {
-          unignorableError = nil
-        }
-
-        if let unignorableError {
-          throw unignorableError
-        }
+      if let unignorableError {
+        throw unignorableError
       }
     }
+  }
+
+  /// Call `curl_easy_perform` with the handle.
+  public func perform<Delegate>(delegate: Delegate) async throws where Delegate: CURLClientDelegate {
+    if _performed {
+      return
+    }
+    defer { _performed = true }
+
+    try await delegate.willStartPerforming(client: self)
+
+    // Avoid "⛔️the compiler is unable to type-check this expression in reasonable time" 😓
+
+    var delegate = delegate
+    try withUnsafeMutablePointer(to: &delegate) { delegatePointer in
+      var userInfo = try _UserInfo(
+        delegatePointer: delegatePointer,
+        requestBodySize: _requestBodySize,
+        maxNumberOfRedirectsAllowed: _maxNumberOfRedirectsAllowed
+      )
+      try withUnsafeMutablePointer(to: &userInfo) { userInfoPointer in
+        // Note: Somehow `defer` can't be used here in Swift 6.0.1 on macOS😭
+        // https://github.com/YOCKOW/SwiftNetworkGear/issues/57
+        try __setRequestHeaderHandler(userInfoPointer)
+        try __setRequestBodyHandler(userInfoPointer)
+        try __setRequestBodyRewinder(userInfoPointer)
+        try __setResponseCodeHeaderHandler(userInfoPointer)
+        try __setResponseBodyHandler(userInfoPointer)
+        try __performImpl(userInfoPointer)
+      }
+    }
+
+    try await delegate.didFinishPerforming(client: self)
   }
 
   // MARK: /PERFORM -

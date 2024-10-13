@@ -1,10 +1,11 @@
 /* *************************************************************************************************
  URL+HTTPRequest.swift
-   © 2019, 2022 YOCKOW.
+   © 2019,2022,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
- 
+
+import Dispatch
 import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
@@ -84,18 +85,22 @@ extension URL {
   @available(watchOS, deprecated: 8.0, renamed: "response(to:followRedirects:session:)")
   @available(tvOS, deprecated: 15.0, renamed: "response(to:followRedirects:session:)")
   public func response(to request: Request, session: URLSession = .shared) throws -> Response {
-    enum _Result {
+    enum _Result: Sendable {
       case error(Error)
       case response(HTTPURLResponse, data: Data?)
     }
-    var result: _Result = .error(NSError(domain: "Unexpected Error.", code: -1))
+    class _ResultWrapper: @unchecked Sendable {
+      var result: _Result
+      init(_ result: _Result) { self.result = result }
+    }
+    let resultWrapper: _ResultWrapper = .init(.error(NSError(domain: "Unexpected Error.", code: -1)))
 
     let semaphore = DispatchSemaphore(value: 0)
-    let handler: (Data?, URLResponse?, Error?) -> Void = { (data, response, error) in
+    let handler: @Sendable (Data?, URLResponse?, Error?) -> Void = { (data, response, error) in
       if case let httpResponse as HTTPURLResponse = response {
-        result = .response(httpResponse, data: data)
+        resultWrapper.result = .response(httpResponse, data: data)
       } else if let someError = error {
-        result = .error(someError)
+        resultWrapper.result = .error(someError)
       }
       semaphore.signal()
     }
@@ -103,7 +108,7 @@ extension URL {
     task.resume()
     semaphore.wait()
     
-    switch result {
+    switch resultWrapper.result {
     case .error(let error):
       throw error
     case .response(let httpResponse, data: let data):
@@ -206,20 +211,35 @@ extension URL {
   }
 }
 
-
-private var _syncHeaderCache: [URL: HTTPHeader] = [:]
+private final class _HeaderCache: @unchecked Sendable {
+  private var cache: [URL: HTTPHeader]
+  private let queue: DispatchQueue
+  init() {
+    self.cache = [:]
+    self.queue = .init(
+      label: "jp.YOCKOW.NetworkGear.HeaderCache",
+      attributes: .concurrent
+    )
+  }
+  func withCache<T>(_ work: (inout [URL: HTTPHeader]) throws -> T) rethrows -> T {
+    return try queue.sync(flags: .barrier) { try work(&cache) }
+  }
+  static let shared: _HeaderCache = .init()
+}
 extension URL {
   @available(macOS, deprecated: 12.0)
   @available(iOS, deprecated: 15.0)
   @available(watchOS, deprecated: 8.0)
   @available(tvOS, deprecated: 15.0)
   private var __header: HTTPHeader? {
-    if let header = _syncHeaderCache[self] {
-      return header
+    return _HeaderCache.shared.withCache { (cache) -> HTTPHeader? in
+      if let header = cache[self] {
+        return header
+      }
+      guard let response = try? self.response(to: .init(method: .head)) else { return nil }
+      cache[self] = response.header
+      return response.header
     }
-    guard let response = try? self.response(to: .init(method: .head)) else { return nil }
-    _syncHeaderCache[self] = response.header
-    return response.header
   }
 
   /// Returns the date when the resource at URL modified last.

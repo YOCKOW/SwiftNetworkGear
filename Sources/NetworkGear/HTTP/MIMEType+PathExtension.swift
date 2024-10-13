@@ -8,7 +8,7 @@
 // ETag: "1910849//httpd/httpd/trunk/docs/conf/mime.types"
 
 extension MIMEType {
-  public enum PathExtension: String {
+  public enum PathExtension: String, Sendable {
      case _123 = "123"
      case _3dml = "3dml"
      case _3ds = "3ds"
