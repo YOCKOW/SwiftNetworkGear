@@ -30,7 +30,7 @@ private typealias URLIDNATestSet = (
 
 // https://github.com/swiftlang/swift-foundation/issues/957
 private let issue957: Bool = ({ () -> Bool in
-#if swift(>=6) && !canImport(Darwin)
+#if compiler(>=6) && !canImport(Darwin)
   return true
 #else
   return false
