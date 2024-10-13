@@ -7,10 +7,14 @@ on:
       - '**'
     paths:
       - '**/*.swift'
+      - '**/*.c'
+      - '**/*.h'
       - '.github/workflows/*.yml'
   pull_request:
     paths:
       - '**/*.swift'
+      - '**/*.c'
+      - '**/*.h'
       - '.github/workflows/*.yml'
 jobs:
   test:
