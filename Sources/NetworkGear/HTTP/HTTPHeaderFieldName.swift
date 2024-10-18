@@ -1,13 +1,13 @@
 /* *************************************************************************************************
  HTTPHeaderFieldName.swift
-   © 2017-2020,2023 YOCKOW.
+   © 2017-2020,2023-2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
 /// # HeaderFieldName
 /// Represents HTTP Header Field Name
-public struct HTTPHeaderFieldName: Equatable, Hashable, RawRepresentable {
+public struct HTTPHeaderFieldName: Equatable, Hashable, RawRepresentable, Sendable {
   public typealias RawValue = String
   public private(set) var rawValue: String
   private var _lowercasedName: String

@@ -16,9 +16,9 @@ This class is necessary because `CSocketAddress()` or `sockaddr()` may allocate 
  
 */
 ///
-public class SocketAddress {
-  private var _size: Int
-  private var _pointer: UnsafeMutableRawPointer
+public final class SocketAddress: @unchecked Sendable {
+  private let _size: Int
+  private let _pointer: UnsafeMutableRawPointer
   private var _boundPointer: UnsafePointer<CSocketAddress> {
     return UnsafePointer<CSocketAddress>(_pointer.assumingMemoryBound(to: CSocketAddress.self))
   }

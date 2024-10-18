@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  CookieItem.swift
-   © 2017-2018,2020,2023 YOCKOW.
+   © 2017-2018,2020,2023-2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -8,7 +8,7 @@
 import yExtensions
 
 /// Represents a single name-value pair for cookie.
-public struct HTTPCookieItem {
+public struct HTTPCookieItem: Sendable {
   public private(set) var name: String
   public private(set) var value: String
   

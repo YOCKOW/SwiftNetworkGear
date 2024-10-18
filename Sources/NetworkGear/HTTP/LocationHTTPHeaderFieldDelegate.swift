@@ -1,13 +1,13 @@
 /* *************************************************************************************************
  LocationHTTPHeaderFieldDelegate.swift
-   © 2018, 2020 YOCKOW.
+   © 2018,2020,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
 import Foundation
 
-public struct LocationHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate {
+public struct LocationHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate, Sendable {
   public typealias ValueSource = URL
   
   public static var name: HTTPHeaderFieldName { return .location }

@@ -1,13 +1,13 @@
 /* *************************************************************************************************
  CacheControlDirectiveSet.swift
-   © 2018 YOCKOW.
+   © 2018,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
  
 /// A set for `CacheControlDirective`
-public struct CacheControlDirectiveSet {
-  fileprivate enum _Key: Hashable {
+public struct CacheControlDirectiveSet: Sendable {
+  fileprivate enum _Key: Hashable, Sendable {
     case `public`
     case `private`
     case noCache

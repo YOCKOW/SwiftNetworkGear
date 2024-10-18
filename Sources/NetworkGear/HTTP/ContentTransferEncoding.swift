@@ -1,13 +1,13 @@
 /* *************************************************************************************************
  ContentTransferEncoding.swift
-   © 2017-2018 YOCKOW.
+   © 2017-2018,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
 /// Represents "Content-Transfer-Encoding".
 /// It may not be used directly.
-public enum ContentTransferEncoding: String, RawRepresentable {
+public enum ContentTransferEncoding: String, RawRepresentable, Sendable {
   case _7bit = "7bit"
   case _8bit = "8bit"
   case base64 = "base64"

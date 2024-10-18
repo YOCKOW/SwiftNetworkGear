@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  AnyHTTPCookie.swift
-   © 2018, 2020 YOCKOW.
+   © 2018,2020,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -8,7 +8,7 @@
 import Foundation
 
 /// A type-erasure for cookies conforming to `RFC6265Cookie`.
-public struct AnyHTTPCookie: RFC6265Cookie {
+public struct AnyHTTPCookie: RFC6265Cookie, Sendable {
   public var name: String
   public var value: String
   public var domain: String

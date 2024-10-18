@@ -13,7 +13,7 @@ import CNetworkGear
  Represents IP Address.
  
  */
-public enum IPAddress {
+public enum IPAddress: Sendable {
   case v4(UInt8, UInt8, UInt8, UInt8)
   case v6(UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
           UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8)

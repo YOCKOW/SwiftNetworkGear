@@ -1,6 +1,6 @@
 /***************************************************************************************************
  URL+Host.swift
-   © 2018-2019 YOCKOW.
+   © 2018-2019,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
@@ -9,8 +9,8 @@ import Foundation
 
 extension URL {
   /// Wraps host component of `URL`.
-  public struct Host {
-    fileprivate enum _Host {
+  public struct Host: Sendable {
+    fileprivate enum _Host: Sendable {
       case ipAddress(IPAddress)
       case domain(Domain)
       case string(String)

@@ -1,12 +1,12 @@
 /* *************************************************************************************************
  ContentTransferEncodingHTTPHeaderFieldDelegate.swift
-   © 2018, 2020 YOCKOW.
+   © 2018,2020,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
 /// Generate the value of "Content-Transfer-Encoding:"
-public struct ContentTransferEncodingHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate {
+public struct ContentTransferEncodingHTTPHeaderFieldDelegate: HTTPHeaderFieldDelegate, Sendable {
   public typealias HTTPHeaderFieldValueSource = ContentTransferEncoding
   
   public static var name: HTTPHeaderFieldName { return .contentTransferEncoding }

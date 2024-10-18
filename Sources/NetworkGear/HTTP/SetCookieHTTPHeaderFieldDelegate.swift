@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  SetCookieHeaderFieldDelegate.swift
-   © 2018, 2020 YOCKOW.
+   © 2018,2020,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -8,8 +8,8 @@
 import Foundation
 
 /// Represents "Set-Cookie:"
-public struct SetCookieHTTPHeaderFieldDelegate: ExternalInformationReferenceableHTTPHeaderFieldDelegate {
-  public struct Cookie: HTTPHeaderFieldValueConvertible {
+public struct SetCookieHTTPHeaderFieldDelegate: ExternalInformationReferenceableHTTPHeaderFieldDelegate, Sendable {
+  public struct Cookie: HTTPHeaderFieldValueConvertible, Sendable {
     private var _cookie: AnyHTTPCookie
     fileprivate init<C>(_ cookie:C) where C:RFC6265Cookie {
       self._cookie = AnyHTTPCookie(cookie)

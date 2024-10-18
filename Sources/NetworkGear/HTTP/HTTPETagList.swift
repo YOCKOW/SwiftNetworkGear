@@ -1,12 +1,12 @@
 /* *************************************************************************************************
  ETagList.swift
-   © 2018-2020 YOCKOW.
+   © 2018-2020,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
 /// Represents the list of `ETag`s
-public enum HTTPETagList {
+public enum HTTPETagList: Sendable {
   case any
   case list(Array<HTTPETag>)
 }

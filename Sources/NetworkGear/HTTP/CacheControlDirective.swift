@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  CacheControlDirective.swift
-   © 2017-2019,2023 YOCKOW.
+   © 2017-2019,2023,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -18,7 +18,7 @@ import yExtensions
  * [Cache-Control - HTTP | MDN](https://developer.mozilla.org/en/docs/Web/HTTP/Headers/Cache-Control)
  
  */
-public enum CacheControlDirective {
+public enum CacheControlDirective: Sendable {
   case `public`
   case `private`
   case noCache
