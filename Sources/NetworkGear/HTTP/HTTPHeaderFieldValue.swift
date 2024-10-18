@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  HTTPHeaderFieldValue.swift
-   © 2017-2019,2023 YOCKOW.
+   © 2017-2019,2023-2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -20,7 +20,7 @@ private func _valid_value(_ value:String) -> Bool {
  Represents HTTP Header Field Value
  
  */
-public struct HTTPHeaderFieldValue: RawRepresentable {
+public struct HTTPHeaderFieldValue: RawRepresentable, Sendable {
   public let rawValue : String
   public init?(rawValue:String) {
     if !rawValue.isEmpty {

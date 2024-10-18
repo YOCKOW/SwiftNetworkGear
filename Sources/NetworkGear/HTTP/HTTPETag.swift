@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  ETag.swift
-   © 2017-2019 YOCKOW.
+   © 2017-2019,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -11,7 +11,7 @@ import Foundation
 
 /// # ETag
 /// Reporesents a value of ETag
-public enum HTTPETag {
+public enum HTTPETag: Sendable {
   case weak(String)
   case strong(String)
   case any

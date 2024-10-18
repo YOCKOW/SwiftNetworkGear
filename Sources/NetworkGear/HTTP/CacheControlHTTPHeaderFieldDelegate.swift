@@ -1,13 +1,13 @@
 /* *************************************************************************************************
  CacheControlHTTPHeaderFieldDelegate.swift
-   © 2017-2018, 2020 YOCKOW.
+   © 2017-2018,2020,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
  
 
 /// Represents HTTP Header "Cache-Control"
-public struct CacheControlHTTPHeaderFieldDelegate: AppendableHTTPHeaderFieldDelegate {
+public struct CacheControlHTTPHeaderFieldDelegate: AppendableHTTPHeaderFieldDelegate, Sendable {
   public typealias HTTPHeaderFieldValueSource = CacheControlDirectiveSet
   public typealias Element = CacheControlDirective
   

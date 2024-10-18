@@ -6,7 +6,7 @@
 // URL: https://www.iana.org/assignments/http-methods/methods.csv
 // Last-Modified: 2022-06-08T21:40:23Z
 
-public enum HTTPMethod: String {
+public enum HTTPMethod: String, Sendable {
   case acl = "ACL"
   case baselineControl = "BASELINE-CONTROL"
   case bind = "BIND"
