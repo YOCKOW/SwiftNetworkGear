@@ -54,7 +54,7 @@ private extension URLRequest {
 
 extension URL {
   /// Represents HTTP Response
-  public struct Response {
+  public struct Response: Sendable {
     public let statusCode: HTTPStatusCode
     public let header: HTTPHeader
     public let content: Data?
