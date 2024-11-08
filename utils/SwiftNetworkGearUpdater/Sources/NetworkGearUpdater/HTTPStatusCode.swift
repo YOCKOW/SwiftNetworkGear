@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  HTTPStatusCode.swift
-   © 2020 YOCKOW.
+   © 2020,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -32,7 +32,7 @@ public final class HTTPStatusCode: HTTPUpdaterDelegate {
 
     let typeName = "HTTPStatusCode"
     
-    lines.append("public enum \(typeName): UInt16 {")
+    lines.append("public enum \(typeName): UInt16, Sendable {")
     for (value, desc) in codes {
       lines.append(String.Line("case \(desc.lowerCamelCase.swiftIdentifier) = \(value)", indentLevel: 1)!)
     }

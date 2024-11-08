@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  ContentDispositionValue.swift
-   © 2020 YOCKOW.
+   © 2020,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -33,7 +33,7 @@ public final class ContentDispositionValue: HTTPUpdaterDelegate {
     
     let typeName = "ContentDispositionValue"
     
-    lines.append("public enum \(typeName): String {")
+    lines.append("public enum \(typeName): String, Sendable {")
     for value in values {
       lines.append(String.Line("case \(value.lowerCamelCase.swiftIdentifier) = \(value.debugDescription)", indentLevel: 1)!)
     }

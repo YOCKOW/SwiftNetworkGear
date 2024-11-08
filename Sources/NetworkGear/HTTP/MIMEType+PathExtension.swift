@@ -4,8 +4,8 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types
-// Last-Modified: 2023-07-07T11:12:02Z
-// ETag: "1910849//httpd/httpd/trunk/docs/conf/mime.types"
+// Last-Modified: 2024-09-12T08:38:39Z
+// ETag: "1920589//httpd/httpd/trunk/docs/conf/mime.types"
 
 extension MIMEType {
   public enum PathExtension: String, Sendable {
@@ -54,6 +54,7 @@ extension MIMEType {
      case atx = "atx"
      case au = "au"
      case avi = "avi"
+     case avif = "avif"
      case aw = "aw"
      case azf = "azf"
      case azs = "azs"
@@ -369,6 +370,7 @@ extension MIMEType {
      case js = "js"
      case json = "json"
      case jsonml = "jsonml"
+     case jxl = "jxl"
      case kar = "kar"
      case karbon = "karbon"
      case kfo = "kfo"
@@ -411,6 +413,8 @@ extension MIMEType {
      case m1v = "m1v"
      case m21 = "m21"
      case m2a = "m2a"
+     case m2t = "m2t"
+     case m2ts = "m2ts"
      case m2v = "m2v"
      case m3a = "m3a"
      case m3u = "m3u"
@@ -809,6 +813,7 @@ extension MIMEType {
      case tr = "tr"
      case tra = "tra"
      case trm = "trm"
+     case ts = "ts"
      case tsd = "tsd"
      case tsv = "tsv"
      case ttc = "ttc"
@@ -1628,12 +1633,14 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .font, tree: nil, subtype: "ttf", suffix: nil): [.ttf],
   MIMEType._Core(type: .font, tree: nil, subtype: "woff", suffix: nil): [.woff],
   MIMEType._Core(type: .font, tree: nil, subtype: "woff2", suffix: nil): [.woff2],
+  MIMEType._Core(type: .image, tree: nil, subtype: "avif", suffix: nil): [.avif],
   MIMEType._Core(type: .image, tree: nil, subtype: "bmp", suffix: nil): [.bmp],
   MIMEType._Core(type: .image, tree: nil, subtype: "cgm", suffix: nil): [.cgm],
   MIMEType._Core(type: .image, tree: nil, subtype: "g3fax", suffix: nil): [.g3],
   MIMEType._Core(type: .image, tree: nil, subtype: "gif", suffix: nil): [.gif],
   MIMEType._Core(type: .image, tree: nil, subtype: "ief", suffix: nil): [.ief],
   MIMEType._Core(type: .image, tree: nil, subtype: "jpeg", suffix: nil): [.jpe, .jpeg, .jpg],
+  MIMEType._Core(type: .image, tree: nil, subtype: "jxl", suffix: nil): [.jxl],
   MIMEType._Core(type: .image, tree: nil, subtype: "ktx", suffix: nil): [.ktx],
   MIMEType._Core(type: .image, tree: nil, subtype: "png", suffix: nil): [.png],
   MIMEType._Core(type: .image, tree: nil, subtype: "sgi", suffix: nil): [.sgi],
@@ -1685,7 +1692,6 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .model, tree: .vnd, subtype: "dwf", suffix: nil): [.dwf],
   MIMEType._Core(type: .model, tree: .vnd, subtype: "gdl", suffix: nil): [.gdl],
   MIMEType._Core(type: .model, tree: .vnd, subtype: "gtw", suffix: nil): [.gtw],
-  MIMEType._Core(type: .model, tree: .vnd, subtype: "mts", suffix: nil): [.mts],
   MIMEType._Core(type: .model, tree: .vnd, subtype: "vtu", suffix: nil): [.vtu],
   MIMEType._Core(type: .text, tree: nil, subtype: "cache-manifest", suffix: nil): [.appcache],
   MIMEType._Core(type: .text, tree: nil, subtype: "calendar", suffix: nil): [.ics, .ifb],
@@ -1736,6 +1742,7 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .video, tree: nil, subtype: "jpeg", suffix: nil): [.jpgv],
   MIMEType._Core(type: .video, tree: nil, subtype: "jpm", suffix: nil): [.jpgm, .jpm],
   MIMEType._Core(type: .video, tree: nil, subtype: "mj2", suffix: nil): [.mj2, .mjp2],
+  MIMEType._Core(type: .video, tree: nil, subtype: "mp2t", suffix: nil): [.m2t, .m2ts, .mts, .ts],
   MIMEType._Core(type: .video, tree: nil, subtype: "mp4", suffix: nil): [.mp4, .mp4v, .mpg4],
   MIMEType._Core(type: .video, tree: nil, subtype: "mpeg", suffix: nil): [.m1v, .m2v, .mpe, .mpeg, .mpg],
   MIMEType._Core(type: .video, tree: nil, subtype: "ogg", suffix: nil): [.ogv],
@@ -1814,6 +1821,7 @@ internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
   .atx: MIMEType._Core(type: .application, tree: .vnd, subtype: "antix.game-component", suffix: nil),
   .au: MIMEType._Core(type: .audio, tree: nil, subtype: "basic", suffix: nil),
   .avi: MIMEType._Core(type: .video, tree: nil, subtype: "x-msvideo", suffix: nil),
+  .avif: MIMEType._Core(type: .image, tree: nil, subtype: "avif", suffix: nil),
   .aw: MIMEType._Core(type: .application, tree: nil, subtype: "applixware", suffix: nil),
   .azf: MIMEType._Core(type: .application, tree: .vnd, subtype: "airzip.filesecure.azf", suffix: nil),
   .azs: MIMEType._Core(type: .application, tree: .vnd, subtype: "airzip.filesecure.azs", suffix: nil),
@@ -2129,6 +2137,7 @@ internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
   .js: MIMEType._Core(type: .text, tree: nil, subtype: "javascript", suffix: nil),
   .json: MIMEType._Core(type: .application, tree: nil, subtype: "json", suffix: nil),
   .jsonml: MIMEType._Core(type: .application, tree: nil, subtype: "jsonml", suffix: .json),
+  .jxl: MIMEType._Core(type: .image, tree: nil, subtype: "jxl", suffix: nil),
   .kar: MIMEType._Core(type: .audio, tree: nil, subtype: "midi", suffix: nil),
   .karbon: MIMEType._Core(type: .application, tree: .vnd, subtype: "kde.karbon", suffix: nil),
   .kfo: MIMEType._Core(type: .application, tree: .vnd, subtype: "kde.kformula", suffix: nil),
@@ -2171,6 +2180,8 @@ internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
   .m1v: MIMEType._Core(type: .video, tree: nil, subtype: "mpeg", suffix: nil),
   .m21: MIMEType._Core(type: .application, tree: nil, subtype: "mp21", suffix: nil),
   .m2a: MIMEType._Core(type: .audio, tree: nil, subtype: "mpeg", suffix: nil),
+  .m2t: MIMEType._Core(type: .video, tree: nil, subtype: "mp2t", suffix: nil),
+  .m2ts: MIMEType._Core(type: .video, tree: nil, subtype: "mp2t", suffix: nil),
   .m2v: MIMEType._Core(type: .video, tree: nil, subtype: "mpeg", suffix: nil),
   .m3a: MIMEType._Core(type: .audio, tree: nil, subtype: "mpeg", suffix: nil),
   .m3u: MIMEType._Core(type: .audio, tree: nil, subtype: "x-mpegurl", suffix: nil),
@@ -2256,7 +2267,7 @@ internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
   .msi: MIMEType._Core(type: .application, tree: nil, subtype: "x-msdownload", suffix: nil),
   .msl: MIMEType._Core(type: .application, tree: .vnd, subtype: "mobius.msl", suffix: nil),
   .msty: MIMEType._Core(type: .application, tree: .vnd, subtype: "muvee.style", suffix: nil),
-  .mts: MIMEType._Core(type: .model, tree: .vnd, subtype: "mts", suffix: nil),
+  .mts: MIMEType._Core(type: .video, tree: nil, subtype: "mp2t", suffix: nil),
   .mus: MIMEType._Core(type: .application, tree: .vnd, subtype: "musician", suffix: nil),
   .musicxml: MIMEType._Core(type: .application, tree: .vnd, subtype: "recordare.musicxml", suffix: .xml),
   .mvb: MIMEType._Core(type: .application, tree: nil, subtype: "x-msmediaview", suffix: nil),
@@ -2569,6 +2580,7 @@ internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
   .tr: MIMEType._Core(type: .text, tree: nil, subtype: "troff", suffix: nil),
   .tra: MIMEType._Core(type: .application, tree: .vnd, subtype: "trueapp", suffix: nil),
   .trm: MIMEType._Core(type: .application, tree: nil, subtype: "x-msterminal", suffix: nil),
+  .ts: MIMEType._Core(type: .video, tree: nil, subtype: "mp2t", suffix: nil),
   .tsd: MIMEType._Core(type: .application, tree: nil, subtype: "timestamped-data", suffix: nil),
   .tsv: MIMEType._Core(type: .text, tree: nil, subtype: "tab-separated-values", suffix: nil),
   .ttc: MIMEType._Core(type: .font, tree: nil, subtype: "collection", suffix: nil),

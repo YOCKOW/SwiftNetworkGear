@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  HTTPMethod.swift
-   © 2020 YOCKOW.
+   © 2020,2024 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -39,7 +39,7 @@ public final class HTTPMethod: HTTPUpdaterDelegate {
     
     let typeName = "HTTPMethod"
     
-    lines.append("public enum \(typeName): String {")
+    lines.append("public enum \(typeName): String, Sendable {")
     for method in methods {
       lines.append(String.Line("case \(method._methodLowerCamelCase.swiftIdentifier) = \(method.debugDescription)", indentLevel: 1)!)
     }

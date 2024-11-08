@@ -125,7 +125,7 @@ public final class MIMETypePathExtension: CodeUpdaterDelegate {
     
     do { // enum
       lines.append("extension MIMEType {")
-      lines.append(String.Line("public enum PathExtension: String {", indentLevel: 1)!)
+      lines.append(String.Line("public enum PathExtension: String, Sendable {", indentLevel: 1)!)
       for ext in sortedExtensions {
         lines.append(String.Line(" case \(_extIdentifier(of: ext)) = \(ext.debugDescription)", indentLevel: 2)!)
       }
