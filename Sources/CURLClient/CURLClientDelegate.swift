@@ -134,7 +134,11 @@ open class CURLClientGeneralDelegate: CURLClientDelegate, @unchecked Sendable {
       }
     }
 
-    private final class _SomeAsyncSequence<T>: _RequestBodyBase, @unchecked Sendable where T: AsyncSequence, T.Element == UInt8 {
+    private final class _SomeAsyncSequence<T>: _RequestBodyBase,
+                                               @unchecked Sendable where T: AsyncSequence,
+                                                                         T: Sendable,
+                                                                         T.AsyncIterator: Sendable,
+                                                                         T.Element == UInt8 {
       private var iterator: T.AsyncIterator
       init(_ sequence: T) {
         self.iterator = sequence.makeAsyncIterator()
@@ -209,7 +213,10 @@ open class CURLClientGeneralDelegate: CURLClientDelegate, @unchecked Sendable {
       self._base = _SomeDataProtocol<D>(data)
     }
 
-    public init<A>(_ sequence: A) where A: AsyncSequence, A.Element == UInt8 {
+    public init<A>(_ sequence: A) where A: AsyncSequence,
+                                        A: Sendable,
+                                        A.AsyncIterator: Sendable,
+                                        A.Element == UInt8 {
       self._base = _SomeAsyncSequence<A>(sequence)
     }
 

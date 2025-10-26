@@ -44,7 +44,10 @@ public actor SimpleHTTPConnection {
         self._body = .init(data: data)
       }
 
-      public init<A>(_ sequence: A) where A: AsyncSequence, A.Element == UInt8 {
+      public init<A>(_ sequence: A) where A: AsyncSequence,
+                                          A: Sendable,
+                                          A.AsyncIterator: Sendable,
+                                          A.Element == UInt8 {
         self._body = .init(sequence)
       }
 

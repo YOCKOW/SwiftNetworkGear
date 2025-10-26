@@ -7,6 +7,9 @@
 
 import CNetworkGear
 
+extension CNetworkGear.CIPv6Address: Swift.Equatable {}
+extension CNetworkGear.CIPv6Address: Swift.CustomStringConvertible {}
+extension CNetworkGear.CIPv6Address: Swift.LosslessStringConvertible {}
 extension CNetworkGear.CIPv6Address: NetworkGear.CIPAddress {
   public static let size: Int = 16
   
