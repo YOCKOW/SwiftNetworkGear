@@ -4,7 +4,7 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/http-methods/methods.csv
-// Last-Modified: 2022-06-08T21:40:23Z
+// Last-Modified: 2025-10-24T07:01:22Z
 
 public enum HTTPMethod: String, Sendable {
   case acl = "ACL"
