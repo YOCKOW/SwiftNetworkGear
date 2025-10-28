@@ -1,12 +1,15 @@
 /* *************************************************************************************************
  CIPv4Address.swift
-   © 2017-2018,2020,2024 YOCKOW.
+   © 2017-2018,2020,2024-2025 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
  
 import CNetworkGear
 
+extension CNetworkGear.CIPv4Address: Swift.Equatable {}
+extension CNetworkGear.CIPv4Address: Swift.CustomStringConvertible {}
+extension CNetworkGear.CIPv4Address: Swift.LosslessStringConvertible {}
 extension CNetworkGear.CIPv4Address: NetworkGear.CIPAddress {
   public static let size: Int = 4
   

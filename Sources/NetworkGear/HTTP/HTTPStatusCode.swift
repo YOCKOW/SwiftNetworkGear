@@ -4,13 +4,14 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/http-status-codes/http-status-codes-1.csv
-// Last-Modified: 2024-08-23T19:00:28Z
+// Last-Modified: 2025-10-24T07:01:38Z
 
 public enum HTTPStatusCode: UInt16, Sendable {
   case `continue` = 100
   case switchingProtocols = 101
   case processing = 102
   case earlyHints = 103
+  case uploadResumptionSupportedTEMPORARYRegistered2024_11_13ExtensionRegistered2025_09_15Expires2026_11_13 = 104
   case ok = 200
   case created = 201
   case accepted = 202
@@ -76,6 +77,7 @@ extension HTTPStatusCode {
     case .switchingProtocols: return "Switching Protocols"
     case .processing: return "Processing"
     case .earlyHints: return "Early Hints"
+    case .uploadResumptionSupportedTEMPORARYRegistered2024_11_13ExtensionRegistered2025_09_15Expires2026_11_13: return "Upload Resumption Supported (TEMPORARY - registered 2024-11-13, extension registered 2025-09-15, expires 2026-11-13)"
     case .ok: return "OK"
     case .created: return "Created"
     case .accepted: return "Accepted"

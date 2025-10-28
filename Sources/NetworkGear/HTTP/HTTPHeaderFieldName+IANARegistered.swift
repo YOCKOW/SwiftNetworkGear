@@ -4,7 +4,7 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/http-fields/field-names.csv
-// Last-Modified: 2024-10-08T00:05:23Z
+// Last-Modified: 2025-10-02T22:41:18Z
 
 extension HTTPHeaderFieldName {
   public static let aIM = HTTPHeaderFieldName(rawValue: "A-IM")!
@@ -29,6 +29,7 @@ extension HTTPHeaderFieldName {
   public static let accessControlMaxAge = HTTPHeaderFieldName(rawValue: "Access-Control-Max-Age")!
   public static let accessControlRequestHeaders = HTTPHeaderFieldName(rawValue: "Access-Control-Request-Headers")!
   public static let accessControlRequestMethod = HTTPHeaderFieldName(rawValue: "Access-Control-Request-Method")!
+  public static let activateStorageAccess = HTTPHeaderFieldName(rawValue: "Activate-Storage-Access")!
   public static let age = HTTPHeaderFieldName(rawValue: "Age")!
   public static let allow = HTTPHeaderFieldName(rawValue: "Allow")!
   public static let alpn = HTTPHeaderFieldName(rawValue: "ALPN")!
@@ -47,6 +48,8 @@ extension HTTPHeaderFieldName {
   public static let cPEP = HTTPHeaderFieldName(rawValue: "C-PEP")!
   public static let cPEPInfo = HTTPHeaderFieldName(rawValue: "C-PEP-Info")!
   public static let cacheControl = HTTPHeaderFieldName(rawValue: "Cache-Control")!
+  public static let cacheGroupInvalidation = HTTPHeaderFieldName(rawValue: "Cache-Group-Invalidation")!
+  public static let cacheGroups = HTTPHeaderFieldName(rawValue: "Cache-Groups")!
   public static let cacheStatus = HTTPHeaderFieldName(rawValue: "Cache-Status")!
   public static let calManagedID = HTTPHeaderFieldName(rawValue: "Cal-Managed-ID")!
   public static let calDAVTimezones = HTTPHeaderFieldName(rawValue: "CalDAV-Timezones")!
@@ -99,6 +102,7 @@ extension HTTPHeaderFieldName {
   public static let depth = HTTPHeaderFieldName(rawValue: "Depth")!
   public static let derivedFrom = HTTPHeaderFieldName(rawValue: "Derived-From")!
   public static let destination = HTTPHeaderFieldName(rawValue: "Destination")!
+  public static let detachedJWS = HTTPHeaderFieldName(rawValue: "Detached-JWS")!
   public static let differentialID = HTTPHeaderFieldName(rawValue: "Differential-ID")!
   public static let dictionaryID = HTTPHeaderFieldName(rawValue: "Dictionary-ID")!
   public static let digest = HTTPHeaderFieldName(rawValue: "Digest")!
@@ -197,6 +201,11 @@ extension HTTPHeaderFieldName {
   public static let safe = HTTPHeaderFieldName(rawValue: "Safe")!
   public static let scheduleReply = HTTPHeaderFieldName(rawValue: "Schedule-Reply")!
   public static let scheduleTag = HTTPHeaderFieldName(rawValue: "Schedule-Tag")!
+  public static let secFetchDest = HTTPHeaderFieldName(rawValue: "Sec-Fetch-Dest")!
+  public static let secFetchMode = HTTPHeaderFieldName(rawValue: "Sec-Fetch-Mode")!
+  public static let secFetchSite = HTTPHeaderFieldName(rawValue: "Sec-Fetch-Site")!
+  public static let secFetchStorageAccess = HTTPHeaderFieldName(rawValue: "Sec-Fetch-Storage-Access")!
+  public static let secFetchUser = HTTPHeaderFieldName(rawValue: "Sec-Fetch-User")!
   public static let secGPC = HTTPHeaderFieldName(rawValue: "Sec-GPC")!
   public static let secPurpose = HTTPHeaderFieldName(rawValue: "Sec-Purpose")!
   public static let secTokenBinding = HTTPHeaderFieldName(rawValue: "Sec-Token-Binding")!
