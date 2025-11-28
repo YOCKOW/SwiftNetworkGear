@@ -27,7 +27,7 @@ let package = Package(
   dependencies: [
     // Dependencies declare other packages that this package depends on.
     .package(url:"https://github.com/YOCKOW/SwiftBootstring.git", from: "1.2.0"),
-    .package(url:"https://github.com/YOCKOW/SwiftPublicSuffix.git", from: "2.3.0"),
+    .package(url: "https://github.com/YOCKOW/SwiftPublicSuffix.git", branch: "up-to-date/v2"),
     .package(url:"https://github.com/YOCKOW/SwiftRanges.git", from: "3.2.1"),
     .package(url:"https://github.com/YOCKOW/SwiftTemporaryFile.git", from: "4.1.0"),
     .package(url:"https://github.com/YOCKOW/SwiftUnicodeSupplement.git", from: "1.5.0"),
