@@ -5,12 +5,48 @@ It was originally written as a part of [SwiftCGIResponder](https://github.com/YO
 
 # Requirements
 
-- Swift 5, 6
-- macOS(>=10.15) or Linux
+- Swift >=6.2
+- macOS(>=13) or Linux
+
 
 ## Dependencies
 
-![Dependencies](./dependencies.svg)
+<!-- SWIFT PACKAGE DEPENDENCIES MERMAID START -->
+```mermaid
+---
+title: NetworkGear Dependencies
+---
+flowchart TD
+  swiftbootstring(["Bootstring<br>@1.2.0"])
+  swiftnetworkgear["NetworkGear"]
+  swiftpublicsuffix(["PublicSuffix<br>@2.4.13"])
+  swiftranges(["Ranges<br>@4.0.1"])
+  swifttemporaryfile(["TemporaryFile<br>@5.0.0"])
+  swiftunicodesupplement(["UnicodeSupplement<br>@2.0.0"])
+  yswiftextensions(["yExtensions<br>@2.0.0"])
+
+  click swiftbootstring href "https://github.com/YOCKOW/SwiftBootstring.git"
+  click swiftpublicsuffix href "https://github.com/YOCKOW/SwiftPublicSuffix.git"
+  click swiftranges href "https://github.com/YOCKOW/SwiftRanges.git"
+  click swifttemporaryfile href "https://github.com/YOCKOW/SwiftTemporaryFile.git"
+  click swiftunicodesupplement href "https://github.com/YOCKOW/SwiftUnicodeSupplement.git"
+  click yswiftextensions href "https://github.com/YOCKOW/ySwiftExtensions.git"
+
+  swiftnetworkgear ----> swiftbootstring
+  swiftnetworkgear ----> swiftpublicsuffix
+  swiftnetworkgear ----> swiftranges
+  swiftnetworkgear --> swifttemporaryfile
+  swiftnetworkgear --> swiftunicodesupplement
+  swiftnetworkgear --> yswiftextensions
+  swifttemporaryfile ----> swiftranges
+  swifttemporaryfile --> yswiftextensions
+  swiftunicodesupplement ----> swiftranges
+  yswiftextensions ----> swiftranges
+  yswiftextensions --> swiftunicodesupplement
+
+
+```
+<!-- SWIFT PACKAGE DEPENDENCIES MERMAID END -->
 
 
 # Usage
