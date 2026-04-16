@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  ContentDisposition.swift
-   © 2017-2019 YOCKOW.
+   © 2017-2019,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -53,7 +53,7 @@ extension ContentDisposition {
   public init(_ string:String) {
     let (value_s, parameters_s) = string.splitOnce(separator:";")
     let value = Value(rawValue:String(value_s).trimmingCharacters(in:.whitespaces))
-    if parameters_s == nil {
+    if parameters_s == Optional<Substring>.none {
       self.init(value:value, parameters:nil)
     } else {
       let parameters = Dictionary<ParameterKey,String>(parsing:String(parameters_s!)) {

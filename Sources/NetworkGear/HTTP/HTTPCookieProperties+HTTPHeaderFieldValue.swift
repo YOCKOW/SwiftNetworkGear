@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  CookieProperties+HeaderFieldValue.swift
-   © 2018,2023 YOCKOW.
+   © 2018,2023,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -11,7 +11,7 @@ private func _attributes(_ string:String) -> [String:String] {
   let pairs = string.components(separatedBy:";").map { _trim($0) }
   return pairs.reduce(into:[:]) { (result:inout [String:String], string:String) -> Void in
     let (key, value) = string.splitOnce(separator:"=")
-    result[_trim(key).lowercased()] = (value == nil) ? "" : _trim(value!)
+    result[_trim(key).lowercased()] = (value == Optional<Substring>.none) ? "" : _trim(value!)
   }
 }
 
@@ -118,8 +118,8 @@ extension HTTPCookieProperties {
     if let attributes_string = nilableAttributes {
       let attributes = _attributes(String(attributes_string))
       
-      self.secure = attributes["secure"] != nil ? true: false
-      self.httpOnly = attributes["httponly"] != nil ? true: false
+      self.secure = attributes["secure"] != Optional<String>.none ? true: false
+      self.httpOnly = attributes["httponly"] != Optional<String>.none ? true: false
       
       // Calc. Expiration
       guard self._setExpires(maxAge:attributes["max-age"], expires:attributes["expires"], now:now)

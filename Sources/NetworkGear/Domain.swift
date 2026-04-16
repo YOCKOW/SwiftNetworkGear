@@ -396,6 +396,7 @@ extension Domain.Label {
   }
 }
 
+@available(*, deprecated)
 extension StringProtocol where SubSequence == Substring {
   public static func ==(lhs: Self, rhs: Domain.Label) -> Bool {
     return rhs == lhs
@@ -406,6 +407,7 @@ extension StringProtocol where SubSequence == Substring {
   }
 }
 
+@available(*, deprecated)
 extension Optional where Wrapped == Domain.Label {
   public static func ==<S>(lhs: Self, rhs: S?) -> Bool where S: StringProtocol, S.SubSequence == Substring {
     switch (lhs, rhs) {
@@ -423,6 +425,7 @@ extension Optional where Wrapped == Domain.Label {
   }
 }
 
+@available(*, deprecated)
 extension Optional where Wrapped: StringProtocol, Wrapped.SubSequence == Substring {
   public static func ==(lhs: Self, rhs: Domain.Label?) -> Bool {
     return rhs == lhs
