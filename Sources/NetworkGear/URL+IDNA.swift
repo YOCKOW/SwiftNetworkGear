@@ -1,6 +1,6 @@
 /***************************************************************************************************
  URL+IDNA.swift
-   © 2017-2018,2023 YOCKOW.
+   © 2017-2018,2023,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
@@ -44,7 +44,7 @@ extension URL {
     
     // "user:password"
     // -> "user", "passsword"
-    let (user, password):(Substring?, Substring?) = (auth == nil) ? (nil, nil) : ({
+    let (user, password):(Substring?, Substring?) = (auth == Optional<Substring>.none) ? (nil, nil) : ({
       if let rangeOfColon = $0.range(of:":") {
         let rangeOfUser = $0.startIndex..<rangeOfColon.lowerBound
         let rangeOfPassword = rangeOfColon.upperBound..<$0.endIndex
@@ -53,13 +53,13 @@ extension URL {
         return ($0, nil)
       }
     })(auth!)
-    if user != nil {
-      for scalar in user!.unicodeScalars {
+    if let user {
+      for scalar in user.unicodeScalars {
         guard scalar.isAllowedInURLUser else { return nil }
       }
     }
-    if password != nil {
-      for scalar in password!.unicodeScalars {
+    if let password {
+      for scalar in password .unicodeScalars {
         guard scalar.isAllowedInURLPassword else { return nil }
       }
     }
@@ -75,8 +75,8 @@ extension URL {
         return (hp, nil)
       }
     })(hostPort)
-    if port != nil {
-      guard let _ = UInt16(port!) else { return nil }
+    if let port {
+      guard let _ = UInt16(port) else { return nil }
     }
     
     // "/path?query#fragment"
@@ -109,10 +109,10 @@ extension URL {
     var urlString = scheme + "://"
     
     // user & password
-    if user != nil {
-      urlString += user!
-      if password != nil {
-        urlString += ":" + password!
+    if let user {
+      urlString += user
+      if let password {
+        urlString += ":" + password
       }
       urlString += "@"
     }
@@ -123,8 +123,8 @@ extension URL {
     urlString += hostComponent.description
     
     // port
-    if port != nil { urlString += ":" + port! }
-    
+    if let port { urlString += ":" + port }
+
     // path
     guard let encodedPath = path.addingPercentEncoding(whereAllowedUnicodeScalars: \.isAllowedInURLPath) else {
       return nil
@@ -132,16 +132,16 @@ extension URL {
     urlString += encodedPath
     
     // query
-    if query != nil {
-      guard let encodedQuery = query!.addingPercentEncoding(whereAllowedUnicodeScalars: \.isAllowedInURLQuery) else {
+    if let query {
+      guard let encodedQuery = query.addingPercentEncoding(whereAllowedUnicodeScalars: \.isAllowedInURLQuery) else {
         return nil
       }
       urlString += "?" + encodedQuery
     }
     
     // fragment
-    if fragment != nil {
-      guard let encodedFragment = fragment!.addingPercentEncoding(whereAllowedUnicodeScalars: \.isAllowedInURLFragment) else {
+    if let fragment {
+      guard let encodedFragment = fragment.addingPercentEncoding(whereAllowedUnicodeScalars: \.isAllowedInURLFragment) else {
         return nil
       }
       urlString += "#" + encodedFragment
