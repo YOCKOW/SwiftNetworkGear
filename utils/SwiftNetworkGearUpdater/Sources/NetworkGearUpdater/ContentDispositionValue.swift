@@ -1,28 +1,30 @@
 /* *************************************************************************************************
  ContentDispositionValue.swift
-   © 2020,2024 YOCKOW.
+   © 2020,2024,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
  
-import CSV
+@preconcurrency import CSV
 import Foundation
 import StringComposition
 import yCodeUpdater
 import yExtensions
 
 public final class ContentDispositionValue: HTTPUpdaterDelegate {
-  public override var identifier: String {
+  public init() {}
+
+  public var identifier: String {
     return "ContentDispositionValue"
   }
   
-  public override var sourceURLs: Array<URL> {
+  public var sourceURLs: Array<URL> {
     return [
       URL(string: "https://www.iana.org/assignments/cont-disp/cont-disp-1.csv")!,
     ]
   }
   
-  public override func convert<S>(_ intermediates: S) throws -> Data where S: Sequence, S.Element == IntermediateDataContainer<CSVReader> {
+  public func convert<S>(_ intermediates: S) async throws -> Data where S: Sequence, S.Element == IntermediateDataContainer<CSVReader> {
     let values: [String] = intermediates.flatMap({ $0.content.rows() }).compactMap {
       let value = $0[0]!
       guard value.allSatisfy({ $0.isLowercase || $0 == "-" }) else { return nil }
@@ -35,7 +37,7 @@ public final class ContentDispositionValue: HTTPUpdaterDelegate {
     
     lines.append("public enum \(typeName): String, Sendable {")
     for value in values {
-      lines.append(String.Line("case \(value.lowerCamelCase.swiftIdentifier) = \(value.debugDescription)", indentLevel: 1)!)
+      lines.append(String.Line("case \(try await value.lowerCamelCase.swiftIdentifier) = \(value.debugDescription)", indentLevel: 1)!)
     }
     lines.append("}")
     lines.appendEmptyLine()
