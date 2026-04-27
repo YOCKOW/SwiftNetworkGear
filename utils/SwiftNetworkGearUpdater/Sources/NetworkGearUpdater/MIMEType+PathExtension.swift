@@ -120,7 +120,7 @@ public final class MIMETypePathExtension: CodeUpdaterDelegate {
     func _extIdentifier(of pathExtension: String) async throws -> String {
       let ext = pathExtension.lowerCamelCase
       if !pathExtension.first!.isLetter {
-        return "_\(ext)"
+        return "`\(ext)`"
       }
       return try await ext.swiftIdentifier
     }

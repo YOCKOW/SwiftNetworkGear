@@ -4,7 +4,7 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/http-fields/field-names.csv
-// Last-Modified: 2025-10-02T22:41:18Z
+// Last-Modified: 2026-03-06T22:01:19Z
 
 extension HTTPHeaderFieldName {
   public static let aIM = HTTPHeaderFieldName(rawValue: "A-IM")!
@@ -18,6 +18,7 @@ extension HTTPHeaderFieldName {
   public static let acceptLanguage = HTTPHeaderFieldName(rawValue: "Accept-Language")!
   public static let acceptPatch = HTTPHeaderFieldName(rawValue: "Accept-Patch")!
   public static let acceptPost = HTTPHeaderFieldName(rawValue: "Accept-Post")!
+  public static let acceptQuery = HTTPHeaderFieldName(rawValue: "Accept-Query")!
   public static let acceptRanges = HTTPHeaderFieldName(rawValue: "Accept-Ranges")!
   public static let acceptSignature = HTTPHeaderFieldName(rawValue: "Accept-Signature")!
   public static let accessControl = HTTPHeaderFieldName(rawValue: "Access-Control")!
@@ -129,6 +130,7 @@ extension HTTPHeaderFieldName {
   public static let ifUnmodifiedSince = HTTPHeaderFieldName(rawValue: "If-Unmodified-Since")!
   public static let im = HTTPHeaderFieldName(rawValue: "IM")!
   public static let includeReferredTokenBindingID = HTTPHeaderFieldName(rawValue: "Include-Referred-Token-Binding-ID")!
+  public static let incremental = HTTPHeaderFieldName(rawValue: "Incremental")!
   public static let isolation = HTTPHeaderFieldName(rawValue: "Isolation")!
   public static let keepAlive = HTTPHeaderFieldName(rawValue: "Keep-Alive")!
   public static let label = HTTPHeaderFieldName(rawValue: "Label")!
@@ -218,6 +220,7 @@ extension HTTPHeaderFieldName {
   public static let server = HTTPHeaderFieldName(rawValue: "Server")!
   public static let serverTiming = HTTPHeaderFieldName(rawValue: "Server-Timing")!
   public static let setCookie = HTTPHeaderFieldName(rawValue: "Set-Cookie")!
+  public static let setTxn = HTTPHeaderFieldName(rawValue: "Set-Txn")!
   public static let setProfile = HTTPHeaderFieldName(rawValue: "SetProfile")!
   public static let signature = HTTPHeaderFieldName(rawValue: "Signature")!
   public static let signatureInput = HTTPHeaderFieldName(rawValue: "Signature-Input")!

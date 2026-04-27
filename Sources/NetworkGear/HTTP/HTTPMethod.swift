@@ -4,7 +4,7 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/http-methods/methods.csv
-// Last-Modified: 2025-10-24T07:01:22Z
+// Last-Modified: 2025-11-21T20:46:23Z
 
 public enum HTTPMethod: String, Sendable {
   case acl = "ACL"
@@ -35,6 +35,7 @@ public enum HTTPMethod: String, Sendable {
   case propfind = "PROPFIND"
   case proppatch = "PROPPATCH"
   case put = "PUT"
+  case query = "QUERY"
   case rebind = "REBIND"
   case report = "REPORT"
   case search = "SEARCH"
@@ -79,6 +80,7 @@ extension HTTPMethod {
     case "propfind": self = .propfind
     case "proppatch": self = .proppatch
     case "put": self = .put
+    case "query": self = .query
     case "rebind": self = .rebind
     case "report": self = .report
     case "search": self = .search
