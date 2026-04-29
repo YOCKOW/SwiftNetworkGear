@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  HTTPHeaderFieldName.swift
-   © 2017-2020,2023-2024 YOCKOW.
+   © 2017-2020,2023-2024,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -18,7 +18,7 @@ public struct HTTPHeaderFieldName: Equatable, Hashable, RawRepresentable, Sendab
   
   public init?(rawValue: String) {
     if rawValue.isEmpty { return nil }
-    guard rawValue.unicodeScalars.allSatisfy(\.isAllowedInHTTPHeaderFieldName) else { return nil }
+    guard rawValue.utf8.allSatisfy(\._isAvailableInHTTPHeaderFieldName) else { return nil }
     self.rawValue = rawValue
     self._lowercasedName = rawValue.lowercased()
   }

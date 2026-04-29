@@ -54,14 +54,10 @@ extension URL {
       }
     })(auth!)
     if let user {
-      for scalar in user.unicodeScalars {
-        guard scalar.isAllowedInURLUser else { return nil }
-      }
+      guard user.utf8.allSatisfy(\._isAvailableInURLUserName) else { return nil }
     }
     if let password {
-      for scalar in password .unicodeScalars {
-        guard scalar.isAllowedInURLPassword else { return nil }
-      }
+      guard password.utf8.allSatisfy(\._isAvailableInURLUserPassword) else { return nil }
     }
     
     // "host:port"
@@ -126,14 +122,14 @@ extension URL {
     if let port { urlString += ":" + port }
 
     // path
-    guard let encodedPath = path.addingPercentEncoding(whereAllowedUnicodeScalars: \.isAllowedInURLPath) else {
+    guard let encodedPath = path.addingPercentEncoding(whereAllowedASCIICharacters: \._isAvailableInURLPath) else {
       return nil
     }
     urlString += encodedPath
     
     // query
     if let query {
-      guard let encodedQuery = query.addingPercentEncoding(whereAllowedUnicodeScalars: \.isAllowedInURLQuery) else {
+      guard let encodedQuery = query.addingPercentEncoding(whereAllowedASCIICharacters: \._isAvailableInURLQuery) else {
         return nil
       }
       urlString += "?" + encodedQuery
@@ -141,7 +137,7 @@ extension URL {
     
     // fragment
     if let fragment {
-      guard let encodedFragment = fragment.addingPercentEncoding(whereAllowedUnicodeScalars: \.isAllowedInURLFragment) else {
+      guard let encodedFragment = fragment.addingPercentEncoding(whereAllowedASCIICharacters: \._isAvailableInURLFragment) else {
         return nil
       }
       urlString += "#" + encodedFragment

@@ -1,53 +1,77 @@
 /* *************************************************************************************************
  StringProtocol+QuotedString.swift
-   © 2018,2023 YOCKOW.
+   © 2018,2023,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
+import Foundation
+import yExtensions
+
+private let _DQUOTE: Unicode.UTF8.CodeUnit = 0x22
+private let _BACKSLASH: Unicode.UTF8.CodeUnit = 0x5C
+
 extension StringProtocol {
   /// See https://tools.ietf.org/html/rfc7230#section-3.2.6
   internal var _quotedString: String? {
-    var quoted_scalars = String.UnicodeScalarView()
-    quoted_scalars.append("\"")
-    
-    for scalar in self.unicodeScalars {
-      guard scalar.isHTTPEscapable else { return nil }
-      if !scalar.isAllowedInHTTPHeaderFieldValueQuotedText {
-        quoted_scalars.append(contentsOf:["\\", scalar])
+    var resultUTF8 = Data()
+    resultUTF8.append(_DQUOTE) // "
+
+    for byte in self.utf8 {
+      guard byte._canBeEscapedInQuotedText else { return nil }
+      if byte._isAvailableInHTTPHeaderFieldValueQuotedText {
+        resultUTF8.append(byte)
       } else {
-        quoted_scalars.append(scalar)
+        resultUTF8.append(_BACKSLASH) // \
+        resultUTF8.append(byte)
       }
     }
     
-    quoted_scalars.append("\"")
-    return String(quoted_scalars)
+    resultUTF8.append(_DQUOTE)
+    return String(data: resultUTF8, encoding: .utf8)
   }
   
   internal var _unquotedString: String? {
-    let scalars = self.unicodeScalars
-    guard scalars.count >= 2 else { return nil }
-    guard let first = scalars.first, first == "\"", let last = scalars.last, last == "\"" else {
+    let myUTF8 = self.utf8
+    var index = myUTF8.startIndex
+    var escaped = false
+    var count = 0
+    var resultUTF8 = Data()
+
+    ITERATE_UTF8: while index < myUTF8.endIndex {
+      count += 1
+
+      let byte = myUTF8[index]
+      let nextIndex = myUTF8.index(after: index)
+
+      if index == myUTF8.startIndex {
+        guard byte == _DQUOTE else {
+          return nil
+        }
+        index = nextIndex
+        continue
+      } else if nextIndex == myUTF8.endIndex {
+        guard !escaped && byte == _DQUOTE else {
+          return nil
+        }
+        break ITERATE_UTF8
+      }
+
+
+      if !escaped && byte == _BACKSLASH {
+        escaped = true
+      } else {
+        guard byte._canBeEscapedInQuotedText else { return nil }
+        resultUTF8.append(byte)
+        escaped = false
+      }
+      index = nextIndex
+    }
+
+    guard count >= 2 else {
       return nil
     }
     
-    let quoted_scalars =
-      scalars[(scalars.index(after:scalars.startIndex)..<scalars.index(before:scalars.endIndex))]
-    
-    var unquoted_scalars = String.UnicodeScalarView()
-    var escaped = false
-    for scalar in quoted_scalars {
-      if escaped || scalar != "\\" {
-        guard scalar.isHTTPEscapable else { return nil }
-        unquoted_scalars.append(scalar)
-        escaped = false
-      } else {
-        escaped = true
-      }
-    }
-    
-    if escaped { return nil }
-    
-    return String(unquoted_scalars)
+    return String(data: resultUTF8, encoding: .utf8)
   }
 }

@@ -1,25 +1,31 @@
 /* *************************************************************************************************
  Token.swift
-   © 2018,2023 YOCKOW.
+   © 2018,2023,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
+import Foundation
+
 // Simple Lexer for HTTP header field values
 
+private let _DQUOTE: Unicode.UTF8.CodeUnit = 0x22
+private let _BACKSLASH: Unicode.UTF8.CodeUnit = 0x5C
+
 internal class _Token {
-  private let _scalars: String.UnicodeScalarView
-  internal init(_ scalars:String.UnicodeScalarView) {
-    self._scalars = scalars
+  private let _utf8: Data
+
+  internal init<S>(_ utf8: S) where S: Sequence, S.Element == Unicode.UTF8.CodeUnit {
+    self._utf8 = Data(utf8)
   }
   
   internal var _string: String {
-    return String(self._scalars)
+    return String(data: _utf8, encoding: .utf8)!
   }
   
   internal class _QuotedString: _Token {
     internal override var _string: String {
-      return String(self._scalars)._unquotedString!
+      return super._string._unquotedString!
     }
   }
   
@@ -36,56 +42,56 @@ extension StringProtocol {
     var tokens: [_Token] = []
     
     var escaped = false
-    var scalars: String.UnicodeScalarView? = nil
-    for scalar in self.unicodeScalars {
+    var utf8: Data? = nil
+    for byte in self.utf8 {
       switch processing {
       case .whitespace:
-        if scalar.latestProperties.isWhitespace { continue }
-        
-        scalars = .init([scalar])
-        if scalar == "\"" {
+        if byte._isSpace || byte._isHorizontalTab { continue }
+
+        utf8 = Data([byte])
+        if byte == _DQUOTE {
           processing = .quotedString
-        } else if scalar.isHTTPToken {
+        } else if byte._isAvailableInHTTPToken {
           processing = .rawString
-        } else if scalar.isHTTPSeparator {
-          tokens.append(_Token._Separator(scalars!))
-          scalars = nil
+        } else if byte._isRFC2616Separator {
+          tokens.append(_Token._Separator(utf8!))
+          utf8 = nil
           processing = .whitespace
         } else {
           return nil
         }
         
       case .quotedString:
-        guard let _ = scalars else { fatalError("Unexpected.") }
-        guard scalar.isHTTPEscapable else { return nil }
-        scalars!.append(scalar)
+        guard utf8 != nil else { fatalError("Unexpected.") }
+        guard byte._canBeEscapedInQuotedText else { return nil }
+        utf8!.append(byte)
         if !escaped {
-          if scalar == "\\" {
+          if byte == _BACKSLASH {
             escaped = true
             continue
-          } else if scalar == "\"" {
-            tokens.append(_Token._QuotedString(scalars!))
-            scalars = nil
+          } else if byte == _DQUOTE {
+            tokens.append(_Token._QuotedString(utf8!))
+            utf8 = nil
             processing = .whitespace
           }
         }
         escaped = false
       
       case .rawString:
-        guard let _ = scalars else { fatalError("Unexpected.") }
-        if scalar.isHTTPToken {
-          scalars!.append(scalar)
-        } else if scalar.isHTTPSeparator {
-          tokens.append(_Token._RawString(scalars!))
-          if scalar.latestProperties.isWhitespace {
+        guard utf8 != nil else { fatalError("Unexpected.") }
+        if byte._isAvailableInHTTPToken {
+          utf8!.append(byte)
+        } else if byte._isRFC2616Separator {
+          tokens.append(_Token._RawString(utf8!))
+          if byte._isSpace || byte._isHorizontalTab {
             processing = .whitespace
-          } else if scalar == "\"" {
+          } else if byte == _DQUOTE {
             // is it right?
-            scalars = .init([scalar])
+            utf8 = Data([byte])
             processing = .quotedString
           } else {
-            tokens.append(_Token._Separator(.init([scalar])))
-            scalars = nil
+            tokens.append(_Token._Separator(Data([byte])))
+            utf8 = nil
             processing = .whitespace
           }
         } else {
@@ -101,7 +107,7 @@ extension StringProtocol {
       // not closed...
       return nil
     case .rawString:
-      tokens.append(_Token._RawString(scalars!))
+      tokens.append(_Token._RawString(utf8!))
     }
     
     return tokens

@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  CacheControlDirective.swift
-   © 2017-2019,2023,2024 YOCKOW.
+   © 2017-2019,2023,2024,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -76,9 +76,9 @@ extension CacheControlDirective: RawRepresentable {
         guard let seconds = nilableSeconds else { return nil }
         self = .staleIfError(seconds)
       default:
-        guard name.unicodeScalars.allSatisfy(\.isHTTPToken) else { return nil }
+        guard name.utf8.allSatisfy(\._isAvailableInHTTPToken) else { return nil }
         let unquotedValue = value._unquotedString ?? String(value)
-        guard unquotedValue.unicodeScalars.allSatisfy(\.isHTTPEscapable) else { return nil }
+        guard unquotedValue.utf8.allSatisfy(\._canBeEscapedInQuotedText) else { return nil }
         self = .extension(name:String(name), value:unquotedValue)
       }
     }
@@ -103,8 +103,8 @@ extension CacheControlDirective: RawRepresentable {
     case .noStore: return "no-store"
     case .noTransform: return "no-transform"
     case .extension(let name, let value):
-      guard name.unicodeScalars.allSatisfy(\.isHTTPToken) &&
-          value.unicodeScalars.allSatisfy(\.isHTTPEscapable)
+      guard name.utf8.allSatisfy(\._isAvailableInHTTPToken) &&
+            value.utf8.allSatisfy(\._canBeEscapedInQuotedText)
       else {
         fatalError("Invalid unicode scalar is contained.")
       }

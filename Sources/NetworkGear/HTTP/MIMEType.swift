@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  MIMEType.swift
-   © 2017-2019,2024 YOCKOW.
+   © 2017-2019,2024,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -76,7 +76,9 @@ public struct MIMEType: Sendable {
       get { return self.__subtype }
       set {
          if newValue.isEmpty { fatalError("Subtype cannot be empty.") }
-        guard newValue.unicodeScalars.allSatisfy(\.isMIMETypeToken) else { fatalError("Invalid string for MIME Type.") }
+        guard newValue.utf8.allSatisfy(\._isAvailableInMIMETypeToken) else {
+          fatalError("Invalid string for MIME Type.")
+        }
         self.__subtype = newValue.lowercased()
       }
     }
@@ -133,7 +135,9 @@ public struct MIMEType: Sendable {
     set {
       if let newParameters = newValue {
         for key in newParameters.keys {
-          guard key.unicodeScalars.allSatisfy(\.isMIMETypeToken) else { fatalError("Invalid key exists.") }
+          guard key.utf8.allSatisfy(\._isAvailableInMIMETypeToken) else {
+            fatalError("Invalid key exists.")
+          }
         }
       }
       self._parameters = newValue
@@ -235,7 +239,7 @@ extension MIMEType: CustomStringConvertible {
     if let parameters = self.parameters {
       for (key, value) in parameters {
         desc += "; \(key)="
-        if value.unicodeScalars.allSatisfy(\.isMIMETypeToken) {
+        if value.utf8.allSatisfy(\._isAvailableInMIMETypeToken) {
           desc += value
         } else {
           let escapedValue = value.replacingOccurrences(of:"\\", with:"\\\\").replacingOccurrences(of:"\"", with:"\\\"")
