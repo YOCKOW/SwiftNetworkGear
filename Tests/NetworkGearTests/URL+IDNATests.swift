@@ -1,12 +1,13 @@
 /***************************************************************************************************
  URL+IDNATests.swift
-   © 2018,2024 YOCKOW.
+   © 2018,2024,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
 
 import Foundation
 @testable import NetworkGear
+import Testing
 
 private protocol URLIDNATestExpectedComponent {}
 extension String: URLIDNATestExpectedComponent {}
@@ -84,10 +85,6 @@ private let tests: [URLIDNATestSet] = [
   )
 ]
 
-
-#if swift(>=6) && canImport(Testing)
-import Testing
-
 @Suite final class URLIDNATests {
   @Test func testInitialization() {
     for test in tests {
@@ -132,51 +129,3 @@ import Testing
     }
   }
 }
-#else
-import XCTest
-
-class URLIDNATests: XCTestCase {
-  func testInitialization() {
-    for test in tests {
-      guard let url = URL(internationalString:test.source) else {
-        XCTFail("Cannot parse \"\(test.source)\" as a URL.")
-        break
-      }
-      
-      let exec = { (expected:URLIDNATestExpectedComponent?, actual:URLIDNATestExpectedComponent?) -> Void in
-        let expected_string: String
-        let actual_string: String
-        
-        if case let ee as String = expected {
-          expected_string = ee
-        } else if case let ee as Int = expected {
-          expected_string = String(ee)
-        } else {
-          expected_string = "`nil`"
-        }
-        
-        if case let aa as String = actual {
-          actual_string = aa
-        } else if case let aa as Int = actual {
-          actual_string = String(aa)
-        } else {
-          actual_string = "`nil`"
-        }
-        
-        let message = "Expected:\(expected_string), Actual:\(actual_string); URL:\(url.absoluteString)"
-        XCTAssertEqual(expected_string, actual_string, message)
-      }
-      
-      exec(test.expected.scheme, url.scheme)
-      exec(test.expected.user, url.user)
-      exec(test.expected.password, url.password)
-      exec(test.expected.host, url.host)
-      exec(test.expected.port, url.port)
-      exec(test.expected.path, url.path)
-      exec(test.expected.query, url.query)
-      exec(test.expected.fragment, url.fragment)
-      exec(test.expected.absolute, url.absoluteString)
-    }
-  }
-}
-#endif
