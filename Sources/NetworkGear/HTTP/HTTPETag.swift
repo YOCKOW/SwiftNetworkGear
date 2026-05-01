@@ -1,86 +1,136 @@
 /* *************************************************************************************************
  ETag.swift
-   © 2017-2019,2024 YOCKOW.
+   © 2017-2019,2024,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
-// This `import` is required for Ubuntu 14.04?
-// https://travis-ci.org/YOCKOW/SwiftCGIResponder/builds/430854353
-import Foundation
+import yExtensions
 
-/// # ETag
-/// Reporesents a value of ETag
+/// A type that represents the content of `opaque-tag` defined in
+/// [RFC 9110](https://datatracker.ietf.org/doc/html/rfc9110#section-8.8.3).
+@dynamicMemberLookup
+public struct HTTPOpaqueTagContentString: Sendable, Equatable, Hashable {
+  private let _string: String
+
+  public init?<S>(validating string: S) where S: StringProtocol {
+    let utf8 = string.utf8
+    var utf8Iterator = utf8.makeIterator()
+    guard let firstByte = utf8Iterator.next() else {
+      self._string = ""
+      return
+    }
+
+    if firstByte._isDoubleQuotationMark {
+      var contentUTF8: [UInt8] = []
+      while let byte = utf8Iterator.next() {
+        if byte._isDoubleQuotationMark {
+          guard utf8Iterator.next().isNil else {
+            return nil
+          }
+          self._string = String(bytes: contentUTF8, encoding: .utf8)!
+          return
+        }
+        guard byte._isAvailableInHTTPOpaqueTagContent else {
+          return nil
+        }
+        contentUTF8.append(byte)
+      }
+      return nil
+    } else {
+      guard utf8.allSatisfy(\._isAvailableInHTTPOpaqueTagContent) else {
+        return nil
+      }
+      self._string = String(string)
+    }
+  }
+
+  public subscript<T>(dynamicMember dynamicMember: KeyPath<String, T>) -> T {
+    return self._string[keyPath: dynamicMember]
+  }
+}
+
+extension HTTPOpaqueTagContentString: Sequence {
+  public typealias Iterator = String.Iterator
+  public typealias Element = String.Element
+  public func makeIterator() -> String.Iterator { return self._string.makeIterator() }
+}
+
+extension HTTPOpaqueTagContentString: Collection, BidirectionalCollection {
+  public typealias Index = String.Index
+  public var startIndex: String.Index { self._string.startIndex }
+  public var endIndex: String.Index { self._string.endIndex }
+  public subscript(position: String.Index) -> String.Element { self._string[position] }
+  public func index(after ii: String.Index) -> String.Index { self._string.index(after: ii) }
+  public func index(before ii: String.Index) -> String.Index { self._string.index(before: ii) }
+}
+
+extension HTTPOpaqueTagContentString: CustomStringConvertible {
+  public var description: String { self._string }
+}
+
+extension HTTPOpaqueTagContentString: ExpressibleByStringLiteral {
+  public typealias StringLiteralType = String
+
+  public typealias ExtendedGraphemeClusterLiteralType = String.ExtendedGraphemeClusterLiteralType
+
+  public typealias UnicodeScalarLiteralType = String.UnicodeScalarLiteralType
+
+  public init(stringLiteral value: String) {
+    guard let content = HTTPOpaqueTagContentString(validating: value) else {
+      fatalError("Invalid value for `opaque-tag`!")
+    }
+    self = content
+  }
+}
+
+/// Represents a value of [ETag](https://datatracker.ietf.org/doc/html/rfc9110#section-8.8.3).
 public enum HTTPETag: Sendable {
-  case weak(String)
-  case strong(String)
+  /// Weak entity tag.
+  case weak(HTTPOpaqueTagContentString)
+
+  /// Strong entity tag.
+  case strong(HTTPOpaqueTagContentString)
+
+  /// Represents `*`, which is used in `If-Match` or `If-None-Match` header field.
   case any
 }
 
 extension HTTPETag {
   /// Initialize from `string`
   /// e.g.) "foo", W/"bar"
-  public init?(_ string:String) {
+  public init?(_ string: String) {
     if string == "*" {
       self = .any
       return
     }
-    
-    guard string.hasSuffix("\"") else { return nil }
-    var weak: Bool = false
-    var start: String.Index = string.startIndex
-    let end: String.Index = string.index(before:string.endIndex)
-    
-    if string.hasPrefix("W/\"") {
-      weak = true
-      start = string.index(start, offsetBy:3)
-    } else {
-      guard string.hasPrefix("\"") else { return nil }
-      start = string.index(after:start)
-    }
-    
-    guard start < end else { return nil }
-    
-    let tag: Substring = string[start..<end]
-    if tag.isEmpty { return nil }
-    
-    var actualTag: String = ""
-    var escaped = false
-    for character in tag {
-      if !escaped && character == "\\" {
-        escaped = true
-      } else {
-        escaped = false
-        actualTag.append(character)
+
+    if string.hasPrefix(#"W/""#) {
+      let startIndex = string.index(string.startIndex, offsetBy: 2)
+      guard let content = HTTPOpaqueTagContentString(validating: string[startIndex...]) else {
+        return nil
       }
-    }
-    if escaped { return nil }
-    
-    if weak {
-      self = .weak(actualTag)
+      self = .weak(content)
+    } else if string.hasPrefix(#"""#) {
+      guard let content = HTTPOpaqueTagContentString(validating: string) else {
+        return nil
+      }
+      self = .strong(content)
     } else {
-      self = .strong(actualTag)
+      return nil
     }
   }
 }
 
 extension HTTPETag: CustomStringConvertible {
   public var description: String {
-    let escape: (String) -> String = { (tag:String) -> String in
-      var escaped = ""
-      for character in tag {
-        if character == "\\" { escaped += "\\\\" }
-        else if character == "\"" { escaped += "\\\"" }
-        else { escaped.append(character) }
-      }
-      return escaped
-    }
-    
+    // NOTE: ETag should be no longer escaped.
+    //       See https://datatracker.ietf.org/doc/html/rfc9110#section-8.8.3-3.1
     switch self {
     case .weak(let tag):
-      return "W/\"" + escape(tag) + "\""
+      return #"W/"\#(tag)""#
     case .strong(let tag):
-      return "\"" + escape(tag) + "\""
+      return #""\#(tag)""#
     case .any:
       return "*"
     }

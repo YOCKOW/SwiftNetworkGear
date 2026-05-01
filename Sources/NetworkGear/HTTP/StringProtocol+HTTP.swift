@@ -86,6 +86,11 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isSpace: Bool { self == 0x20 }
 
+  /// `"`
+  @inlinable
+  internal var _isDoubleQuotationMark: Bool { self == 0x22 }
+
+
   /// Control character
   @inlinable
   internal var _isControl: Bool { self <= 0x1F || self == 0x7F }
@@ -97,6 +102,12 @@ extension Unicode.UTF8.CodeUnit {
   /// DIGIT
   @inlinable
   internal var _isDigit: Bool { 0x30 <= self && self <= 0x39 }
+
+  /// `obs-text` defined in [RFC 9110](https://datatracker.ietf.org/doc/html/rfc9110#section-5.5).
+  @inlinable
+  internal var _isHTTPObsoleted: Bool {
+    return 0x80 <= self // && self <= 0xFF
+  }
 
   /// `token`
   internal var _isAvailableInHTTPToken: Bool { _tchar.contains(self) }
@@ -140,6 +151,12 @@ extension Unicode.UTF8.CodeUnit {
   /// See: [RFC 9110 §5.6.4](https://datatracker.ietf.org/doc/html/rfc9110#section-5.6.4).
   @inlinable
   internal var _canBeEscapedInQuotedText: Bool { _isHorizontalTab || _isSpace || _isVisible }
+
+  /// Returns the Boolean value whether or not the value is available in `opaque-tag` defined in
+  /// [RFC 9110](https://datatracker.ietf.org/doc/html/rfc9110#section-8.8.3).
+  internal var _isAvailableInHTTPOpaqueTagContent: Bool {
+    return self == 0x21 || (0x23 <= self && self <= 0x7E) || self._isHTTPObsoleted
+  }
 
   /// Returns the Boolean value whether or not the value is available in MIME Type tokens.
   ///

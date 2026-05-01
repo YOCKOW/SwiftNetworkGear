@@ -58,7 +58,7 @@ import Testing
   }
 
   @Test func test_eTag() async throws {
-    let eTagString = "myETag"
+    let eTagString = try #require(HTTPOpaqueTagContentString(validating: "myETag"))
     let eTag = HTTPETag.weak(eTagString)
 
     let url = try #require(URL(string: "https://Bot.YOCKOW.jp/-/eTag/weak:\(eTagString)"))
