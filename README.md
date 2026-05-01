@@ -23,7 +23,7 @@ flowchart TD
   swiftranges(["Ranges<br>@4.0.2"])
   swifttemporaryfile(["TemporaryFile<br>@5.0.0"])
   swiftunicodesupplement(["UnicodeSupplement<br>@2.0.1"])
-  yswiftextensions(["yExtensions<br>@2.1.0"])
+  yswiftextensions(["yExtensions<br>@2.2.0"])
 
   click swiftbootstring href "https://github.com/YOCKOW/SwiftBootstring.git"
   click swiftpublicsuffix href "https://github.com/YOCKOW/SwiftPublicSuffix.git"
