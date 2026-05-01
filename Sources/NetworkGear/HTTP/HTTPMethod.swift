@@ -6,93 +6,274 @@
 // URL: https://www.iana.org/assignments/http-methods/methods.csv
 // Last-Modified: 2025-11-21T20:46:23Z
 
-public enum HTTPMethod: String, Sendable {
-  case acl = "ACL"
-  case baselineControl = "BASELINE-CONTROL"
-  case bind = "BIND"
-  case checkin = "CHECKIN"
-  case checkout = "CHECKOUT"
-  case connect = "CONNECT"
-  case copy = "COPY"
-  case delete = "DELETE"
-  case get = "GET"
-  case head = "HEAD"
-  case label = "LABEL"
-  case link = "LINK"
-  case lock = "LOCK"
-  case merge = "MERGE"
-  case mkactivity = "MKACTIVITY"
-  case mkcalendar = "MKCALENDAR"
-  case mkcol = "MKCOL"
-  case mkredirectref = "MKREDIRECTREF"
-  case mkworkspace = "MKWORKSPACE"
-  case move = "MOVE"
-  case options = "OPTIONS"
-  case orderpatch = "ORDERPATCH"
-  case patch = "PATCH"
-  case post = "POST"
-  case pri = "PRI"
-  case propfind = "PROPFIND"
-  case proppatch = "PROPPATCH"
-  case put = "PUT"
-  case query = "QUERY"
-  case rebind = "REBIND"
-  case report = "REPORT"
-  case search = "SEARCH"
-  case trace = "TRACE"
-  case unbind = "UNBIND"
-  case uncheckout = "UNCHECKOUT"
-  case unlink = "UNLINK"
-  case unlock = "UNLOCK"
-  case update = "UPDATE"
-  case updateredirectref = "UPDATEREDIRECTREF"
-  case versionControl = "VERSION-CONTROL"
+import yExtensions
+
+public enum HTTPMethod: Sendable {
+  case acl
+  case baselineControl
+  case bind
+  case checkin
+  case checkout
+  case connect
+  case copy
+  case delete
+  case get
+  case head
+  case label
+  case link
+  case lock
+  case merge
+  case mkactivity
+  case mkcalendar
+  case mkcol
+  case mkredirectref
+  case mkworkspace
+  case move
+  case options
+  case orderpatch
+  case patch
+  case post
+  case pri
+  case propfind
+  case proppatch
+  case put
+  case query
+  case rebind
+  case report
+  case search
+  case trace
+  case unbind
+  case uncheckout
+  case unlink
+  case unlock
+  case update
+  case updateredirectref
+  case versionControl
+  case otherMethod(HTTPMethodString)
 }
 
-extension HTTPMethod {
-  public init?(rawValue: String) {
-    switch rawValue.lowercased() {
-    case "acl": self = .acl
-    case "baseline-control": self = .baselineControl
-    case "bind": self = .bind
-    case "checkin": self = .checkin
-    case "checkout": self = .checkout
-    case "connect": self = .connect
-    case "copy": self = .copy
-    case "delete": self = .delete
-    case "get": self = .get
-    case "head": self = .head
-    case "label": self = .label
-    case "link": self = .link
-    case "lock": self = .lock
-    case "merge": self = .merge
-    case "mkactivity": self = .mkactivity
-    case "mkcalendar": self = .mkcalendar
-    case "mkcol": self = .mkcol
-    case "mkredirectref": self = .mkredirectref
-    case "mkworkspace": self = .mkworkspace
-    case "move": self = .move
-    case "options": self = .options
-    case "orderpatch": self = .orderpatch
-    case "patch": self = .patch
-    case "post": self = .post
-    case "pri": self = .pri
-    case "propfind": self = .propfind
-    case "proppatch": self = .proppatch
-    case "put": self = .put
-    case "query": self = .query
-    case "rebind": self = .rebind
-    case "report": self = .report
-    case "search": self = .search
-    case "trace": self = .trace
-    case "unbind": self = .unbind
-    case "uncheckout": self = .uncheckout
-    case "unlink": self = .unlink
-    case "unlock": self = .unlock
-    case "update": self = .update
-    case "updateredirectref": self = .updateredirectref
-    case "version-control": self = .versionControl
-    default: return nil
+extension HTTPMethod: Equatable {
+  public static func ==(lhs: HTTPMethod, rhs: HTTPMethod) -> Bool {
+    switch (lhs, rhs) {
+    case (.acl, .acl): return true
+    case (.baselineControl, .baselineControl): return true
+    case (.bind, .bind): return true
+    case (.checkin, .checkin): return true
+    case (.checkout, .checkout): return true
+    case (.connect, .connect): return true
+    case (.copy, .copy): return true
+    case (.delete, .delete): return true
+    case (.get, .get): return true
+    case (.head, .head): return true
+    case (.label, .label): return true
+    case (.link, .link): return true
+    case (.lock, .lock): return true
+    case (.merge, .merge): return true
+    case (.mkactivity, .mkactivity): return true
+    case (.mkcalendar, .mkcalendar): return true
+    case (.mkcol, .mkcol): return true
+    case (.mkredirectref, .mkredirectref): return true
+    case (.mkworkspace, .mkworkspace): return true
+    case (.move, .move): return true
+    case (.options, .options): return true
+    case (.orderpatch, .orderpatch): return true
+    case (.patch, .patch): return true
+    case (.post, .post): return true
+    case (.pri, .pri): return true
+    case (.propfind, .propfind): return true
+    case (.proppatch, .proppatch): return true
+    case (.put, .put): return true
+    case (.query, .query): return true
+    case (.rebind, .rebind): return true
+    case (.report, .report): return true
+    case (.search, .search): return true
+    case (.trace, .trace): return true
+    case (.unbind, .unbind): return true
+    case (.uncheckout, .uncheckout): return true
+    case (.unlink, .unlink): return true
+    case (.unlock, .unlock): return true
+    case (.update, .update): return true
+    case (.updateredirectref, .updateredirectref): return true
+    case (.versionControl, .versionControl): return true
+    case (.otherMethod(let lstr), .otherMethod(let rstr)): return lstr == rstr
+    default: return false
     }
+  }
+}
+
+extension HTTPMethod: RawRepresentable {
+  public typealias RawValue = String
+
+  public var rawValue: String {
+    switch self {
+    case .acl: return "ACL"
+    case .baselineControl: return "BASELINE-CONTROL"
+    case .bind: return "BIND"
+    case .checkin: return "CHECKIN"
+    case .checkout: return "CHECKOUT"
+    case .connect: return "CONNECT"
+    case .copy: return "COPY"
+    case .delete: return "DELETE"
+    case .get: return "GET"
+    case .head: return "HEAD"
+    case .label: return "LABEL"
+    case .link: return "LINK"
+    case .lock: return "LOCK"
+    case .merge: return "MERGE"
+    case .mkactivity: return "MKACTIVITY"
+    case .mkcalendar: return "MKCALENDAR"
+    case .mkcol: return "MKCOL"
+    case .mkredirectref: return "MKREDIRECTREF"
+    case .mkworkspace: return "MKWORKSPACE"
+    case .move: return "MOVE"
+    case .options: return "OPTIONS"
+    case .orderpatch: return "ORDERPATCH"
+    case .patch: return "PATCH"
+    case .post: return "POST"
+    case .pri: return "PRI"
+    case .propfind: return "PROPFIND"
+    case .proppatch: return "PROPPATCH"
+    case .put: return "PUT"
+    case .query: return "QUERY"
+    case .rebind: return "REBIND"
+    case .report: return "REPORT"
+    case .search: return "SEARCH"
+    case .trace: return "TRACE"
+    case .unbind: return "UNBIND"
+    case .uncheckout: return "UNCHECKOUT"
+    case .unlink: return "UNLINK"
+    case .unlock: return "UNLOCK"
+    case .update: return "UPDATE"
+    case .updateredirectref: return "UPDATEREDIRECTREF"
+    case .versionControl: return "VERSION-CONTROL"
+    case .otherMethod(let string): return string.description
+    }
+  }
+
+  public init?(rawValue: String) {
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "ACL") {
+      self = .acl; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "BASELINE-CONTROL") {
+      self = .baselineControl; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "BIND") {
+      self = .bind; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "CHECKIN") {
+      self = .checkin; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "CHECKOUT") {
+      self = .checkout; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "CONNECT") {
+      self = .connect; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "COPY") {
+      self = .copy; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "DELETE") {
+      self = .delete; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "GET") {
+      self = .get; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "HEAD") {
+      self = .head; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "LABEL") {
+      self = .label; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "LINK") {
+      self = .link; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "LOCK") {
+      self = .lock; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "MERGE") {
+      self = .merge; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "MKACTIVITY") {
+      self = .mkactivity; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "MKCALENDAR") {
+      self = .mkcalendar; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "MKCOL") {
+      self = .mkcol; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "MKREDIRECTREF") {
+      self = .mkredirectref; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "MKWORKSPACE") {
+      self = .mkworkspace; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "MOVE") {
+      self = .move; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "OPTIONS") {
+      self = .options; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "ORDERPATCH") {
+      self = .orderpatch; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "PATCH") {
+      self = .patch; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "POST") {
+      self = .post; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "PRI") {
+      self = .pri; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "PROPFIND") {
+      self = .propfind; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "PROPPATCH") {
+      self = .proppatch; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "PUT") {
+      self = .put; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "QUERY") {
+      self = .query; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "REBIND") {
+      self = .rebind; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "REPORT") {
+      self = .report; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "SEARCH") {
+      self = .search; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "TRACE") {
+      self = .trace; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "UNBIND") {
+      self = .unbind; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "UNCHECKOUT") {
+      self = .uncheckout; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "UNLINK") {
+      self = .unlink; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "UNLOCK") {
+      self = .unlock; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "UPDATE") {
+      self = .update; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "UPDATEREDIRECTREF") {
+      self = .updateredirectref; return
+    }
+    if rawValue.isASCIICaseInsensitivelyEqual(to: "VERSION-CONTROL") {
+      self = .versionControl; return
+    }
+    if let string = HTTPMethodString(rawValue) {
+      self = .otherMethod(string); return
+    }
+    return nil
   }
 }

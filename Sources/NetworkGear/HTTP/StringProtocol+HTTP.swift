@@ -224,6 +224,13 @@ extension Unicode.UTF8.CodeUnit {
   }
 }
 
+extension StringProtocol {
+  /// Returns the Boolean value that indicates whether or not the string can be a valid HTTP method.
+  public var isLiterallyAcceptableForHTTPMethod: Bool {
+    return !self.isEmpty && self.utf8.allSatisfy(\._isAvailableInHTTPToken)
+  }
+}
+
 @available(*, deprecated, message: "Use functions/properties of each type instead.")
 extension Unicode.Scalar {
   private var _isHorizontalTab: Bool { value == 0x09 }
