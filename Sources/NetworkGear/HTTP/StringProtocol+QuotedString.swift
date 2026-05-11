@@ -75,3 +75,69 @@ extension StringProtocol {
     return String(data: resultUTF8, encoding: .utf8)
   }
 }
+
+/// A representation of `quoted-string`.
+public struct QuotedString: Sendable {
+  private final class _LazyBidirectionalConverter: @unchecked Sendable {
+    private var _quotedString: String?
+    private var _content: String?
+
+    var quotedString: String {
+      guard let quotedString = self._quotedString else {
+        guard let quotedString = self._content?._quotedString else {
+          fatalError("`QuotedString`: Unexpected content?!")
+        }
+        _quotedString = quotedString
+        return quotedString
+      }
+      return quotedString
+    }
+
+    var content: String {
+      guard let content = self._content else {
+        guard let content = self._quotedString?._unquotedString else {
+          fatalError("`QuotedString`: Unexpected quoted string?!")
+        }
+        _content = content
+        return content
+      }
+      return content
+    }
+
+    init(quotedString: String, content: String) {
+      self._quotedString = quotedString
+      self._content = content
+    }
+
+    init(quotedString: String) {
+      self._quotedString = quotedString
+      self._content = nil
+    }
+
+    init(content: String) {
+      self._quotedString = nil
+      self._content = content
+    }
+  }
+
+  private let _converter: _LazyBidirectionalConverter
+
+  /// Returns a quoted string whose characters are escaped by backslashes if necessary.
+  public var quotedString: String { _converter.quotedString }
+
+  /// Returns content of the quoted string.
+  public var content: String { _converter.content }
+
+  internal init(quotedString: String, content: String) {
+    assert(quotedString._unquotedString == content)
+    self._converter = .init(quotedString: quotedString, content: content)
+  }
+
+  internal init(quotedString: String) {
+    self._converter = .init(quotedString: quotedString)
+  }
+
+  internal init(content: String) {
+    self._converter = .init(content: content)
+  }
+}

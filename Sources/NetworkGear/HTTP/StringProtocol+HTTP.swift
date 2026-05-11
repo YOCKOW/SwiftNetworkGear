@@ -86,10 +86,24 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isSpace: Bool { self == 0x20 }
 
+  /// Whitespace used for `OWS`(optional whitespace) or `RWS`(required whitespace).
+  @inlinable
+  internal var _isHTTPWhitespace: Bool { _isSpace || _isHorizontalTab }
+
   /// `"`
   @inlinable
   internal var _isDoubleQuotationMark: Bool { self == 0x22 }
 
+  /// `,`
+  @inlinable
+  internal var _isComma: Bool { self == 0x2C }
+
+  /// `=`
+  @inlinable
+  internal var _isEqualSign: Bool { self == 0x3D }
+
+  @inlinable
+  internal var _isBackslash: Bool { self == 0x5C }
 
   /// Control character
   @inlinable
@@ -142,7 +156,11 @@ extension Unicode.UTF8.CodeUnit {
     case 0x21, 0x23...0x5B, 0x5D...0x7E:
       return true
     default:
+      #if HTTP_ALLOW_OBSOLTED_TEXT
+      return _isHTTPObsoleted
+      #else
       return false
+      #endif
     }
   }
 
@@ -150,7 +168,16 @@ extension Unicode.UTF8.CodeUnit {
   ///
   /// See: [RFC 9110 §5.6.4](https://datatracker.ietf.org/doc/html/rfc9110#section-5.6.4).
   @inlinable
-  internal var _canBeEscapedInQuotedText: Bool { _isHorizontalTab || _isSpace || _isVisible }
+  internal var _canBeEscapedInQuotedText: Bool {
+    if _isHorizontalTab || _isSpace || _isVisible {
+      return true
+    }
+    #if HTTP_ALLOW_OBSOLTED_TEXT
+    return _isHTTPObsoleted
+    #else
+    return false
+    #endif
+  }
 
   /// Returns the Boolean value whether or not the value is available in `opaque-tag` defined in
   /// [RFC 9110](https://datatracker.ietf.org/doc/html/rfc9110#section-8.8.3).
