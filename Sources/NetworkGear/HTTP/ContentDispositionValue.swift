@@ -6,45 +6,133 @@
 // URL: https://www.iana.org/assignments/cont-disp/cont-disp-1.csv
 // Last-Modified: 2025-10-24T07:01:26Z
 
-public enum ContentDispositionValue: String, Sendable {
-  case inline = "inline"
-  case attachment = "attachment"
-  case formData = "form-data"
-  case signal = "signal"
-  case alert = "alert"
-  case icon = "icon"
-  case render = "render"
-  case recipientListHistory = "recipient-list-history"
-  case session = "session"
-  case aib = "aib"
-  case earlySession = "early-session"
-  case recipientList = "recipient-list"
-  case notification = "notification"
-  case byReference = "by-reference"
-  case infoPackage = "info-package"
-  case recordingSession = "recording-session"
+import yExtensions
+
+public enum ContentDispositionValue: Sendable {
+  case inline
+  case attachment
+  case formData
+  case signal
+  case alert
+  case icon
+  case render
+  case recipientListHistory
+  case session
+  case aib
+  case earlySession
+  case recipientList
+  case notification
+  case byReference
+  case infoPackage
+  case recordingSession
+  case dispositionType(ASCIICaseInsensitiveHTTPTokenString)
 }
 
-extension ContentDispositionValue {
-  public init(rawValue: String) {
-    switch rawValue.lowercased() {
-    case "inline": self = .inline
-    case "attachment": self = .attachment
-    case "form-data": self = .formData
-    case "signal": self = .signal
-    case "alert": self = .alert
-    case "icon": self = .icon
-    case "render": self = .render
-    case "recipient-list-history": self = .recipientListHistory
-    case "session": self = .session
-    case "aib": self = .aib
-    case "early-session": self = .earlySession
-    case "recipient-list": self = .recipientList
-    case "notification": self = .notification
-    case "by-reference": self = .byReference
-    case "info-package": self = .infoPackage
-    case "recording-session": self = .recordingSession
-    default: self = .attachment
+extension ContentDispositionValue: Equatable, Hashable {
+  public static func ==(lhs: ContentDispositionValue, rhs: ContentDispositionValue) -> Bool {
+    switch (lhs, rhs) {
+    case (.inline, .inline): return true
+    case (.attachment, .attachment): return true
+    case (.formData, .formData): return true
+    case (.signal, .signal): return true
+    case (.alert, .alert): return true
+    case (.icon, .icon): return true
+    case (.render, .render): return true
+    case (.recipientListHistory, .recipientListHistory): return true
+    case (.session, .session): return true
+    case (.aib, .aib): return true
+    case (.earlySession, .earlySession): return true
+    case (.recipientList, .recipientList): return true
+    case (.notification, .notification): return true
+    case (.byReference, .byReference): return true
+    case (.infoPackage, .infoPackage): return true
+    case (.recordingSession, .recordingSession): return true
+    case (.dispositionType(let lStr), .dispositionType(let rStr)): return lStr == rStr
+    default: return false
+    }
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    switch self {
+    case .inline: hasher.combine(0)
+    case .attachment: hasher.combine(1)
+    case .formData: hasher.combine(2)
+    case .signal: hasher.combine(3)
+    case .alert: hasher.combine(4)
+    case .icon: hasher.combine(5)
+    case .render: hasher.combine(6)
+    case .recipientListHistory: hasher.combine(7)
+    case .session: hasher.combine(8)
+    case .aib: hasher.combine(9)
+    case .earlySession: hasher.combine(10)
+    case .recipientList: hasher.combine(11)
+    case .notification: hasher.combine(12)
+    case .byReference: hasher.combine(13)
+    case .infoPackage: hasher.combine(14)
+    case .recordingSession: hasher.combine(15)
+    case .dispositionType(let str): hasher.combine(str)
     }
   }
 }
+
+extension ContentDispositionValue {
+  @usableFromInline internal static let _registeredCaseToString: [ContentDispositionValue: String] = [
+    .inline: "inline",
+    .attachment: "attachment",
+    .formData: "form-data",
+    .signal: "signal",
+    .alert: "alert",
+    .icon: "icon",
+    .render: "render",
+    .recipientListHistory: "recipient-list-history",
+    .session: "session",
+    .aib: "aib",
+    .earlySession: "early-session",
+    .recipientList: "recipient-list",
+    .notification: "notification",
+    .byReference: "by-reference",
+    .infoPackage: "info-package",
+    .recordingSession: "recording-session",
+  ]
+}
+
+extension ContentDispositionValue {
+  @inlinable internal static func _stringToRegisteredCase<S>(_ string: S) -> ContentDispositionValue? where S: StringProtocol {
+    if string.isASCIICaseInsensitivelyEqual(to: "inline") {
+      return .inline
+    } else if string.isASCIICaseInsensitivelyEqual(to: "attachment") {
+      return .attachment
+    } else if string.isASCIICaseInsensitivelyEqual(to: "form-data") {
+      return .formData
+    } else if string.isASCIICaseInsensitivelyEqual(to: "signal") {
+      return .signal
+    } else if string.isASCIICaseInsensitivelyEqual(to: "alert") {
+      return .alert
+    } else if string.isASCIICaseInsensitivelyEqual(to: "icon") {
+      return .icon
+    } else if string.isASCIICaseInsensitivelyEqual(to: "render") {
+      return .render
+    } else if string.isASCIICaseInsensitivelyEqual(to: "recipient-list-history") {
+      return .recipientListHistory
+    } else if string.isASCIICaseInsensitivelyEqual(to: "session") {
+      return .session
+    } else if string.isASCIICaseInsensitivelyEqual(to: "aib") {
+      return .aib
+    } else if string.isASCIICaseInsensitivelyEqual(to: "early-session") {
+      return .earlySession
+    } else if string.isASCIICaseInsensitivelyEqual(to: "recipient-list") {
+      return .recipientList
+    } else if string.isASCIICaseInsensitivelyEqual(to: "notification") {
+      return .notification
+    } else if string.isASCIICaseInsensitivelyEqual(to: "by-reference") {
+      return .byReference
+    } else if string.isASCIICaseInsensitivelyEqual(to: "info-package") {
+      return .infoPackage
+    } else if string.isASCIICaseInsensitivelyEqual(to: "recording-session") {
+      return .recordingSession
+    } else {
+      return nil
+    }
+  }
+}
+

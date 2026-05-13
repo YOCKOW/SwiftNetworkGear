@@ -40,3 +40,34 @@ extension ASCIICaseInsensitiveString: Hashable {
     }
   }
 }
+
+/// A HTTP `token` string that is always compared to another string with
+/// [ASCII case-insensitive match](https://infra.spec.whatwg.org/#ascii-case-insensitive).
+public struct ASCIICaseInsensitiveHTTPTokenString: Sendable,
+                                                   LosslessStringConvertible,
+                                                   Equatable,
+                                                   Hashable {
+  private var _string: ASCIICaseInsensitiveString
+
+  public var description: String { String(describing: _string) }
+
+  public init(_ token: HTTPTokenString) {
+    self._string = ASCIICaseInsensitiveString(token._string)
+  }
+
+  public init?(_ description: String) {
+    guard let token = HTTPTokenString(validating: description) else { return nil }
+    self.init(token)
+  }
+
+  public static func ==(
+    lhs: ASCIICaseInsensitiveHTTPTokenString,
+    rhs: ASCIICaseInsensitiveHTTPTokenString
+  ) -> Bool {
+    return lhs._string == rhs._string
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(_string)
+  }
+}
