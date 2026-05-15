@@ -98,6 +98,7 @@ let package = Package(
         "CURLClient",
         "NetworkGear",
         "_NetworkGearTestSupport",
+        "ySwiftExtensions",
       ]
     ),
     .testTarget(

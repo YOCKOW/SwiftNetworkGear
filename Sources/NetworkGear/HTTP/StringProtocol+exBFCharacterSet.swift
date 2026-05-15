@@ -31,6 +31,15 @@ private extension UInt8 {
     collection.append(__hex(of: self >> 4))
     collection.append(__hex(of: self & 0x0F))
   }
+
+  var _hexValue: UInt8? {
+    switch self {
+    case 0x30...0x39: return self - 0x30
+    case 0x41...0x5A: return self - 0x41 + 10
+    case 0x61...0x7A: return self - 0x61 + 10
+    default: return nil
+    }
+  }
 }
 
 private extension Sequence where Self.Element == UInt8 {
@@ -44,6 +53,25 @@ private extension Sequence where Self.Element == UInt8 {
       }
     }
     return output
+  }
+
+  var _removingPercentEncoding: Data? {
+    var result = Data()
+    var myIterator = self.makeIterator()
+    while let byte = myIterator.next() {
+      if byte == _PERCENT {
+        guard let h1 = myIterator.next(),
+              let b1 = h1._hexValue,
+              let h2 = myIterator.next(),
+              let b2 = h2._hexValue else {
+          return nil
+        }
+        result.append((b1 << 4) | b2)
+      } else { // byte != _PERCENT
+        result.append(byte)
+      }
+    }
+    return result
   }
 }
 
@@ -114,5 +142,29 @@ extension StringProtocol {
       usingStringEncoding: .utf8,
       whereAllowedASCIICharacters: isAllowedASCIICharacter
     )
+  }
+}
+
+
+/// A string that is encoded with [Percent-Encoding](https://datatracker.ietf.org/doc/html/rfc3986#section-2.1).
+public struct PercentEncodedString: Sendable {
+  public let encodedString: String
+
+  /// Decodes percent-encoded string and returns a string using the given string encoding.
+  public func decodedString(usingStringEncoding stringEncoding: String.Encoding) -> String? {
+    guard let decodedData = encodedString.utf8._removingPercentEncoding else {
+      return nil
+    }
+    return String(data: decodedData, encoding: stringEncoding)
+  }
+
+  /// Decodes percent-encoded string.
+  @inlinable
+  public var decodedString: String? {
+    return self.decodedString(usingStringEncoding: .utf8)
+  }
+
+  internal init(encodedString: String) {
+    self.encodedString = encodedString
   }
 }
