@@ -54,14 +54,24 @@ extension _UTF8Parser {
   @inlinable
   mutating func parseString(
     from currentIndex: inout Input.UTF8View.Index,
+    minCount: Int = 1,
+    maxCount: Int = .max,
     while isAllowedCodeUnit: (Unicode.UTF8.CodeUnit) throws -> Bool
   ) rethrows -> Substring? {
+    assert(minCount > 0)
+    var count = 0
     let startIndex = currentIndex
     while let _ = try self.readCurrentCodeUnit(
       at: &currentIndex,
       ifAllowedCodeUnit: isAllowedCodeUnit
-    ) {}
-    guard startIndex < currentIndex else {
+    ) {
+      count += 1
+      if count == maxCount {
+        break
+      }
+    }
+    guard startIndex < currentIndex, count >= minCount else {
+      currentIndex = startIndex
       return nil
     }
     return self.string[startIndex..<currentIndex]
