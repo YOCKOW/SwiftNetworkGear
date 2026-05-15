@@ -20,6 +20,12 @@ private extension _U8CodeSet {
     assert(utf8.allSatisfy({ $0 <= 0x7F }))
     return self.union(utf8)
   }
+
+  func subtracting(_ string: any StringProtocol) -> _U8CodeSet {
+    let utf8 = string.utf8
+    assert(utf8.allSatisfy({ $0 <= 0x7F }))
+    return self.subtracting(utf8)
+  }
 }
 
 /// `ALPHA` defined in [RFC 5234](https://datatracker.ietf.org/doc/html/rfc5234#appendix-B.1).
@@ -59,6 +65,8 @@ private enum _obsoleted_RFC1738 {
   static let password = uchar.union(";?&=")
 }
 
+// MARK: - IP Address
+
 /// `IPv4address` defined in [RFC 3986](https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.2).
 private let _ipv4Address = _DIGIT.union(".")
 
@@ -76,6 +84,16 @@ private let _regName = _unreservedInURL.union(_percentEncodedInURL).union(_subDe
 
 /// `pchar` defined in [RFC 3986](https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.2).
 private let _pchar = _unreservedInURL.union(_percentEncodedInURL).union(_subDelimiterInURL).union(":@")
+
+// MARK: - Charset
+
+/// `mime-charset-chars` defined in [RFC 2978](https://datatracker.ietf.org/doc/html/rfc2978#section-2.3).
+private let _mimeCharsetChars = _ALPHA.union(_DIGIT).union("!#$%&'+-^_`{}~")
+
+/// `mime-charsetc` defined in [RFC 8187](https://datatracker.ietf.org/doc/html/rfc8187#section-3.2.1).
+private let _mimeCharsetCharsInExtendedValue = _mimeCharsetChars.subtracting("'")
+
+// MARK: - UInt8 extension
 
 extension Unicode.UTF8.CodeUnit {
   /// `TAB`
@@ -266,7 +284,17 @@ extension Unicode.UTF8.CodeUnit {
   internal var _isAvailableInURLFragment: Bool {
     return self == 0x2F /* "/" */ || self == 0x3F /* "?" */ || _pchar.contains(self)
   }
+
+  internal var _isAvailableInMIMECharset: Bool {
+    return _mimeCharsetChars.contains(self)
+  }
+
+  internal var _isAvailableInMIMECharsetInExtendedValue: Bool {
+    return _mimeCharsetCharsInExtendedValue.contains(self)
+  }
 }
+
+// MARK: - StringProtocol APIs
 
 extension StringProtocol {
   /// Returns the Boolean value that indicates whether or not the string can be a valid HTTP method.
@@ -274,6 +302,8 @@ extension StringProtocol {
     return !self.isEmpty && self.utf8.allSatisfy(\._isAvailableInHTTPToken)
   }
 }
+
+// MARK: - Deprecated APIs
 
 @available(*, deprecated, message: "Use functions/properties of each type instead.")
 extension Unicode.Scalar {
