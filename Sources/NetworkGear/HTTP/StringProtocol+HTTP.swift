@@ -135,6 +135,14 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isDigit: Bool { 0x30 <= self && self <= 0x39 }
 
+  /// ALPHA
+  @inlinable
+  internal var _isAlphabet: Bool { (0x41 <= self && self <= 0x5A) || (0x61 <= self && self <= 0x7A) }
+
+  /// `DIGIT` or `ALPHA`
+  @inlinable
+  internal var _isAlphanumeric: Bool { _isDigit || _isAlphabet }
+
   /// `obs-text` defined in [RFC 9110](https://datatracker.ietf.org/doc/html/rfc9110#section-5.5).
   @inlinable
   internal var _isHTTPObsoleted: Bool {
