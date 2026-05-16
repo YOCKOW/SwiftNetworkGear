@@ -9,6 +9,7 @@ import yExtensions
 
 /// A string that is always compared to another string with
 /// [ASCII case-insensitive match](https://infra.spec.whatwg.org/#ascii-case-insensitive).
+@dynamicMemberLookup
 public struct ASCIICaseInsensitiveString: Sendable, LosslessStringConvertible {
   private var _string: String
 
@@ -20,6 +21,10 @@ public struct ASCIICaseInsensitiveString: Sendable, LosslessStringConvertible {
 
   public init(_ token: HTTPTokenString) {
     self._string = token._string
+  }
+
+  public subscript<T>(dynamicMember dynamicMember: KeyPath<String, T>) -> T {
+    return _string[keyPath: dynamicMember]
   }
 }
 
