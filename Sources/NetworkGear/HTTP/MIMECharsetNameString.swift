@@ -19,7 +19,10 @@ public struct MIMECharsetNameString: Sendable {
   }
 
   public init?(name: String, isUsedInExtendedParameterValue: Bool) {
-    guard !name.isEmpty && (
+    if name.isEmpty {
+      return nil
+    }
+    guard (
       isUsedInExtendedParameterValue &&
       name.utf8.allSatisfy(\._isAvailableInMIMECharsetInExtendedValue)
     ) || (
