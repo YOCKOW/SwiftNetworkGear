@@ -30,6 +30,63 @@ private extension Unicode.UTF8.CodeUnit {
 
 /// A string that represents ["Language Tag"](https://datatracker.ietf.org/doc/html/rfc5646).
 public struct LanguageTagString: Sendable {
+  /// A representation of `region` part.
+  public struct Region: Sendable, LosslessStringConvertible, Equatable, Hashable {
+    private let _string: ASCIICaseInsensitiveString
+    
+    public var description: String { String(describing: _string) }
+    
+    fileprivate init(_ string: ASCIICaseInsensitiveString) {
+      self._string = string
+    }
+    
+    internal struct Parser<Input>: StringParser, _UTF8Parser
+    where Input: StringProtocol, Input.SubSequence == Substring {
+      typealias Output = Region
+
+      let string: Input
+      let utf8: Input.UTF8View
+
+      init(input: Input) {
+        self.string = input
+        self.utf8 = input.utf8
+      }
+
+      mutating func parse() -> (output: Region, endIndex: Input.Index)? {
+        var index = utf8.startIndex
+
+        // ISO 3166-1 code
+        if let string = self.parseString(
+          from: &index,
+          minCount: 2,
+          maxCount: 2,
+          while: \._isAlphabet
+        ) {
+          return (Region(ASCIICaseInsensitiveString(String(string))), index)
+        } else {
+          // UN M.49 code
+          guard let string = self.parseString(
+            from: &index,
+            minCount: 3,
+            maxCount: 3,
+            while: \._isDigit
+          ) else {
+            return nil
+          }
+          return (Region(ASCIICaseInsensitiveString(String(string))), index)
+        }
+      }
+    } // Region.Parser
+
+    public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
+      guard let parsedResult = Parser<S>.parse(string),
+            parsedResult.endIndex == string.endIndex else {
+        return nil
+      }
+      self = parsedResult.output
+    }
+  } // Region
+
   /// A representation of `variant` part.
   public struct Variant: Sendable, LosslessStringConvertible, Equatable, Hashable {
     private let _string: ASCIICaseInsensitiveString
