@@ -78,6 +78,20 @@ extension _UTF8Parser {
   }
 }
 
+internal protocol _InitializableWithParser {}
+extension _InitializableWithParser {
+  init?<S, P>( _ string: S, parser: P.Type)
+  where S: StringProtocol, S.SubSequence == Substring,
+        P: StringParser, P.Input == S, P.Output == Self
+  {
+    guard let parsedResult = P.parse(string),
+          parsedResult.endIndex == string.endIndex else {
+      return nil
+    }
+    self = parsedResult.output
+  }
+}
+
 /// A type that represents `token` defined in
 /// [RFC 9110 §5.6.2](https://datatracker.ietf.org/doc/html/rfc9110#section-5.6.2).
 @dynamicMemberLookup

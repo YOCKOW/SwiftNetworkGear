@@ -273,12 +273,9 @@ extension CacheControlDirective {
 }
 
 
-extension CacheControlDirective: RawRepresentable {
+extension CacheControlDirective: RawRepresentable, _InitializableWithParser {
   public init?(rawValue: String) {
-    guard let (directive, endIndex) = Parser<String>.parse(rawValue), endIndex == rawValue.endIndex else {
-      return nil
-    }
-    self = directive
+    self.init(rawValue, parser: Parser<String>.self)
   }
   
   public var rawValue: String {

@@ -31,7 +31,11 @@ private extension Unicode.UTF8.CodeUnit {
 /// A string that represents ["Language Tag"](https://datatracker.ietf.org/doc/html/rfc5646).
 public struct LanguageTagString: Sendable {
   /// A representation of `region` part.
-  public struct Region: Sendable, LosslessStringConvertible, Equatable, Hashable {
+  public struct Region: Sendable,
+                        LosslessStringConvertible,
+                        Equatable,
+                        Hashable,
+                        _InitializableWithParser {
     private let _string: ASCIICaseInsensitiveString
     
     public var description: String { String(describing: _string) }
@@ -79,16 +83,16 @@ public struct LanguageTagString: Sendable {
     } // Region.Parser
 
     public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
-      guard let parsedResult = Parser<S>.parse(string),
-            parsedResult.endIndex == string.endIndex else {
-        return nil
-      }
-      self = parsedResult.output
+      self.init(string, parser: Parser<S>.self)
     }
   } // Region
 
   /// A representation of `variant` part.
-  public struct Variant: Sendable, LosslessStringConvertible, Equatable, Hashable {
+  public struct Variant: Sendable,
+                         LosslessStringConvertible,
+                         Equatable,
+                         Hashable,
+                         _InitializableWithParser {
     private let _string: ASCIICaseInsensitiveString
 
     public var description: String { String(describing: _string) }
@@ -137,16 +141,16 @@ public struct LanguageTagString: Sendable {
     }
 
     public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
-      guard let parsedResult = Parser<S>.parse(string),
-            parsedResult.endIndex == string.endIndex else {
-        return nil
-      }
-      self = parsedResult.output
+      self.init(string, parser: Parser<S>.self)
     }
   } // Variant
 
   /// Represents `extension`
-  public struct Extension: Sendable, LosslessStringConvertible, Equatable, Hashable {
+  public struct Extension: Sendable,
+                           LosslessStringConvertible,
+                           Equatable,
+                           Hashable,
+                           _InitializableWithParser {
     private let _string: ASCIICaseInsensitiveString
 
     public var description: String { String(describing: _string) }
@@ -201,16 +205,16 @@ public struct LanguageTagString: Sendable {
     } // Extension.Parser
 
     public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
-      guard let parsedResult = Parser<S>.parse(string),
-            parsedResult.endIndex == string.endIndex else {
-        return nil
-      }
-      self = parsedResult.output
+      self.init(string, parser: Parser<S>.self)
     }
   } // Extension
 
   /// Represents `privateuse`.
-  public struct PrivateUseTag: Sendable, LosslessStringConvertible, Equatable, Hashable {
+  public struct PrivateUseTag: Sendable,
+                               LosslessStringConvertible,
+                               Equatable,
+                               Hashable,
+                               _InitializableWithParser {
     private let _string: ASCIICaseInsensitiveString
 
     public var description: String { String(describing: _string) }
@@ -268,11 +272,7 @@ public struct LanguageTagString: Sendable {
     } // PrivateUseTag.Parser
 
     public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
-      guard let parsedResult = Parser<S>.parse(string),
-            parsedResult.endIndex == string.endIndex else {
-        return nil
-      }
-      self = parsedResult.output
+      self.init(string, parser: Parser<S>.self)
     }
   } // PrivateUseTag
 
