@@ -30,6 +30,64 @@ private extension Unicode.UTF8.CodeUnit {
 
 /// A string that represents ["Language Tag"](https://datatracker.ietf.org/doc/html/rfc5646).
 public struct LanguageTagString: Sendable {
+  /// A representation of `variant` part.
+  public struct Variant: Sendable, LosslessStringConvertible, Equatable, Hashable {
+    private let _string: ASCIICaseInsensitiveString
+
+    public var description: String { String(describing: _string) }
+
+    fileprivate init(_ string: ASCIICaseInsensitiveString) {
+      self._string = string
+    }
+
+    internal struct Parser<Input>: StringParser, _UTF8Parser
+    where Input: StringProtocol, Input.SubSequence == Substring {
+      typealias Output = Variant
+
+      let string: Input
+      let utf8: Input.UTF8View
+
+      init(input: Input) {
+        self.string = input
+        self.utf8 = input.utf8
+      }
+
+      mutating func parse() -> (output: Variant, endIndex: Input.Index)? {
+        var index = utf8.startIndex
+
+        if let string = self.parseString(
+          from: &index,
+          minCount: 5,
+          maxCount: 8,
+          while: \._isAlphanumeric
+        ) {
+          return (Variant(ASCIICaseInsensitiveString(String(string))), index)
+        } else {
+          guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isDigit) else {
+            return nil
+          }
+          guard let _ = self.parseString(
+            from: &index,
+            minCount: 3,
+            maxCount: 3,
+            while: \._isAlphanumeric
+          ) else {
+            return nil
+          }
+          return (Variant(ASCIICaseInsensitiveString(String(string[..<index]))), index)
+        }
+      }
+    }
+
+    public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
+      guard let parsedResult = Parser<S>.parse(string),
+            parsedResult.endIndex == string.endIndex else {
+        return nil
+      }
+      self = parsedResult.output
+    }
+  } // Variant
+
   /// Represents `extension`
   public struct Extension: Sendable, LosslessStringConvertible, Equatable, Hashable {
     private let _string: ASCIICaseInsensitiveString

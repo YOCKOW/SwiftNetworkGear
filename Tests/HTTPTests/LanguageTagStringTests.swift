@@ -9,6 +9,13 @@
 import Testing
 
 @Suite struct LanguageTagStringTests {
+  @Test func test_Variant_parsing() throws {
+    #expect(LanguageTagString.Variant("tag").isNil)
+    #expect(!LanguageTagString.Variant("Variant").isNil)
+    #expect(LanguageTagString.Variant("tag0").isNil)
+    #expect(!LanguageTagString.Variant("0tag").isNil)
+  }
+
   @Test func test_Extension_parsing() throws {
     #expect(LanguageTagString.Extension("y").isNil)
     #expect(LanguageTagString.Extension("w-").isNil)
