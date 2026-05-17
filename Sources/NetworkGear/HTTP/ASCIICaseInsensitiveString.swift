@@ -36,6 +36,35 @@ public struct ASCIICaseInsensitiveString: Sendable,
   public subscript<T>(dynamicMember dynamicMember: KeyPath<String, T>) -> T {
     return _string[keyPath: dynamicMember]
   }
+
+  @usableFromInline
+  internal func _endIndex<S>(ofPrefix prefix: S) -> String.Index? where S: StringProtocol {
+    let myUTF8 = _string.utf8
+    var myIndex = myUTF8.startIndex
+    var prefixIterator = prefix.utf8.makeIterator()
+    while let prefixByte = prefixIterator.next() {
+      guard myIndex < myUTF8.endIndex else { return nil }
+      let myByte = myUTF8[myIndex]
+      guard (
+        myByte == prefixByte ||
+        (0x41 <= myByte && myByte <= 0x5A && myByte + 0x20 == prefixByte) ||
+        (0x61 <= myByte && myByte <= 0x7A && myByte - 0x20 == prefixByte)
+      ) else {
+        return nil
+      }
+      myUTF8.formIndex(after: &myIndex)
+    }
+    return myIndex
+  }
+
+  @inlinable
+  public func hasPrefix<S>(_ prefix: S) -> Bool where S: StringProtocol {
+    return !self._endIndex(ofPrefix: prefix).isNil
+  }
+
+  public func hasPrefix(_ prefix: ASCIICaseInsensitiveString) -> Bool {
+    return self.hasPrefix(prefix._string)
+  }
 }
 
 extension ASCIICaseInsensitiveString: Equatable {
