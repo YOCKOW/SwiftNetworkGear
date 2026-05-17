@@ -30,6 +30,53 @@ private extension Unicode.UTF8.CodeUnit {
 
 /// A string that represents ["Language Tag"](https://datatracker.ietf.org/doc/html/rfc5646).
 public struct LanguageTagString: Sendable {
+  /// A representation of `script` part.
+  public struct Script: Sendable,
+                        LosslessStringConvertible,
+                        Equatable,
+                        Hashable,
+                        _InitializableWithParser {
+    private let _string: ASCIICaseInsensitiveString
+
+    public var description: String { String(describing: _string) }
+
+    fileprivate init(_ string: ASCIICaseInsensitiveString) {
+      self._string = string
+    }
+
+    internal struct Parser<Input>: StringParser, _UTF8Parser
+    where Input: StringProtocol, Input.SubSequence == Substring {
+      typealias Output = Script
+
+      let string: Input
+      let utf8: Input.UTF8View
+
+      init(input: Input) {
+        self.string = input
+        self.utf8 = input.utf8
+      }
+
+      mutating func parse() -> (output: Script, endIndex: Input.Index)? {
+        var index = utf8.startIndex
+
+        // ISO 15924 code
+        guard let string = self.parseString(
+          from: &index,
+          minCount: 4,
+          maxCount: 4,
+          while: \._isAlphabet
+        ) else {
+          return nil
+        }
+        return (Script(ASCIICaseInsensitiveString(String(string))), index)
+      }
+    } // Script.Parser
+
+    public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
+      self.init(string, parser: Parser<S>.self)
+    }
+  } // Script
+
   /// A representation of `region` part.
   public struct Region: Sendable,
                         LosslessStringConvertible,

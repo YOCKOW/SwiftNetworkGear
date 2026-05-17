@@ -9,6 +9,11 @@
 import Testing
 
 @Suite struct LanguageTagStringTests {
+  @Test func test_Script_parsing() throws {
+    #expect(LanguageTagString.Script("Japan").isNil)
+    #expect(!LanguageTagString.Script("Jpan").isNil)
+  }
+
   @Test func test_Region_parsing() throws {
     #expect(LanguageTagString.Region("Japan").isNil)
     #expect(!LanguageTagString.Region("JP").isNil)
