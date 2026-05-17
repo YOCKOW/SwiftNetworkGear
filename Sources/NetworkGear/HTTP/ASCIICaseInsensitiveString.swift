@@ -10,13 +10,23 @@ import yExtensions
 /// A string that is always compared to another string with
 /// [ASCII case-insensitive match](https://infra.spec.whatwg.org/#ascii-case-insensitive).
 @dynamicMemberLookup
-public struct ASCIICaseInsensitiveString: Sendable, LosslessStringConvertible {
+public struct ASCIICaseInsensitiveString: Sendable,
+                                          LosslessStringConvertible,
+                                          ExpressibleByStringLiteral {
+  public typealias StringLiteralType = String.StringLiteralType
+  public typealias ExtendedGraphemeClusterLiteralType = String.ExtendedGraphemeClusterLiteralType
+  public typealias UnicodeScalarLiteralType = String.UnicodeScalarLiteralType
+
   private var _string: String
 
   public var description: String { _string }
 
   public init(_ string: String) {
     self._string = string
+  }
+
+  public init(stringLiteral value: String.StringLiteralType) {
+    self.init(value)
   }
 
   public init(_ token: HTTPTokenString) {

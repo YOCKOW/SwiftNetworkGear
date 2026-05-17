@@ -5,12 +5,14 @@
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
+import yExtensions
+
 /// A string that represents ["Language Tag"](https://datatracker.ietf.org/doc/html/rfc5646).
 public struct LanguageTagString: Sendable {
 
 
   /// Represents `privateuse`.
-  public struct PrivateUse: Sendable, CustomStringConvertible, Equatable, Hashable {
+  public struct PrivateUseTag: Sendable, LosslessStringConvertible, Equatable, Hashable {
     private let _string: ASCIICaseInsensitiveString
 
     public var description: String { String(describing: _string) }
@@ -21,7 +23,7 @@ public struct LanguageTagString: Sendable {
 
     internal struct Parser<Input>: StringParser, _UTF8Parser
     where Input: StringProtocol, Input.SubSequence == Substring {
-      typealias Output = PrivateUse
+      typealias Output = PrivateUseTag
 
       let string: Input
       let utf8: Input.UTF8View
@@ -31,7 +33,7 @@ public struct LanguageTagString: Sendable {
         self.utf8 = input.utf8
       }
 
-      mutating func parse() -> (output: PrivateUse, endIndex: Input.Index)? {
+      mutating func parse() -> (output: PrivateUseTag, endIndex: Input.Index)? {
         var index = utf8.startIndex
 
         guard let _ = self.readCurrentCodeUnit(
@@ -63,9 +65,9 @@ public struct LanguageTagString: Sendable {
 
         guard let _ = __consumeNextTag() else { return nil }
         while let _ = __consumeNextTag() {}
-        return (PrivateUse(ASCIICaseInsensitiveString(String(string[..<index]))), index)
+        return (PrivateUseTag(ASCIICaseInsensitiveString(String(string[..<index]))), index)
       }
-    } // PrivateUse.Parser
+    } // PrivateUseTag.Parser
 
     public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
       guard let parsedResult = Parser<S>.parse(string),
@@ -74,5 +76,55 @@ public struct LanguageTagString: Sendable {
       }
       self = parsedResult.output
     }
-  } // PrivateUse
+  } // PrivateUseTag
+
+  /// Represents `grandfathered`.
+  public struct GrandfatheredTag: Sendable, LosslessStringConvertible, Equatable, Hashable {
+    private let _string: ASCIICaseInsensitiveString
+
+    public var description: String { String(describing: _string) }
+
+    private static let _irregulars: Set<ASCIICaseInsensitiveString> = [
+      "en-GB-oed",
+      "i-ami",
+      "i-bnn",
+      "i-default",
+      "i-enochian",
+      "i-hak",
+      "i-klingon",
+      "i-lux",
+      "i-mingo",
+      "i-navajo",
+      "i-pwn",
+      "i-tao",
+      "i-tay",
+      "i-tsu",
+      "sgn-BE-FR",
+      "sgn-BE-NL",
+      "sgn-CH-DE",
+    ]
+
+    private static let _regulars: Set<ASCIICaseInsensitiveString> = [
+      "art-lojban",
+      "cel-gaulish",
+      "no-bok",
+      "no-nyn",
+      "zh-guoyu",
+      "zh-hakka",
+      "zh-min",
+      "zh-min-nan",
+      "zh-xiang",
+    ]
+
+    public init?(_ string: String) {
+      let caseInsensitiveString = ASCIICaseInsensitiveString(string)
+      guard (
+        GrandfatheredTag._irregulars.contains(caseInsensitiveString) ||
+        GrandfatheredTag._regulars.contains(caseInsensitiveString)
+      ) else {
+        return nil
+      }
+      self._string = caseInsensitiveString
+    }
+  } // GrandfatheredTag
 }
