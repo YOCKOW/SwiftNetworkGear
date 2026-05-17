@@ -9,6 +9,15 @@
 import Testing
 
 @Suite struct LanguageTagStringTests {
+  @Test func test_Extension_parsing() throws {
+    #expect(LanguageTagString.Extension("y").isNil)
+    #expect(LanguageTagString.Extension("w-").isNil)
+    #expect(LanguageTagString.Extension("z-y").isNil)
+    #expect(!LanguageTagString.Extension("z-foo").isNil)
+    #expect(LanguageTagString.Extension("a-foo-").isNil)
+    #expect(!LanguageTagString.Extension("b-foo-bar").isNil)
+  }
+
   @Test func test_PrivateUseTag_parsing() throws {
     #expect(LanguageTagString.PrivateUseTag("x").isNil)
     #expect(LanguageTagString.PrivateUseTag("x-").isNil)
