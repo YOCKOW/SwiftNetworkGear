@@ -95,8 +95,7 @@ extension HTTPHeaderFieldName: CodingKey {
   }
 }
 
-public struct HTTPHeaderFieldNameParser<Input>: StringParser
-where Input: StringProtocol, Input.SubSequence == Substring {
+public struct HTTPHeaderFieldNameParser<Input>: StringParser where Input: StringProtocol {
   public typealias Output = HTTPHeaderFieldName
 
   private var _parser: HTTPTokenParser<Input>

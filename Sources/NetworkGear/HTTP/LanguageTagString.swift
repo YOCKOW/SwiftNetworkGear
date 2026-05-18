@@ -44,8 +44,7 @@ public struct LanguageTagString: Sendable {
       self._string = string
     }
 
-    internal struct Parser<Input>: StringParser, _UTF8Parser
-    where Input: StringProtocol, Input.SubSequence == Substring {
+    internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
       typealias Output = Script
 
       let string: Input
@@ -72,7 +71,7 @@ public struct LanguageTagString: Sendable {
       }
     } // Script.Parser
 
-    public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
+    public init?<S>(_ string: S) where S: StringProtocol {
       self.init(string, parser: Parser<S>.self)
     }
   } // Script
@@ -91,8 +90,7 @@ public struct LanguageTagString: Sendable {
       self._string = string
     }
     
-    internal struct Parser<Input>: StringParser, _UTF8Parser
-    where Input: StringProtocol, Input.SubSequence == Substring {
+    internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
       typealias Output = Region
 
       let string: Input
@@ -129,7 +127,7 @@ public struct LanguageTagString: Sendable {
       }
     } // Region.Parser
 
-    public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
+    public init?<S>(_ string: S) where S: StringProtocol {
       self.init(string, parser: Parser<S>.self)
     }
   } // Region
@@ -148,8 +146,7 @@ public struct LanguageTagString: Sendable {
       self._string = string
     }
 
-    internal struct Parser<Input>: StringParser, _UTF8Parser
-    where Input: StringProtocol, Input.SubSequence == Substring {
+    internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
       typealias Output = Variant
 
       let string: Input
@@ -187,7 +184,7 @@ public struct LanguageTagString: Sendable {
       }
     }
 
-    public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
+    public init?<S>(_ string: S) where S: StringProtocol {
       self.init(string, parser: Parser<S>.self)
     }
   } // Variant
@@ -206,8 +203,7 @@ public struct LanguageTagString: Sendable {
       self._string = string
     }
 
-    internal struct Parser<Input>: StringParser, _UTF8Parser
-    where Input: StringProtocol, Input.SubSequence == Substring {
+    internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
       typealias Output = Extension
 
       let string: Input
@@ -251,7 +247,7 @@ public struct LanguageTagString: Sendable {
       }
     } // Extension.Parser
 
-    public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
+    public init?<S>(_ string: S) where S: StringProtocol {
       self.init(string, parser: Parser<S>.self)
     }
   } // Extension
@@ -270,8 +266,7 @@ public struct LanguageTagString: Sendable {
       self._string = string
     }
 
-    internal struct Parser<Input>: StringParser, _UTF8Parser
-    where Input: StringProtocol, Input.SubSequence == Substring {
+    internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
       typealias Output = PrivateUseTag
 
       let string: Input
@@ -318,7 +313,7 @@ public struct LanguageTagString: Sendable {
       }
     } // PrivateUseTag.Parser
 
-    public init?<S>(_ string: S) where S: StringProtocol, S.SubSequence == Substring {
+    public init?<S>(_ string: S) where S: StringProtocol {
       self.init(string, parser: Parser<S>.self)
     }
   } // PrivateUseTag

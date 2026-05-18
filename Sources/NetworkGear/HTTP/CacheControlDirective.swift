@@ -156,8 +156,7 @@ extension CacheControlDirective {
   ///  [RFC 9111 §5.2](https://datatracker.ietf.org/doc/html/rfc9111#section-5.2)
   ///
   ///  - Note: This is usually for internal use.
-  public struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol,
-                                                               Input.SubSequence == Substring {
+  public struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
     public typealias Output = CacheControlDirective
 
     let string: Input
@@ -191,12 +190,12 @@ extension CacheControlDirective {
 
         let argumentString = string[currentIndex...]
         PARSE_QUOTED_STRING: if allowQuotedString {
-          guard let (quotedString, argumentEndIndex) = QuotedStringParser<Substring>.parse(argumentString) else {
+          guard let (quotedString, argumentEndIndex) = QuotedStringParser<Input.SubSequence>.parse(argumentString) else {
             break PARSE_QUOTED_STRING
           }
           return (argument: .quotedString(quotedString), endIndex: argumentEndIndex)
         }
-        guard let (token, argumentEndIndex) = HTTPTokenParser<Substring>.parse(argumentString) else {
+        guard let (token, argumentEndIndex) = HTTPTokenParser<Input.SubSequence>.parse(argumentString) else {
           return nil
         }
         return (argument: .token(token), endIndex: argumentEndIndex)

@@ -8,8 +8,7 @@
 import yExtensions
 
 /// A type to parse a string (related to HTTP).
-public protocol StringParser<Input, Output> where Input: StringProtocol,
-                                                  Input.SubSequence == Substring {
+public protocol StringParser<Input, Output> where Input: StringProtocol {
   associatedtype Input
   associatedtype Output
 
@@ -57,7 +56,7 @@ extension _UTF8Parser {
     minCount: Int = 1,
     maxCount: Int = .max,
     while isAllowedCodeUnit: (Unicode.UTF8.CodeUnit) throws -> Bool
-  ) rethrows -> Substring? {
+  ) rethrows -> Input.SubSequence? {
     assert(minCount > 0)
     var count = 0
     let startIndex = currentIndex
@@ -81,9 +80,7 @@ extension _UTF8Parser {
 internal protocol _InitializableWithParser {}
 extension _InitializableWithParser {
   init?<S, P>( _ string: S, parser: P.Type)
-  where S: StringProtocol, S.SubSequence == Substring,
-        P: StringParser, P.Input == S, P.Output == Self
-  {
+  where S: StringProtocol, P: StringParser, P.Input == S, P.Output == Self {
     guard let parsedResult = P.parse(string),
           parsedResult.endIndex == string.endIndex else {
       return nil
@@ -164,8 +161,7 @@ extension FixedWidthInteger {
 
 
 /// A parser to pull out an HTTP token.
-public struct HTTPTokenParser<Input>: StringParser, _UTF8Parser
-where Input: StringProtocol, Input.SubSequence == Substring {
+public struct HTTPTokenParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = HTTPTokenString
 
   internal let string: Input
@@ -197,8 +193,7 @@ where Input: StringProtocol, Input.SubSequence == Substring {
 }
 
 /// A parser to pull out a quoted string.
-public struct QuotedStringParser<Input>: StringParser, _UTF8Parser
-where Input: StringProtocol, Input.SubSequence == Substring {
+public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = QuotedString
 
   internal let string: Input
@@ -267,8 +262,7 @@ where Input: StringProtocol, Input.SubSequence == Substring {
 ///
 /// See [RFC 9110 §5.6](https://datatracker.ietf.org/doc/html/rfc9110#section-5.6).
 public struct ListParser<Input, ElementParser>: StringParser, _UTF8Parser
-where Input: StringProtocol, Input.SubSequence == Substring,
-      ElementParser: StringParser, ElementParser.Input == Substring {
+where Input: StringProtocol, ElementParser: StringParser, ElementParser.Input == Input.SubSequence {
   public typealias Output = [ElementParser.Output]
 
   internal let string: Input
@@ -313,4 +307,4 @@ where Input: StringProtocol, Input.SubSequence == Substring,
   }
 }
 public typealias TokenListParser<Input> =
-  ListParser<Input, HTTPTokenParser<Substring>> where Input: StringProtocol, Input.SubSequence == Substring
+  ListParser<Input, HTTPTokenParser<Input.SubSequence>> where Input: StringProtocol
