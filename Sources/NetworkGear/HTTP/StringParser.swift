@@ -295,6 +295,53 @@ where Input: StringProtocol,
   }
 }
 
+/// A parser that parses a string repeatedly using `RepeatParser`.
+public struct RepetitionParser<Input, RepeatParser>: StringParser
+where Input: StringProtocol, RepeatParser: StringParser, RepeatParser.Input == Input.SubSequence {
+  public typealias Output = Array<RepeatParser.Output>
+
+  private let _string: Input
+
+  // TODO: I want `minCount` and `maxCount` to be set by values in generics.
+  //       The feature requires macOS >=26.0...😖
+
+  /// The number of min count to repeat parsing.
+  public var minCount: Int = 1
+
+  /// The number of max count to repeat parsing.
+  public var maxCount: Int = .max
+
+  public init(input: Input) {
+    self._string = input
+  }
+
+  private var _result: (output: Output, endIndex: Input.Index)? = nil
+  private var _parsed: Bool = false
+  public mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+    if _parsed {
+      return _result
+    }
+
+    defer {
+      _parsed = true
+    }
+
+    var output: Output = []
+    var index = _string.startIndex
+    while let parsedResult = RepeatParser.parse(_string[index...]) {
+      output.append(parsedResult.output)
+      index = parsedResult.endIndex
+      if output.count == maxCount {
+        break
+      }
+    }
+    guard index > _string.startIndex, output.count >= minCount else {
+      return nil
+    }
+    return (output, index)
+  }
+}
+
 /// A parser to parse a list for field value.
 ///
 /// See [RFC 9110 §5.6](https://datatracker.ietf.org/doc/html/rfc9110#section-5.6).
