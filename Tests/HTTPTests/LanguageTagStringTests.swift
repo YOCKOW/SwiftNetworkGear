@@ -7,62 +7,83 @@
 
 @testable import NetworkGear
 import Testing
+import yExtensions
 
 @Suite struct LanguageTagStringTests {
+  func validString<L>(
+    _ string: String,
+    for type: L.Type,
+    _ comment: @autoclosure () -> Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) where L: LosslessStringConvertible {
+    #expect(!L(string).isNil, comment(), sourceLocation: sourceLocation)
+  }
+
+  func invalidString<L>(
+    _ string: String,
+    for type: L.Type,
+    _ comment: @autoclosure () -> Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) where L: LosslessStringConvertible {
+    #expect(L(string).isNil, comment(), sourceLocation: sourceLocation)
+  }
+
   @Test func test_ExtendedLanguage_parsing() throws {
-    #expect(LanguageTagString.Language.ExtendedLanguage("A").isNil)
-    #expect(LanguageTagString.Language.ExtendedLanguage("AB").isNil)
-    #expect(!LanguageTagString.Language.ExtendedLanguage("ABC").isNil)
+    invalidString("A", for: LanguageTagString.Language.ExtendedLanguage.self)
+    invalidString("AB", for: LanguageTagString.Language.ExtendedLanguage.self)
+    validString("ABC", for: LanguageTagString.Language.ExtendedLanguage.self)
 
-    #expect(LanguageTagString.Language.ExtendedLanguage("ABC-D").isNil)
-    #expect(!LanguageTagString.Language.ExtendedLanguage("ABC-DEF").isNil)
+    invalidString("ABC-D", for: LanguageTagString.Language.ExtendedLanguage.self)
+    validString("ABC-DEF", for: LanguageTagString.Language.ExtendedLanguage.self)
 
-    #expect(LanguageTagString.Language.ExtendedLanguage("ABC-DEF-G").isNil)
-    #expect(!LanguageTagString.Language.ExtendedLanguage("ABC-DEF-GHI").isNil)
+    invalidString("ABC-DEF-", for: LanguageTagString.Language.ExtendedLanguage.self)
+    invalidString("ABC-DEF-G", for: LanguageTagString.Language.ExtendedLanguage.self)
+    validString("ABC-DEF-GHI", for: LanguageTagString.Language.ExtendedLanguage.self)
 
-    #expect(LanguageTagString.Language.ExtendedLanguage("ABC-DEF-GHI-J").isNil)
-    #expect(LanguageTagString.Language.ExtendedLanguage("ABC-DEF-GHI-JKL").isNil)
+    invalidString("ABC-DEF-GHI-", for: LanguageTagString.Language.ExtendedLanguage.self)
+    invalidString("ABC-DEF-GHI-J", for: LanguageTagString.Language.ExtendedLanguage.self)
+    invalidString("ABC-DEF-GHI-JKL", for: LanguageTagString.Language.ExtendedLanguage.self)
   }
 
   @Test func test_Script_parsing() throws {
-    #expect(LanguageTagString.Script("Japan").isNil)
-    #expect(!LanguageTagString.Script("Jpan").isNil)
+    invalidString("Japan", for: LanguageTagString.Script.self)
+    validString("Jpan", for: LanguageTagString.Script.self)
   }
 
   @Test func test_Region_parsing() throws {
-    #expect(LanguageTagString.Region("Japan").isNil)
-    #expect(!LanguageTagString.Region("JP").isNil)
-    #expect(LanguageTagString.Region("0392").isNil)
-    #expect(!LanguageTagString.Region("392").isNil)
+    invalidString("Japan", for: LanguageTagString.Region.self)
+    validString("JP", for: LanguageTagString.Region.self)
+    invalidString("0392", for: LanguageTagString.Region.self)
+    validString("392", for: LanguageTagString.Region.self)
   }
 
   @Test func test_Variant_parsing() throws {
-    #expect(LanguageTagString.Variant("tag").isNil)
-    #expect(!LanguageTagString.Variant("Variant").isNil)
-    #expect(LanguageTagString.Variant("tag0").isNil)
-    #expect(!LanguageTagString.Variant("0tag").isNil)
+    invalidString("tag", for: LanguageTagString.Variant.self)
+    validString("Variant", for: LanguageTagString.Variant.self)
+    invalidString("tag0", for: LanguageTagString.Variant.self)
+    validString("0tag", for: LanguageTagString.Variant.self)
   }
 
   @Test func test_Extension_parsing() throws {
-    #expect(LanguageTagString.Extension("y").isNil)
-    #expect(LanguageTagString.Extension("w-").isNil)
-    #expect(LanguageTagString.Extension("z-y").isNil)
-    #expect(!LanguageTagString.Extension("z-foo").isNil)
-    #expect(LanguageTagString.Extension("a-foo-").isNil)
-    #expect(!LanguageTagString.Extension("b-foo-bar").isNil)
+    invalidString("y", for: LanguageTagString.Extension.self)
+    invalidString("w-", for: LanguageTagString.Extension.self)
+    invalidString("z-y", for: LanguageTagString.Extension.self)
+    validString("z-foo", for: LanguageTagString.Extension.self)
+    invalidString("a-foo-", for: LanguageTagString.Extension.self)
+    validString("b-foo-bar", for: LanguageTagString.Extension.self)
   }
 
   @Test func test_PrivateUseTag_parsing() throws {
-    #expect(LanguageTagString.PrivateUseTag("x").isNil)
-    #expect(LanguageTagString.PrivateUseTag("x-").isNil)
-    #expect(!LanguageTagString.PrivateUseTag("x-foo").isNil)
-    #expect(LanguageTagString.PrivateUseTag("x-foo-").isNil)
-    #expect(!LanguageTagString.PrivateUseTag("x-foo-bar").isNil)
+    invalidString("x", for: LanguageTagString.PrivateUseTag.self)
+    invalidString("x-", for: LanguageTagString.PrivateUseTag.self)
+    validString("x-foo", for: LanguageTagString.PrivateUseTag.self)
+    invalidString("x-foo-", for: LanguageTagString.PrivateUseTag.self)
+    validString("x-foo-bar", for: LanguageTagString.PrivateUseTag.self)
   }
 
   @Test func test_GrandfatheredTag() throws {
-    #expect(LanguageTagString.GrandfatheredTag("foo").isNil)
-    #expect(!LanguageTagString.GrandfatheredTag("en-GB-oed").isNil)
-    #expect(!LanguageTagString.GrandfatheredTag("ZH-Xiang").isNil)
+    invalidString("foo", for: LanguageTagString.GrandfatheredTag.self)
+    validString("en-GB-oed", for: LanguageTagString.GrandfatheredTag.self)
+    validString("ZH-Xiang", for: LanguageTagString.GrandfatheredTag.self)
   }
 }
