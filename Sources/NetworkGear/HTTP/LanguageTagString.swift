@@ -28,8 +28,113 @@ private extension Unicode.UTF8.CodeUnit {
   }
 }
 
+private struct _HyphenFollowedBy<Input, FollowerParser>: StringParser, _UTF8Parser
+where Input: StringProtocol,
+      FollowerParser: StringParser,
+      FollowerParser.Input == Input.SubSequence {
+  typealias Output = FollowerParser.Output
+
+  let string: Input
+  let utf8: Input.UTF8View
+
+  init(input: Input) {
+    self.string = input
+    self.utf8 = input.utf8
+  }
+
+  mutating func parse() -> (output: FollowerParser.Output, endIndex: Input.Index)? {
+    var index = self.utf8.startIndex
+    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isHyphen) else {
+      return nil
+    }
+    return FollowerParser.parse(string[index...])
+  }
+}
+
 /// A string that represents ["Language Tag"](https://datatracker.ietf.org/doc/html/rfc5646).
 public struct LanguageTagString: Sendable {
+  public struct Language {
+    public struct ExtendedLanguage: Sendable,
+                                    LosslessStringConvertible,
+                                    Equatable,
+                                    Hashable,
+                                    _InitializableWithParser {
+      private let _string: ASCIICaseInsensitiveString
+
+      public var description: String { String(describing: _string) }
+
+      fileprivate init(_ string: ASCIICaseInsensitiveString) {
+        self._string = string
+      }
+
+      private struct _3AlphabetParser<Input>: StringParser, _UTF8Parser
+      where Input: StringProtocol {
+        typealias Output = Input.SubSequence
+
+        let string: Input
+        let utf8: Input.UTF8View
+
+        init(input: Input) {
+          self.string = input
+          self.utf8 = input.utf8
+        }
+
+        mutating func parse() -> (output: Input.SubSequence, endIndex: Input.Index)? {
+          var index = self.utf8.startIndex
+          guard let substring = self.parseString(
+            from: &index,
+            minCount: 3,
+            maxCount: 3,
+            while: \._isAlphabet
+          ) else {
+            return nil
+          }
+          return (substring, index)
+        }
+      } // _3AlphabetParser
+
+      internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+        typealias Output = ExtendedLanguage
+
+        let string: Input
+        let utf8: Input.UTF8View
+
+        init(input: Input) {
+          self.string = input
+          self.utf8 = input.utf8
+        }
+
+        mutating func parse() -> (output: ExtendedLanguage, endIndex: Input.Index)? {
+          guard let first3AlphaResult = _3AlphabetParser<Input>.parse(string) else {
+            return nil
+          }
+
+          var more3AlphaParser = RepetitionParser<
+            Input.SubSequence,
+            _HyphenFollowedBy<Input.SubSequence, _3AlphabetParser<Input.SubSequence>>
+          >(input: string[first3AlphaResult.endIndex...])
+          more3AlphaParser.maxCount = 2
+
+          func __createResult(endIndex: Input.Index) -> (ExtendedLanguage, Input.Index) {
+            return (
+              ExtendedLanguage(ASCIICaseInsensitiveString(String(string[..<endIndex]))),
+              endIndex
+            )
+          }
+          if let more3AlphaResult = more3AlphaParser.parse() {
+            return __createResult(endIndex: more3AlphaResult.endIndex)
+          } else {
+            return __createResult(endIndex: first3AlphaResult.endIndex)
+          }
+        }
+      } // ExtendedLanguage.Parser
+
+      public init?<S>(_ string: S) where S: StringProtocol {
+        self.init(string, parser: Parser<S>.self)
+      }
+    } // Language.ExtendedLanguage
+  } // Language
+
   /// A representation of `script` part.
   public struct Script: Sendable,
                         LosslessStringConvertible,

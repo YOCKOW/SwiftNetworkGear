@@ -9,6 +9,21 @@
 import Testing
 
 @Suite struct LanguageTagStringTests {
+  @Test func test_ExtendedLanguage_parsing() throws {
+    #expect(LanguageTagString.Language.ExtendedLanguage("A").isNil)
+    #expect(LanguageTagString.Language.ExtendedLanguage("AB").isNil)
+    #expect(!LanguageTagString.Language.ExtendedLanguage("ABC").isNil)
+
+    #expect(LanguageTagString.Language.ExtendedLanguage("ABC-D").isNil)
+    #expect(!LanguageTagString.Language.ExtendedLanguage("ABC-DEF").isNil)
+
+    #expect(LanguageTagString.Language.ExtendedLanguage("ABC-DEF-G").isNil)
+    #expect(!LanguageTagString.Language.ExtendedLanguage("ABC-DEF-GHI").isNil)
+
+    #expect(LanguageTagString.Language.ExtendedLanguage("ABC-DEF-GHI-J").isNil)
+    #expect(LanguageTagString.Language.ExtendedLanguage("ABC-DEF-GHI-JKL").isNil)
+  }
+
   @Test func test_Script_parsing() throws {
     #expect(LanguageTagString.Script("Japan").isNil)
     #expect(!LanguageTagString.Script("Jpan").isNil)

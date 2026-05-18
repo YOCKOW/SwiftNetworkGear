@@ -116,6 +116,10 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isComma: Bool { self == 0x2C }
 
+  /// `-`
+  @inlinable
+  internal var _isHyphen: Bool { self == 0x2D }
+
   /// `=`
   @inlinable
   internal var _isEqualSign: Bool { self == 0x3D }
