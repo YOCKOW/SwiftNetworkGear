@@ -258,6 +258,43 @@ public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: 
   }
 }
 
+/// A parser that succeeds in parsing only if both two parsers succeed in parsing.
+public struct CombinedParser<Input, FirstParser, SecondParser>: StringParser
+where Input: StringProtocol,
+      FirstParser: StringParser, FirstParser.Input == Input,
+      SecondParser: StringParser, SecondParser.Input == Input.SubSequence {
+  public typealias Output = (firstOutput: FirstParser.Output, secondOutput: SecondParser.Output)
+
+  private let _string: Input
+
+  public init(input: Input) {
+    self._string = input
+  }
+
+  private var _result: (output: Output, endIndex: Input.Index)? = nil
+  private var _parsed: Bool = false
+  public mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+    if _parsed {
+      return _result
+    }
+
+    defer {
+      _parsed = true
+    }
+    guard let firstResult = FirstParser.parse(_string) else {
+      return nil
+    }
+    guard let secondResult = SecondParser.parse(_string[firstResult.endIndex...]) else {
+      return nil
+    }
+    _result = (
+      output: (firstResult.output, secondResult.output),
+      endIndex: secondResult.endIndex
+    )
+    return _result
+  }
+}
+
 /// A parser to parse a list for field value.
 ///
 /// See [RFC 9110 §5.6](https://datatracker.ietf.org/doc/html/rfc9110#section-5.6).
