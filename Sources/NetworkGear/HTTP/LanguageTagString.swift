@@ -28,10 +28,10 @@ private extension Unicode.UTF8.CodeUnit {
   }
 }
 
-private struct _HyphenFollowedBy<Input, FollowerParser>: StringParser, _UTF8Parser
-where Input: StringProtocol,
-      FollowerParser: StringParser,
-      FollowerParser.Input == Input.SubSequence {
+private struct _HyphenFollowedBy<FollowerParser, Input>: StringParser, _UTF8Parser
+where FollowerParser: StringParser,
+      FollowerParser.Input == Input.SubSequence,
+      Input: StringProtocol {
   typealias Output = FollowerParser.Output
 
   let string: Input
@@ -97,6 +97,16 @@ public struct LanguageTagString: Sendable {
         }
       } // _3AlphabetParser
 
+      private final class _OneOrTwoHyphenAnd3AlphaParser<Input>: RepetitionParser<
+        Input,
+        _HyphenFollowedBy<_3AlphabetParser<Input.SubSequence>, Input.SubSequence>
+      > where Input: StringProtocol {
+        override var maxCount: Int {
+          get { 2 }
+          set { super.maxCount = 2 }
+        }
+      } // _OneOrTwoHyphenAnd3AlphaParser
+
       internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
         typealias Output = ExtendedLanguage
 
@@ -113,19 +123,15 @@ public struct LanguageTagString: Sendable {
             return nil
           }
 
-          var more3AlphaParser = RepetitionParser<
-            Input.SubSequence,
-            _HyphenFollowedBy<Input.SubSequence, _3AlphabetParser<Input.SubSequence>>
-          >(input: string[first3AlphaResult.endIndex...])
-          more3AlphaParser.maxCount = 2
-
           func __createResult(endIndex: Input.Index) -> (ExtendedLanguage, Input.Index) {
             return (
               ExtendedLanguage(ASCIICaseInsensitiveString(String(string[..<endIndex]))),
               endIndex
             )
           }
-          if let more3AlphaResult = more3AlphaParser.parse() {
+          if let more3AlphaResult = _OneOrTwoHyphenAnd3AlphaParser<Input.SubSequence>.parse(
+            string[first3AlphaResult.endIndex...]
+          ) {
             return __createResult(endIndex: more3AlphaResult.endIndex)
           } else {
             return __createResult(endIndex: first3AlphaResult.endIndex)

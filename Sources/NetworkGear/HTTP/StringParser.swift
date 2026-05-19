@@ -314,7 +314,7 @@ where Input: StringProtocol,
 }
 
 /// A parser that parses a string repeatedly using `RepeatParser`.
-public struct RepetitionParser<Input, RepeatParser>: StringParser
+open class RepetitionParser<Input, RepeatParser>: StringParser
 where Input: StringProtocol, RepeatParser: StringParser, RepeatParser.Input == Input.SubSequence {
   public typealias Output = Array<RepeatParser.Output>
 
@@ -324,18 +324,18 @@ where Input: StringProtocol, RepeatParser: StringParser, RepeatParser.Input == I
   //       The feature requires macOS >=26.0...😖
 
   /// The number of min count to repeat parsing.
-  public var minCount: Int = 1
+  open var minCount: Int = 1
 
   /// The number of max count to repeat parsing.
-  public var maxCount: Int = .max
+  open var maxCount: Int = .max
 
-  public init(input: Input) {
+  public required init(input: Input) {
     self._string = input
   }
 
   private var _result: (output: Output, endIndex: Input.Index)? = nil
   private var _parsed: Bool = false
-  public mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+  public final func parse() -> (output: Output, endIndex: Input.Index)? {
     if _parsed {
       return _result
     }
