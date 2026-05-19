@@ -28,21 +28,33 @@ import yExtensions
     #expect(L(string).isNil, comment(), sourceLocation: sourceLocation)
   }
 
-  @Test func test_ExtendedLanguage_parsing() throws {
-    invalidString("A", for: LanguageTagString.Language.ExtendedLanguage.self)
-    invalidString("AB", for: LanguageTagString.Language.ExtendedLanguage.self)
-    validString("ABC", for: LanguageTagString.Language.ExtendedLanguage.self)
+  @Test func test_Language_ExtendedLanguage_parsing() throws {
+    EXT: do {
+      invalidString("A", for: LanguageTagString.Language.ExtendedLanguage.self)
+      invalidString("AB", for: LanguageTagString.Language.ExtendedLanguage.self)
+      validString("ABC", for: LanguageTagString.Language.ExtendedLanguage.self)
 
-    invalidString("ABC-D", for: LanguageTagString.Language.ExtendedLanguage.self)
-    validString("ABC-DEF", for: LanguageTagString.Language.ExtendedLanguage.self)
+      invalidString("ABC-D", for: LanguageTagString.Language.ExtendedLanguage.self)
+      validString("ABC-DEF", for: LanguageTagString.Language.ExtendedLanguage.self)
 
-    invalidString("ABC-DEF-", for: LanguageTagString.Language.ExtendedLanguage.self)
-    invalidString("ABC-DEF-G", for: LanguageTagString.Language.ExtendedLanguage.self)
-    validString("ABC-DEF-GHI", for: LanguageTagString.Language.ExtendedLanguage.self)
+      invalidString("ABC-DEF-", for: LanguageTagString.Language.ExtendedLanguage.self)
+      invalidString("ABC-DEF-G", for: LanguageTagString.Language.ExtendedLanguage.self)
+      validString("ABC-DEF-GHI", for: LanguageTagString.Language.ExtendedLanguage.self)
 
-    invalidString("ABC-DEF-GHI-", for: LanguageTagString.Language.ExtendedLanguage.self)
-    invalidString("ABC-DEF-GHI-J", for: LanguageTagString.Language.ExtendedLanguage.self)
-    invalidString("ABC-DEF-GHI-JKL", for: LanguageTagString.Language.ExtendedLanguage.self)
+      invalidString("ABC-DEF-GHI-", for: LanguageTagString.Language.ExtendedLanguage.self)
+      invalidString("ABC-DEF-GHI-J", for: LanguageTagString.Language.ExtendedLanguage.self)
+      invalidString("ABC-DEF-GHI-JKL", for: LanguageTagString.Language.ExtendedLanguage.self)
+    }
+
+    LANG: do {
+      invalidString("A", for: LanguageTagString.Language.self)
+      validString("ja", for: LanguageTagString.Language.self)
+      invalidString("longLongLanguage", for: LanguageTagString.Language.self)
+
+      validString("abc-ext-ext-ext", for: LanguageTagString.Language.self)
+      invalidString("abc-ext-ext-extension", for: LanguageTagString.Language.self)
+      invalidString("abc-ext-ext-ext-", for: LanguageTagString.Language.self)
+    }
   }
 
   @Test func test_Script_parsing() throws {

@@ -55,10 +55,11 @@ extension _UTF8Parser {
     from currentIndex: inout Input.UTF8View.Index,
     minCount: Int = 1,
     maxCount: Int = .max,
+    count: inout Int,
     while isAllowedCodeUnit: (Unicode.UTF8.CodeUnit) throws -> Bool
   ) rethrows -> Input.SubSequence? {
     assert(minCount > 0)
-    var count = 0
+    count = 0
     let startIndex = currentIndex
     while let _ = try self.readCurrentCodeUnit(
       at: &currentIndex,
@@ -74,6 +75,23 @@ extension _UTF8Parser {
       return nil
     }
     return self.string[startIndex..<currentIndex]
+  }
+
+  @inlinable
+  mutating func parseString(
+    from currentIndex: inout Input.UTF8View.Index,
+    minCount: Int = 1,
+    maxCount: Int = .max,
+    while isAllowedCodeUnit: (Unicode.UTF8.CodeUnit) throws -> Bool
+  ) rethrows -> Input.SubSequence? {
+    var dummyCount: Int = 0
+    return try self.parseString(
+      from: &currentIndex,
+      minCount: minCount,
+      maxCount: maxCount,
+      count: &dummyCount,
+      while: isAllowedCodeUnit
+    )
   }
 }
 

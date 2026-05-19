@@ -53,7 +53,11 @@ where Input: StringProtocol,
 
 /// A string that represents ["Language Tag"](https://datatracker.ietf.org/doc/html/rfc5646).
 public struct LanguageTagString: Sendable {
-  public struct Language {
+  public struct Language: Sendable,
+                          LosslessStringConvertible,
+                          Equatable,
+                          Hashable,
+                          _InitializableWithParser {
     public struct ExtendedLanguage: Sendable,
                                     LosslessStringConvertible,
                                     Equatable,
@@ -133,6 +137,69 @@ public struct LanguageTagString: Sendable {
         self.init(string, parser: Parser<S>.self)
       }
     } // Language.ExtendedLanguage
+
+    private let _string: ASCIICaseInsensitiveString
+
+    public var description: String { String(describing: _string) }
+
+    fileprivate init(_ string: ASCIICaseInsensitiveString) {
+      self._string = string
+    }
+
+    internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+      typealias Output = Language
+
+      let string: Input
+      let utf8: Input.UTF8View
+
+      init(input: Input) {
+        self.string = input
+        self.utf8 = input.utf8
+      }
+
+      mutating func parse() -> (output: Language, endIndex: Input.Index)? {
+        var index = self.utf8.startIndex
+        var numberOfAlphabets = 0
+        guard let _ = self.parseString(
+          from: &index,
+          minCount: 2,
+          maxCount: 8,
+          count: &numberOfAlphabets,
+          while: \._isAlphabet
+        ) else {
+          return nil
+        }
+
+        func __createResult(endIndex: Input.Index) -> (Output, Input.Index) {
+          return (Language(ASCIICaseInsensitiveString(String(string[..<endIndex]))), endIndex)
+        }
+
+        switch numberOfAlphabets {
+        case 2, 3: // shortest ISO 639 code
+          let shortestCodeEncIndex = index
+          guard index < utf8.endIndex, utf8[index]._isHyphen else {
+            return __createResult(endIndex: shortestCodeEncIndex)
+          }
+          utf8.formIndex(after: &index)
+          guard let extlangResult = ExtendedLanguage.Parser<Input.SubSequence>.parse(
+            string[index...]
+          ) else {
+            return __createResult(endIndex: shortestCodeEncIndex)
+          }
+          return __createResult(endIndex: extlangResult.endIndex)
+        case 4: // reserved for future use
+          return __createResult(endIndex: index)
+        case 5...8: // registered language subtag
+          return __createResult(endIndex: index)
+        default:
+          fatalError("Unexpected Distancee?!")
+        }
+      }
+    } // Language.Parser
+
+    public init?<S>(_ string: S) where S: StringProtocol {
+      self.init(string, parser: Parser<S>.self)
+    }
   } // Language
 
   /// A representation of `script` part.
