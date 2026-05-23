@@ -545,7 +545,11 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
         let singleton = Singleton(_validatedValue: singletonByte)
 
         let valuesParser = RepetitionParser<
-          Input.SubSequence, _HyphenFollowedBy<Value.Parser<_>, _>
+          Input.SubSequence,
+          _HyphenFollowedBy<
+            Value.Parser<Input.SubSequence.SubSequence.SubSequence>,
+            Input.SubSequence.SubSequence
+          >
         >(input: string[index...])
 
         guard let valuesResult = valuesParser.parse() else {
@@ -973,22 +977,37 @@ public struct LanguageTagStringParser<Input>: StringParser where Input: StringPr
       }
 
       let script = __parseAndAdvance(
-        with: _HyphenFollowedBy<LanguageTagString.Script.Parser<_>, _>.self
+        with: _HyphenFollowedBy<
+          LanguageTagString.Script.Parser<Input.SubSequence.SubSequence>,
+          Input.SubSequence
+        >.self
       )
 
       let region = __parseAndAdvance(
-        with: _HyphenFollowedBy<LanguageTagString.Region.Parser<_>, _>.self
+        with: _HyphenFollowedBy<
+          LanguageTagString.Region.Parser<Input.SubSequence.SubSequence>,
+          Input.SubSequence
+        >.self
       )
 
       let variants = __parseAndAdvance(
-        with: RepetitionParser<_, _HyphenFollowedBy<LanguageTagString.Variant.Parser<_>, _>>.self
+        with: RepetitionParser<
+          Input.SubSequence,
+          _HyphenFollowedBy<
+            LanguageTagString.Variant.Parser<Input.SubSequence.SubSequence.SubSequence>,
+            Input.SubSequence.SubSequence
+          >
+        >.self
       )
 
       var extensionsAreCanonicallyOrdered = true
       var optLastSingleton: LanguageTagString.Extension.Singleton? = nil
       var extensionList = LanguageTagString.Extension.List()
       while let anExtension = __parseAndAdvance(
-        with: _HyphenFollowedBy<LanguageTagString.Extension.Parser<_>, _>.self
+        with: _HyphenFollowedBy<
+          LanguageTagString.Extension.Parser<Input.SubSequence.SubSequence>,
+          Input.SubSequence
+        >.self
       ) {
         if extensionList.insert(anExtension).replaced {
           return nil
@@ -1006,7 +1025,10 @@ public struct LanguageTagStringParser<Input>: StringParser where Input: StringPr
       }
 
       let privateUseTag = __parseAndAdvance(
-        with: _HyphenFollowedBy<LanguageTagString.PrivateUseTag.Parser<_>, _>.self
+        with: _HyphenFollowedBy<
+          LanguageTagString.PrivateUseTag.Parser<Input.SubSequence.SubSequence>,
+          Input.SubSequence
+        >.self
       )
 
       return (
