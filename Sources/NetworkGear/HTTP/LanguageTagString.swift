@@ -5,6 +5,7 @@
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
+import Foundation
 import yExtensions
 
 private extension Unicode.UTF8.CodeUnit {
@@ -12,19 +13,13 @@ private extension Unicode.UTF8.CodeUnit {
     if _isDigit {
       return true
     }
-    if 0x41 <= self && self <= 0x57 { // A-W
+    switch self {
+    case 0x41...0x57, 0x59, 0x5A, // A-W, Y, Z
+         0x61...0x77, 0x79, 0x7A: // a-w, y, z
       return true
+    default:
+      return false
     }
-    if 0x59 <= self && self <= 0x5A { // Y-Z
-      return true
-    }
-    if 0x61 <= self && self <= 0x77 { // a-w
-      return true
-    }
-    if 0x79 <= self && self <= 0x7A { // y-z
-      return true
-    }
-    return false
   }
 }
 
@@ -52,7 +47,7 @@ where FollowerParser: StringParser,
 }
 
 /// A string that represents ["Language Tag"](https://datatracker.ietf.org/doc/html/rfc5646).
-public struct LanguageTagString: Sendable {
+public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConvertible {
   public struct Language: Sendable,
                           LosslessStringConvertible,
                           Equatable,
@@ -91,6 +86,9 @@ public struct LanguageTagString: Sendable {
             maxCount: 3,
             while: \._isAlphabet
           ) else {
+            return nil
+          }
+          if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
             return nil
           }
           return (substring, index)
@@ -134,7 +132,11 @@ public struct LanguageTagString: Sendable {
           ) {
             return __createResult(endIndex: more3AlphaResult.endIndex)
           } else {
-            return __createResult(endIndex: first3AlphaResult.endIndex)
+            var index = first3AlphaResult.endIndex
+            if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
+              return nil
+            }
+            return __createResult(endIndex: index)
           }
         }
       } // ExtendedLanguage.Parser
@@ -180,17 +182,21 @@ public struct LanguageTagString: Sendable {
           return (Language(ASCIICaseInsensitiveString(String(string[..<endIndex]))), endIndex)
         }
 
+        if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
+          return nil
+        }
+
         switch numberOfAlphabets {
         case 2, 3: // shortest ISO 639 code
-          let shortestCodeEncIndex = index
+          let shortestCodeEndIndex = index
           guard index < utf8.endIndex, utf8[index]._isHyphen else {
-            return __createResult(endIndex: shortestCodeEncIndex)
+            return __createResult(endIndex: shortestCodeEndIndex)
           }
           utf8.formIndex(after: &index)
           guard let extlangResult = ExtendedLanguage.Parser<Input.SubSequence>.parse(
             string[index...]
           ) else {
-            return __createResult(endIndex: shortestCodeEncIndex)
+            return __createResult(endIndex: shortestCodeEndIndex)
           }
           return __createResult(endIndex: extlangResult.endIndex)
         case 4: // reserved for future use
@@ -245,6 +251,9 @@ public struct LanguageTagString: Sendable {
         ) else {
           return nil
         }
+        if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
+          return nil
+        }
         return (Script(ASCIICaseInsensitiveString(String(string))), index)
       }
     } // Script.Parser
@@ -289,6 +298,9 @@ public struct LanguageTagString: Sendable {
           maxCount: 2,
           while: \._isAlphabet
         ) {
+          if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
+            return nil
+          }
           return (Region(ASCIICaseInsensitiveString(String(string))), index)
         } else {
           // UN M.49 code
@@ -298,6 +310,9 @@ public struct LanguageTagString: Sendable {
             maxCount: 3,
             while: \._isDigit
           ) else {
+            return nil
+          }
+          if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
             return nil
           }
           return (Region(ASCIICaseInsensitiveString(String(string))), index)
@@ -344,6 +359,9 @@ public struct LanguageTagString: Sendable {
           maxCount: 8,
           while: \._isAlphanumeric
         ) {
+          if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
+            return nil
+          }
           return (Variant(ASCIICaseInsensitiveString(String(string))), index)
         } else {
           guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isDigit) else {
@@ -355,6 +373,9 @@ public struct LanguageTagString: Sendable {
             maxCount: 3,
             while: \._isAlphanumeric
           ) else {
+            return nil
+          }
+          if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
             return nil
           }
           return (Variant(ASCIICaseInsensitiveString(String(string[..<index]))), index)
@@ -373,12 +394,131 @@ public struct LanguageTagString: Sendable {
                            Equatable,
                            Hashable,
                            _InitializableWithParser {
-    private let _string: ASCIICaseInsensitiveString
+    /// Singleton prefix of the extension.
+    public struct Singleton: Sendable, Equatable, Hashable, Comparable {
+      public let value: Unicode.UTF8.CodeUnit
 
-    public var description: String { String(describing: _string) }
+      fileprivate init(_validatedValue value: Unicode.UTF8.CodeUnit) {
+        assert(value._isSingleton)
+        self.value = value
+      }
 
-    fileprivate init(_ string: ASCIICaseInsensitiveString) {
-      self._string = string
+      public init?(_ value: Unicode.UTF8.CodeUnit) {
+        guard value._isSingleton else {
+          return nil
+        }
+        self.init(_validatedValue: value)
+      }
+
+      public init?(_ unicodeScalar: Unicode.Scalar) {
+        guard unicodeScalar.isASCII else {
+          return nil
+        }
+        self.init(UInt8(unicodeScalar.value))
+      }
+
+      @inlinable
+      public static func ==(lhs: Singleton, rhs: Singleton) -> Bool {
+        if lhs.value == rhs.value {
+          return true
+        }
+        if lhs.value >= 0x61 {
+          return lhs.value - 0x20 == rhs.value
+        }
+        if rhs.value >= 0x61 {
+          return lhs.value == rhs.value - 0x20
+        }
+        return false
+      }
+
+      public func hash(into hasher: inout Hasher) {
+        if self.value < 0x61 {
+          hasher.combine(self.value)
+        } else {
+          hasher.combine(self.value - 0x20)
+        }
+      }
+
+      @inlinable
+      public static func <(lhs: Singleton, rhs: Singleton) -> Bool {
+        let lUpper = lhs.value >= 0x61 ? lhs.value - 0x20 : lhs.value
+        let rUpper = rhs.value >= 0x61 ? rhs.value - 0x20 : rhs.value
+        return lUpper < rUpper
+      }
+    } // Extension.Singleton
+
+    /// A value of the extension.
+    public struct Value: Sendable,
+                         Equatable,
+                         Hashable,
+                         _InitializableWithParser,
+                         LosslessStringConvertible {
+      private let _string: ASCIICaseInsensitiveString
+
+      public var description: String { _string.description }
+
+      fileprivate init(_validatedString string: ASCIICaseInsensitiveString) {
+        self._string = string
+      }
+
+      internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+        typealias Output = Value
+
+        let string: Input
+        let utf8: Input.UTF8View
+
+        init(input: Input) {
+          self.string = input
+          self.utf8 = input.utf8
+        }
+
+        mutating func parse() -> (output: Value, endIndex: Input.Index)? {
+          var index = utf8.startIndex
+          guard let string = self.parseString(
+            from: &index,
+            minCount: 2,
+            maxCount: 8,
+            while: \._isAlphanumeric
+          ) else {
+            return nil
+          }
+          if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
+            return nil
+          }
+          return (Value(_validatedString: string[..<index]._caseInsensitive), index)
+        }
+      }
+
+      public init?(_ description: String) {
+        self.init(description, parser: Parser<String>.self)
+      }
+    } // Extension.Value
+
+    private let _wholeString: ASCIICaseInsensitiveString
+
+    /// The first character of this subtag, which is called "singleton (prefix)".
+    public let singleton: Singleton
+
+    public let values: [Value]
+
+    public var description: String { _wholeString._string }
+
+    public static func ==(lhs: Extension, rhs: Extension) -> Bool {
+      return lhs._wholeString == rhs._wholeString
+    }
+
+    public func hash(into hasher: inout Hasher) {
+      hasher.combine(_wholeString)
+    }
+
+    fileprivate init(
+      _validatedString wholeString: ASCIICaseInsensitiveString,
+      singleton: Singleton,
+      values: [Value]
+    ) {
+      self._wholeString = wholeString
+      self.singleton = singleton
+      self.values = values
     }
 
     internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
@@ -395,40 +535,81 @@ public struct LanguageTagString: Sendable {
       mutating func parse() -> (output: Extension, endIndex: Input.Index)? {
         var index = utf8.startIndex
 
-        guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isSingleton) else {
+        guard let singletonByte = self.readCurrentCodeUnit(
+          at: &index,
+          ifAllowedCodeUnit: \._isSingleton
+        ) else {
           return nil
         }
 
-        func __consumeNextTag() -> Input.Index? {
-          let startIndex = index
-          guard let _ = self.readCurrentCodeUnit(
-            at: &index,
-            ifAllowedCodeUnit: { $0 == 0x2D } // "-"
-          ) else {
-            return nil
-          }
-          guard let _ = self.parseString(
-            from: &index,
-            minCount: 2,
-            maxCount: 8,
-            while: \._isAlphanumeric
-          ) else {
-            index = startIndex
-            return nil
-          }
-          return index
+        let singleton = Singleton(_validatedValue: singletonByte)
+
+        let valuesParser = RepetitionParser<
+          Input.SubSequence, _HyphenFollowedBy<Value.Parser<_>, _>
+        >(input: string[index...])
+
+        guard let valuesResult = valuesParser.parse() else {
+          return nil
         }
 
-        guard let _ = __consumeNextTag() else { return nil }
-        while let _ = __consumeNextTag() {}
-        return (Extension(ASCIICaseInsensitiveString(String(string[..<index]))), index)
+        return (
+          Extension(
+            _validatedString: string[..<valuesResult.endIndex]._caseInsensitive,
+            singleton: singleton,
+            values: valuesResult.output
+          ),
+          valuesResult.endIndex
+        )
       }
     } // Extension.Parser
 
     public init?<S>(_ string: S) where S: StringProtocol {
       self.init(string, parser: Parser<S>.self)
     }
+
+    /// A list of `Extension`s.
+    public struct List: Sendable, Equatable, Hashable, Sequence {
+      public typealias Element = Extension
+      public typealias Iterator = Array<Extension>.Iterator
+
+      private var _extensions: [Singleton: Extension]
+
+      /// A Boolean value indicating whether the list is empty.
+      public var isEmpty: Bool {
+        return _extensions.isEmpty
+      }
+
+      public var extensions: [Extension] {
+        return _extensions.sorted(by: { $0.key < $1.key }).map({ $0.value })
+      }
+
+      public func makeIterator() -> Array<Extension>.Iterator {
+        return self.extensions.makeIterator()
+      }
+
+      @discardableResult
+      public mutating func insert(_ newExtension: Extension) -> (replaced: Bool, oldExtension: Extension?) {
+        let oldExtension = _extensions.updateValue(newExtension, forKey: newExtension.singleton)
+        return (replaced: !oldExtension.isNil, oldExtension: oldExtension)
+      }
+
+      public init() {
+        self._extensions = [:]
+      }
+
+      @inlinable
+      public init<S>(_ extensions: S) where S: Sequence, S.Element == Extension {
+        if case let list as Self = extensions {
+          self = list
+          return
+        }
+        self.init()
+        extensions.forEach({ self.insert($0) })
+      }
+    }
   } // Extension
+
+  public typealias ExtensionList = Extension.List
 
   /// Represents `privateuse`.
   public struct PrivateUseTag: Sendable,
@@ -480,6 +661,9 @@ public struct LanguageTagString: Sendable {
             while: \._isAlphanumeric
           ) else {
             index = startIndex
+            return nil
+          }
+          if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
             return nil
           }
           return index
@@ -534,6 +718,10 @@ public struct LanguageTagString: Sendable {
       "zh-xiang",
     ]
 
+    fileprivate init(_validatedString string: ASCIICaseInsensitiveString) {
+      self._string = string
+    }
+
     public init?(_ string: String) {
       let caseInsensitiveString = ASCIICaseInsensitiveString(string)
       guard (
@@ -542,7 +730,334 @@ public struct LanguageTagString: Sendable {
       ) else {
         return nil
       }
-      self._string = caseInsensitiveString
+      self.init(_validatedString: caseInsensitiveString)
+    }
+
+    fileprivate static let _reverseOrderedTags: [ASCIICaseInsensitiveString] = _irregulars.union(
+      _regulars
+    ).sorted(by: {
+      $0._string > $1._string
+    })
+
+    internal struct Parser<Input>: StringParser where Input: StringProtocol {
+      typealias Output = GrandfatheredTag
+
+      let string: ASCIICaseInsensitiveString
+
+      init(input: Input) {
+        self.string = ASCIICaseInsensitiveString(String(input))
+      }
+
+      mutating func parse() -> (output: GrandfatheredTag, endIndex: Input.Index)? {
+        for aTag in _reverseOrderedTags {
+          if let endIndex = string._endIndex(ofPrefix: aTag._string) {
+            let validated = ASCIICaseInsensitiveString(String(string[..<endIndex]))
+            return (GrandfatheredTag(_validatedString: validated), endIndex)
+          }
+        }
+        return nil
+      }
     }
   } // GrandfatheredTag
+
+  fileprivate enum _Tag: Equatable, Hashable {
+    case languageTag(
+      language: Language,
+      script: Script?,
+      region: Region?,
+      variants: [Variant]?,
+      extensions: ExtensionList?,
+      privateUseTag: PrivateUseTag?
+    )
+    case privateUseTag(PrivateUseTag)
+    case grandfatheredTag(GrandfatheredTag)
+
+    mutating func emptyToNil() {
+      guard case .languageTag(
+        let language,
+        let script,
+        let region,
+        let variants,
+        let extensions,
+        let privateUseTag
+      ) = self else {
+        return
+      }
+      if variants.isNil && extensions.isNil {
+        return
+      }
+      self = .languageTag(
+        language: language,
+        script: script,
+        region: region,
+        variants: variants?.isEmpty == false ? variants : nil,
+        extensions: extensions?.isEmpty == false ? extensions : nil,
+        privateUseTag: privateUseTag
+      )
+    }
+  }
+
+  private let _string: ASCIICaseInsensitiveString?
+
+  private let _tag: _Tag
+
+  public static func ==(lhs: LanguageTagString, rhs: LanguageTagString) -> Bool {
+    guard let lString = lhs._string, let rString = rhs._string else {
+      return lhs._tag == rhs._tag
+    }
+    return lString == rString
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(_tag)
+  }
+
+  public var language: Language? {
+    guard case .languageTag(let language, _, _, _, _, _) = _tag else {
+      return nil
+    }
+    return language
+  }
+
+  public var script: Script? {
+    guard case .languageTag(_, let script?, _, _, _, _) = _tag else {
+      return nil
+    }
+    return script
+  }
+
+
+  public var region: Region? {
+    guard case .languageTag(_, _, let region?, _, _, _) = _tag else {
+      return nil
+    }
+    return region
+  }
+
+  public var variants: [Variant]? {
+    guard case .languageTag(_, _, _, let variants?, _, _) = _tag, !variants.isEmpty else {
+      return nil
+    }
+    return variants
+  }
+
+  public var extensions: ExtensionList? {
+    guard case .languageTag(_, _, _, _, let extensions?, _) = _tag, !extensions.isEmpty else {
+      return nil
+    }
+    return extensions
+  }
+
+  public var privateUseTag: PrivateUseTag? {
+    guard case .languageTag(_, _, _, _, _, let privateUseTag?) = _tag else {
+      return nil
+    }
+    return privateUseTag
+  }
+
+  public var isPrivateUseTag: Bool {
+    if case .privateUseTag = _tag {
+      return true
+    }
+    return false
+  }
+
+  public var isGrandfatheredTag: Bool {
+    if case .grandfatheredTag = _tag {
+      return true
+    }
+    return false
+  }
+
+  public var description: String {
+    if let string = self._string {
+      return string._string
+    }
+
+    switch self._tag {
+    case .languageTag(
+      let language,
+      let optScript,
+      let optRegion,
+      let optVariants,
+      let optExtensions,
+      let optPrivateUseTag
+    ):
+      var description = language.description
+
+      func __appendDescription<T>(of optSomething: T?) where T: CustomStringConvertible {
+        guard let something = optSomething else {
+          return
+        }
+        description += "-\(something.description)"
+      }
+
+      __appendDescription(of: optScript)
+      __appendDescription(of: optRegion)
+      optVariants.map({ $0.forEach(__appendDescription(of:)) })
+      optExtensions.map({ $0.forEach(__appendDescription(of:)) })
+      __appendDescription(of: optPrivateUseTag)
+      return description
+    case .privateUseTag(let privateUseTag):
+      return privateUseTag.description
+    case .grandfatheredTag(let grandfatheredTag):
+      return grandfatheredTag.description
+    }
+  }
+
+  fileprivate init(
+    _validatedString string: ASCIICaseInsensitiveString?,
+    parsedTag: _Tag
+  ) {
+    var tag = parsedTag
+    tag.emptyToNil()
+
+    self._string = string
+    self._tag = tag
+  }
+
+  public init<Variants, Extensions>(
+    language: Language,
+    script: Script? = nil,
+    region: Region? = nil,
+    variants: Variants? = Optional<Array<Variant>>.none,
+    extensions: Extensions? = Optional<ExtensionList>.none,
+    privateUseTag: PrivateUseTag? = nil
+  )
+  where Variants: Sequence, Variants.Element == Variant,
+  Extensions: Sequence, Extensions.Element == Extension {
+    self.init(
+      _validatedString: nil,
+      parsedTag: .languageTag(
+        language: language,
+        script: script,
+        region: region,
+        variants: variants.map({ Array<Variant>($0) }),
+        extensions: extensions.map({ ExtensionList($0) }),
+        privateUseTag: privateUseTag
+      )
+    )
+  }
+
+  public init(privateUseTag: PrivateUseTag) {
+    self.init(_validatedString: nil, parsedTag: .privateUseTag(privateUseTag))
+  }
+
+  public init(grandfatheredTag: GrandfatheredTag) {
+    self.init(_validatedString: nil, parsedTag: .grandfatheredTag(grandfatheredTag))
+  }
+}
+
+/// A parser that generates `LanguageTagString`
+public struct LanguageTagStringParser<Input>: StringParser where Input: StringProtocol {
+  public typealias Output = LanguageTagString
+
+  public let string: Input
+
+  public init(input: Input) {
+    self.string = input
+  }
+
+  public mutating func parse() -> (output: LanguageTagString, endIndex: Input.Index)? {
+    if let languageResult = LanguageTagString.Language.Parser<Input>.parse(string) {
+      let language = languageResult.output
+      var index = languageResult.endIndex
+
+      func __parseAndAdvance<T>(with parserType: T.Type) -> T.Output?
+      where T: StringParser, T.Input == Input.SubSequence {
+        guard let result = T.parse(string[index...]) else {
+          return nil
+        }
+        index = result.endIndex
+        return result.output
+      }
+
+      let script = __parseAndAdvance(
+        with: _HyphenFollowedBy<LanguageTagString.Script.Parser<_>, _>.self
+      )
+
+      let region = __parseAndAdvance(
+        with: _HyphenFollowedBy<LanguageTagString.Region.Parser<_>, _>.self
+      )
+
+      let variants = __parseAndAdvance(
+        with: RepetitionParser<_, _HyphenFollowedBy<LanguageTagString.Variant.Parser<_>, _>>.self
+      )
+
+      var extensionsAreCanonicallyOrdered = true
+      var optLastSingleton: LanguageTagString.Extension.Singleton? = nil
+      var extensionList = LanguageTagString.Extension.List()
+      while let anExtension = __parseAndAdvance(
+        with: _HyphenFollowedBy<LanguageTagString.Extension.Parser<_>, _>.self
+      ) {
+        if extensionList.insert(anExtension).replaced {
+          return nil
+        }
+        assert(optLastSingleton != anExtension.singleton)
+        defer {
+          optLastSingleton = anExtension.singleton
+        }
+        guard let lastSingleton = optLastSingleton else {
+          continue
+        }
+        if lastSingleton > anExtension.singleton {
+          extensionsAreCanonicallyOrdered = false
+        }
+      }
+
+      let privateUseTag = __parseAndAdvance(
+        with: _HyphenFollowedBy<LanguageTagString.PrivateUseTag.Parser<_>, _>.self
+      )
+
+      return (
+        LanguageTagString(
+          _validatedString: (
+            extensionsAreCanonicallyOrdered ? string[..<index]._caseInsensitive : nil
+          ),
+          parsedTag: .languageTag(
+            language: language,
+            script: script,
+            region: region,
+            variants: variants,
+            extensions: extensionList,
+            privateUseTag: privateUseTag
+          )
+        ),
+        index
+      )
+    } else if let privateUseTagResult = LanguageTagString.PrivateUseTag.Parser<Input>.parse(string) {
+      return (
+        LanguageTagString(
+          _validatedString: string[..<privateUseTagResult.endIndex]._caseInsensitive,
+          parsedTag: .privateUseTag(privateUseTagResult.output)
+        ),
+        privateUseTagResult.endIndex
+      )
+    } else if let grandfatheredTagResult = LanguageTagString.GrandfatheredTag.Parser<Input>.parse(string) {
+      return (
+        LanguageTagString(
+          _validatedString: string[..<grandfatheredTagResult.endIndex]._caseInsensitive,
+          parsedTag: .grandfatheredTag(grandfatheredTagResult.output)
+        ),
+        grandfatheredTagResult.endIndex
+      )
+    }
+    return nil
+  }
+}
+
+extension LanguageTagString: _InitializableWithParser, LosslessStringConvertible {
+  public init?<S>(_ description: S) where S: StringProtocol {
+    self.init(description, parser: LanguageTagStringParser<_>.self)
+  }
+}
+
+extension LanguageTagString {
+  /// Create a `Locale` instance from the string.
+  public var locale: Locale { return Locale(identifier: self.description) }
+
+  /// Create an instance from `locale`.
+  public init?(_ locale: Locale) {
+    self.init(locale.identifier(.bcp47))
+  }
 }

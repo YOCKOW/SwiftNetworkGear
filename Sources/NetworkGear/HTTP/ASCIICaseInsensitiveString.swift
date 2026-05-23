@@ -17,18 +17,23 @@ public struct ASCIICaseInsensitiveString: Sendable,
   public typealias ExtendedGraphemeClusterLiteralType = String.ExtendedGraphemeClusterLiteralType
   public typealias UnicodeScalarLiteralType = String.UnicodeScalarLiteralType
 
-  private var _string: String
+  @usableFromInline
+  internal private(set) var _string: String
 
+  @inlinable
   public var description: String { _string }
 
+  @inlinable
   public init(_ string: String) {
     self._string = string
   }
 
+  @inlinable
   public init(stringLiteral value: String.StringLiteralType) {
     self.init(value)
   }
 
+  @inlinable
   public init(_ token: HTTPTokenString) {
     self._string = token._string
   }
@@ -82,6 +87,16 @@ extension ASCIICaseInsensitiveString: Hashable {
         hasher.combine(byte)
       }
     }
+  }
+}
+
+extension StringProtocol {
+  @inlinable
+  internal var _caseInsensitive: ASCIICaseInsensitiveString {
+    if case let string as String = self {
+      return ASCIICaseInsensitiveString(string)
+    }
+    return ASCIICaseInsensitiveString(String(self))
   }
 }
 
