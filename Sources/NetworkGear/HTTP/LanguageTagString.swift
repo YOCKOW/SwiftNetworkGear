@@ -1001,26 +1001,24 @@ public struct LanguageTagStringParser<Input>: StringParser where Input: StringPr
       )
 
       var extensionsAreCanonicallyOrdered = true
-      var optLastSingleton: LanguageTagString.Extension.Singleton? = nil
       var extensionList = LanguageTagString.Extension.List()
-      while let anExtension = __parseAndAdvance(
-        with: _HyphenFollowedBy<
-          LanguageTagString.Extension.Parser<Input.SubSequence.SubSequence>,
-          Input.SubSequence
-        >.self
-      ) {
-        if extensionList.insert(anExtension).replaced {
-          return nil
-        }
-        assert(optLastSingleton != anExtension.singleton)
-        defer {
-          optLastSingleton = anExtension.singleton
-        }
-        guard let lastSingleton = optLastSingleton else {
-          continue
-        }
-        if lastSingleton > anExtension.singleton {
-          extensionsAreCanonicallyOrdered = false
+      typealias _NextExtensionParser = _HyphenFollowedBy<
+        LanguageTagString.Extension.Parser<Input.SubSequence.SubSequence>,
+        Input.SubSequence
+      >
+      if let firstExtension = __parseAndAdvance(with: _NextExtensionParser.self) {
+        extensionList.insert(firstExtension)
+        var lastMaxSingleton = firstExtension.singleton
+        while let anExtension = __parseAndAdvance(with: _NextExtensionParser.self) {
+          if extensionList.insert(anExtension).replaced { // No duplication allowed
+            return nil
+          }
+          assert(lastMaxSingleton != anExtension.singleton)
+          if lastMaxSingleton > anExtension.singleton {
+            extensionsAreCanonicallyOrdered = false
+          } else {
+            lastMaxSingleton = anExtension.singleton
+          }
         }
       }
 

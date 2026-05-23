@@ -509,14 +509,16 @@ private func _require<T>(
   }
 
   @Test func test_canonicalizedExtensions() throws {
-    let noncanonicalDescription = "ja-c-ccc-B-BBB-a-aaa"
+    let noncanonicalDescription = "ja-0-000-c-ccc-B-BBB-D-DDD-a-aaa"
     let created = try #require(LanguageTagString(noncanonicalDescription))
     #expect(try created.language == _require(Language("ja")))
     #expect(try #require(created.extensions).extensions == [
+      #require(Extension("0-000")),
       #require(Extension("a-aaa")),
       #require(Extension("b-bbb")),
       #require(Extension("c-ccc")),
+      #require(Extension("d-ddd")),
     ])
-    #expect(created.description == "ja-a-aaa-B-BBB-c-ccc")
+    #expect(created.description == "ja-0-000-a-aaa-B-BBB-c-ccc-D-DDD")
   }
 }
