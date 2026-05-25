@@ -1,5 +1,5 @@
 /* *************************************************************************************************
- StringProtocol+exBFCharacterSet.swift
+ StringProtocol+PercentEncodedString.swift
    © 2018,2023,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
@@ -7,13 +7,6 @@
 
 import Foundation
 import yExtensions
-
-internal func _trim<S>(_ string: S) -> String where S: StringProtocol {
-  return string.trimmingUnicodeScalars(where: {
-    let properties = $0.latestProperties
-    return properties.isWhitespace || properties.isNewline
-  })
-}
 
 private let _PERCENT: UInt8 = 0x25
 

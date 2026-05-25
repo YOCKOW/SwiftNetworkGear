@@ -100,6 +100,17 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isHorizontalTab: Bool { self == 0x09 }
 
+  /// `LF`
+  @inlinable
+  internal var _isLineFeed: Bool { self == 0x0A }
+
+  /// `CR`
+  @inlinable
+  internal var _isCarriageReturn: Bool { self == 0x0D }
+
+  @inlinable
+  internal var _isNewline: Bool { _isLineFeed || _isCarriageReturn }
+
   /// `Space`
   @inlinable
   internal var _isSpace: Bool { self == 0x20 }
@@ -307,6 +318,17 @@ extension Unicode.UTF8.CodeUnit {
 }
 
 // MARK: - StringProtocol APIs
+
+extension StringProtocol where Self.UTF8View: BidirectionalCollection {
+  internal var _trimmed: SubSequence {
+    let myUTF8 = self.utf8
+    guard let firstIndex = myUTF8.firstIndex(where: { !$0._isHTTPWhitespace && !$0._isNewline }) else {
+      return SubSequence(decoding: [], as: Unicode.UTF8.self)
+    }
+    let lastIndex = myUTF8.lastIndex(where: { !$0._isHTTPWhitespace && !$0._isNewline })!
+    return self[firstIndex...lastIndex]
+  }
+}
 
 extension StringProtocol {
   /// Returns the Boolean value that indicates whether or not the string can be a valid HTTP method.

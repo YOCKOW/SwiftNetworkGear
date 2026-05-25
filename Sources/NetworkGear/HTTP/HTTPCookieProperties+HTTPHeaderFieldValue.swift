@@ -7,11 +7,11 @@
 
 import Foundation
 
-private func _attributes(_ string:String) -> [String:String] {
-  let pairs = string.components(separatedBy:";").map { _trim($0) }
+private func _attributes<S>(_ string: S) -> [String:String] where S: StringProtocol {
+  let pairs = string.components(separatedBy:";").map { String($0._trimmed) }
   return pairs.reduce(into:[:]) { (result:inout [String:String], string:String) -> Void in
     let (key, value) = string.splitOnce(separator:"=")
-    result[_trim(key).lowercased()] = (value == Optional<Substring>.none) ? "" : _trim(value!)
+    result[key._trimmed.lowercased()] = value.map({ String($0._trimmed) }) ?? ""
   }
 }
 
@@ -116,7 +116,7 @@ extension HTTPCookieProperties {
     self.lastAccessDate = now
     
     if let attributes_string = nilableAttributes {
-      let attributes = _attributes(String(attributes_string))
+      let attributes = _attributes(attributes_string)
       
       self.secure = attributes["secure"] != Optional<String>.none ? true: false
       self.httpOnly = attributes["httponly"] != Optional<String>.none ? true: false
