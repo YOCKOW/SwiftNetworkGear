@@ -54,6 +54,9 @@ private let _percentEncodedInURL = _HEXDIG.union("%")
 /// `sub-delims` defined in [RFC 3986](https://datatracker.ietf.org/doc/html/rfc3986#section-2.2).
 private let _subDelimiterInURL = _U8CodeSet("!$&'()*+,;=")
 
+/// `attr-char` defined in [RFC 8187](https://datatracker.ietf.org/doc/html/rfc8187#section-3.2.1).
+private let _attrChar = _ALPHA.union(_DIGIT).union("!#$&+-.^_`|~")
+
 /// Just for backward compatibility
 ///
 /// See [RFC 1738](https://datatracker.ietf.org/doc/html/rfc1738).
@@ -122,6 +125,10 @@ extension Unicode.UTF8.CodeUnit {
   /// `"`
   @inlinable
   internal var _isDoubleQuotationMark: Bool { self == 0x22 }
+
+  /// `'`
+  @inlinable
+  internal var _isApostrophe: Bool { self == 0x27 }
 
   /// `,`
   @inlinable
@@ -315,9 +322,23 @@ extension Unicode.UTF8.CodeUnit {
   internal var _isAvailableInMIMECharsetInExtendedValue: Bool {
     return _mimeCharsetCharsInExtendedValue.contains(self)
   }
+
+  internal var _isAvailableInPercentEncodedContentInExtendedValue: Bool {
+    return _percentEncodedInURL.contains(self) || _attrChar.contains(self)
+  }
 }
 
 // MARK: - StringProtocol APIs
+
+extension StringProtocol {
+  @inlinable
+  internal var _string: String {
+    if case let string as String = self {
+      return string
+    }
+    return String(decoding: self.utf8, as: Unicode.UTF8.self)
+  }
+}
 
 extension StringProtocol where Self.UTF8View: BidirectionalCollection {
   internal var _trimmed: SubSequence {

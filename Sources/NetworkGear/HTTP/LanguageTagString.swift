@@ -1074,6 +1074,7 @@ extension LanguageTagString: _InitializableWithParser, LosslessStringConvertible
 
 extension LanguageTagString {
   /// Create a `Locale` instance from the string.
+  @inlinable
   public var locale: Locale { return Locale(identifier: self.description) }
 
   /// Create an instance from `locale`.

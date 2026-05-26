@@ -140,7 +140,7 @@ extension StringProtocol {
 
 
 /// A string that is encoded with [Percent-Encoding](https://datatracker.ietf.org/doc/html/rfc3986#section-2.1).
-public struct PercentEncodedString: Sendable {
+public struct PercentEncodedString: Sendable, Equatable {
   public let encodedString: String
 
   /// Decodes percent-encoded string and returns a string using the given string encoding.
