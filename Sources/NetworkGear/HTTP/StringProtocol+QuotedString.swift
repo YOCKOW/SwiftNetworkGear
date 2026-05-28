@@ -141,3 +141,75 @@ public struct QuotedString: Sendable {
     self._converter = .init(content: content)
   }
 }
+
+/// A parser to pull out a quoted string.
+public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = QuotedString
+
+  internal let string: Input
+  internal let utf8: Input.UTF8View
+
+  public init(input: Input) {
+    self.string = input
+    self.utf8 = input.utf8
+  }
+
+  private var _result: (output: QuotedString, endIndex: Input.Index)? = nil
+  private var _parsed: Bool = false
+  public mutating func parse() -> (output: QuotedString, endIndex: Input.Index)? {
+    if _parsed {
+      return _result
+    }
+
+    defer {
+      _parsed = true
+    }
+    var index = utf8.startIndex
+    guard let _ = self.readCurrentCodeUnit(
+      at: &index, ifAllowedCodeUnit: { $0._isDoubleQuotationMark }
+    ) else {
+      return nil
+    }
+    guard index < utf8.endIndex else {
+      return nil
+    }
+
+    var escaped = false
+    var contentUTF8: [Unicode.UTF8.CodeUnit] = []
+    while let codeUnit = self.readCurrentCodeUnit(
+      at: &index,
+      ifAllowedCodeUnit: {
+        $0._isAvailableInHTTPHeaderFieldValueQuotedText ||
+        $0._canBeEscapedInQuotedText
+      }
+    ) {
+      if escaped {
+        guard codeUnit._canBeEscapedInQuotedText else { return nil }
+        escaped = false
+        contentUTF8.append(codeUnit)
+      } else if codeUnit._isDoubleQuotationMark {
+        let quotedString = String(self.string[..<index])
+        let content = String(decoding: contentUTF8, as: Unicode.UTF8.self)
+        _result = (
+          output: QuotedString(quotedString: quotedString, content: content),
+          endIndex: index
+        )
+        return _result
+      } else if codeUnit._isBackslash {
+        escaped = true
+      } else {
+        guard codeUnit._isAvailableInHTTPHeaderFieldValueQuotedText else {
+          return nil
+        }
+        contentUTF8.append(codeUnit)
+      }
+    }
+    return nil
+  }
+}
+
+extension QuotedString: _InitializableWithParser {
+  public init?<S>(validating quotedString: S) where S: StringProtocol {
+    self.init(quotedString, parser: QuotedStringParser<S>.self)
+  }
+}

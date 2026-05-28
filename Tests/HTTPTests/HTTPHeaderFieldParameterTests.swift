@@ -10,6 +10,11 @@ import Foundation
 import Testing
 
 @Suite struct HTTPHeaderFieldParameterTests {
+  @Test func test_value() throws {
+    #expect(try #require(HTTPHeaderFieldParameter.Value("token-value")).description == "token-value")
+    #expect(try #require(HTTPHeaderFieldParameter.Value(#""quoted value""#)).description == #""quoted value""#)
+  }
+
   @Test func test_extendedValue() throws {
     let value1 = try #require(HTTPHeaderFieldParameter.ExtendedValue("UTF-8''%c2%a3%20and%20%e2%82%ac%20rates"))
     #expect(value1 == HTTPHeaderFieldParameter.ExtendedValue(_validated: (

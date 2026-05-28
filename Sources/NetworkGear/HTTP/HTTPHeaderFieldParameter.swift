@@ -10,9 +10,61 @@ import yExtensions
 
 /// Key-value pairs for "HTTP Parameter Continuations".
 ///
-/// Reference:
-///   - [RFC 8187 §3.1](https://datatracker.ietf.org/doc/html/rfc8187#section-3.1)
+/// - NOTE:
+///     String validation may be done loosely for compatibility.
+///
+/// - References:
+///     - [RFC 2231](https://datatracker.ietf.org/doc/html/rfc2231)
+///     - [RFC 8187 §3.1](https://datatracker.ietf.org/doc/html/rfc8187#section-3.1)
 public struct HTTPHeaderFieldParameter: Sendable {
+  /// A regular value.
+  public struct Value: Sendable, Equatable, LosslessStringConvertible {
+    private enum _Value: Sendable, Equatable {
+      case token(HTTPTokenString)
+      case quotedString(QuotedString)
+
+      static func ==(lhs: _Value, rhs: _Value) -> Bool {
+        switch (lhs, rhs) {
+        case (.token(let lToken), .token(let rToken)): return lToken == rToken
+        case (.quotedString(let lQS), .quotedString(let rQS)): return lQS.content == rQS.content
+        default: return false
+        }
+      }
+    }
+
+    private let _value: _Value
+
+    public var description: String {
+      switch self._value {
+      case .token(let token): return token.description
+      case .quotedString(let quotedString): return quotedString.quotedString
+      }
+    }
+
+    private init(_value value: _Value) {
+      self._value = value
+    }
+
+    public init(token: HTTPTokenString) {
+      self.init(_value: .token(token))
+    }
+
+    public init(quotedString: QuotedString) {
+      self.init(_value: .quotedString(quotedString))
+    }
+
+    @inlinable
+    public init?<S>(_ description: S) where S: StringProtocol {
+      if let token = HTTPTokenString(validating: description) {
+        self.init(token: token)
+      } else if let quotedString = QuotedString(validating: description) {
+        self.init(quotedString: quotedString)
+      } else {
+        return nil
+      }
+    }
+  }
+
   public struct ExtendedValue: Sendable, Equatable, CustomStringConvertible {
     /// String representation of "MIME Charset".
     public let stringEncodingDescription: String
