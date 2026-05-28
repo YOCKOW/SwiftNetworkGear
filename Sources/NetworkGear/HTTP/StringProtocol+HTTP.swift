@@ -21,15 +21,35 @@ private extension _U8CodeSet {
     return self.union(utf8)
   }
 
+  func union(_ element: Element) -> _U8CodeSet {
+    assert(element <= 0x7F)
+    var set = self
+    set.insert(element)
+    return set
+  }
+
   func subtracting(_ string: any StringProtocol) -> _U8CodeSet {
     let utf8 = string.utf8
     assert(utf8.allSatisfy({ $0 <= 0x7F }))
     return self.subtracting(utf8)
   }
+
+  func subtracting(_ element: Element) -> _U8CodeSet {
+    assert(element <= 0x7F)
+    var set = self
+    set.insert(element)
+    return set
+  }
 }
 
 /// `ALPHA` defined in [RFC 5234](https://datatracker.ietf.org/doc/html/rfc5234#appendix-B.1).
 private let _ALPHA = _U8CodeSet(0x41...0x5A).union(0x61...0x7A)
+
+/// `CHAR` defined in [RFC 5234](https://datatracker.ietf.org/doc/html/rfc5234#appendix-B).
+private let _CHAR = _U8CodeSet(0x01...0x7F)
+
+/// `CTL` defined in [RFC 5234](https://datatracker.ietf.org/doc/html/rfc5234#appendix-B).
+private let _CTL = _U8CodeSet(0x00...0x1F).union(0x7F)
 
 /// `DIGIT` defined in [RFC 5234](https://datatracker.ietf.org/doc/html/rfc5234#appendix-B.1).
 private let _DIGIT = _U8CodeSet(0x30...0x39)
@@ -56,6 +76,9 @@ private let _subDelimiterInURL = _U8CodeSet("!$&'()*+,;=")
 
 /// `attr-char` defined in [RFC 8187](https://datatracker.ietf.org/doc/html/rfc8187#section-3.2.1).
 private let _attrChar = _ALPHA.union(_DIGIT).union("!#$&+-.^_`|~")
+
+/// `attribute-char` defined in [RFC 2231](https://datatracker.ietf.org/doc/html/rfc2231#section-7).
+private let _attributeChar = _CHAR.subtracting(0x20).subtracting(_CTL).subtracting("*'%").subtracting(_tspecials)
 
 /// Just for backward compatibility
 ///
@@ -313,6 +336,14 @@ extension Unicode.UTF8.CodeUnit {
   /// See: [RFC 3986 §3.5](https://datatracker.ietf.org/doc/html/rfc3986#section-3.5).
   internal var _isAvailableInURLFragment: Bool {
     return self == 0x2F /* "/" */ || self == 0x3F /* "?" */ || _pchar.contains(self)
+  }
+
+  internal var _isAvailableInParameterName: Bool {
+    return _attrChar.contains(self)
+  }
+
+  internal var _isAvailableInParameterNameForMIME: Bool {
+    return _attributeChar.contains(self)
   }
 
   internal var _isAvailableInMIMECharset: Bool {
