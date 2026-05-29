@@ -79,6 +79,23 @@ public struct HTTPHeaderFieldParameter: Sendable {
     }
   }
 
+  /// An extended name.
+  public struct ExtendedName: Sendable, Equatable, CustomStringConvertible {
+    public let baseName: Name
+
+    @inlinable
+    public var attribute: ASCIICaseInsensitiveString { baseName.attribute }
+
+    @inlinable
+    public var sectionIndex: Int? { baseName.sectionIndex }
+
+    public var description: String { baseName.description + "*" }
+
+    fileprivate init(_baseName baseName: Name) {
+      self.baseName = baseName
+    }
+  }
+
   /// A regular value.
   public struct Value: Sendable, Equatable, LosslessStringConvertible {
     private enum _Value: Sendable, Equatable {
