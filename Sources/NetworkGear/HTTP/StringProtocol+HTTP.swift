@@ -153,6 +153,10 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isApostrophe: Bool { self == 0x27 }
 
+  /// `*`
+  @inlinable
+  internal var _isAsterisk: Bool { self == 0x2A }
+
   /// `,`
   @inlinable
   internal var _isComma: Bool { self == 0x2C }

@@ -10,6 +10,21 @@ import Foundation
 import Testing
 
 @Suite struct HTTPHeaderFieldParameterTests {
+  @Test(
+    "Test: HTTPHeaderFieldParameter.Name Analyzer",
+    arguments: Array<(string: String, expected: (attribute: ASCIICaseInsensitiveString, sectionIndex: Int?))>([
+      (string: "foo", expected: (attribute: "foo"._caseInsensitive, sectionIndex: nil)),
+      (string: "bar*0", expected: (attribute: "bar"._caseInsensitive, sectionIndex: 0)),
+      (string: "bar*123", expected: (attribute: "bar"._caseInsensitive, sectionIndex: 123)),
+      (string: "baz123", expected: (attribute: "baz123"._caseInsensitive, sectionIndex: nil)),
+    ])
+  )
+  func test_name_analyzing(pair: (string: String, expected: (attribute: ASCIICaseInsensitiveString, sectionIndex: Int?))) throws {
+    let name = HTTPHeaderFieldParameter.Name(_analyzing: pair.string.utf8)
+    #expect(name.attribute == pair.expected.attribute)
+    #expect(name.sectionIndex == pair.expected.sectionIndex)
+  }
+
   @Test func test_value() throws {
     #expect(try #require(HTTPHeaderFieldParameter.Value("token-value")).description == "token-value")
     #expect(try #require(HTTPHeaderFieldParameter.Value(#""quoted value""#)).description == #""quoted value""#)

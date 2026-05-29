@@ -6,6 +6,7 @@
  ************************************************************************************************ */
 
 import Foundation
+import Ranges
 import yExtensions
 
 /// Key-value pairs for "HTTP Parameter Continuations".
@@ -17,6 +18,67 @@ import yExtensions
 ///     - [RFC 2231](https://datatracker.ietf.org/doc/html/rfc2231)
 ///     - [RFC 8187 §3.1](https://datatracker.ietf.org/doc/html/rfc8187#section-3.1)
 public struct HTTPHeaderFieldParameter: Sendable {
+  /// A regular parameter name.
+  public struct Name: Sendable, Equatable, CustomStringConvertible {
+    public let attribute: ASCIICaseInsensitiveString
+
+    public let sectionIndex: Int?
+
+    public var description: String {
+      guard let sectionIndex = self.sectionIndex else {
+        return attribute.description
+      }
+      return "\(attribute.description)*\(String(sectionIndex, radix: 10))"
+    }
+
+    fileprivate init(
+      _validatedAttribute attribute: ASCIICaseInsensitiveString,
+      sectionIndex: Int?
+    ) {
+      self.attribute = attribute
+      self.sectionIndex = sectionIndex
+    }
+
+    /// Creates an instance with `utf8`, which must be already validated.
+    internal init<C>(_analyzing utf8: C)
+    where C: BidirectionalCollection, C.Element == Unicode.UTF8.CodeUnit {
+      assert(!utf8.isEmpty)
+      let lastU8Index = utf8.index(before: utf8.endIndex)
+
+      // NOTE:
+      //   While any specification doesn't define max number of section index,
+      //   we should set a maximum value for some security reasons.
+
+      var index = lastU8Index
+      var count = 0
+      var sectionIndex: Int? = nil
+      while index >= utf8.startIndex {
+        count += 1
+        if count > 4 {
+          break
+        }
+        let u8 = utf8[index]
+        if !u8._isDigit {
+          if u8._isAsterisk && count > 1 {
+            sectionIndex = utf8[index<..].reduce(into: 0 as Int) { $0 = $0 * 10 + Int($1 - 0x30)  }
+          }
+          break
+        }
+        utf8.formIndex(before: &index)
+      }
+
+      guard let validSectionIndex = sectionIndex else {
+        self.init(
+          _validatedAttribute: String(decoding: utf8, as: Unicode.UTF8.self)._caseInsensitive,
+          sectionIndex: nil
+        )
+        return
+      }
+      let attribute = String(decoding: utf8[..<index], as: Unicode.UTF8.self)._caseInsensitive
+      self.init(_validatedAttribute: attribute, sectionIndex: validSectionIndex)
+    }
+  }
+
   /// A regular value.
   public struct Value: Sendable, Equatable, LosslessStringConvertible {
     private enum _Value: Sendable, Equatable {
