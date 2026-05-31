@@ -38,7 +38,7 @@ extension _UTF8Parser {
 
 extension _UTF8Parser {
   @inlinable
-  mutating func readCurrentCodeUnit(
+  func readCurrentCodeUnit(
     at currentIndex: inout Input.UTF8View.Index,
     ifAllowedCodeUnit isAllowedCodeUnit: (Unicode.UTF8.CodeUnit) throws -> Bool = { _ in true }
   ) rethrows -> Unicode.UTF8.CodeUnit? {
@@ -51,7 +51,7 @@ extension _UTF8Parser {
   }
 
   @inlinable
-  mutating func parseString(
+  func parseString(
     from currentIndex: inout Input.UTF8View.Index,
     minCount: Int = 1,
     maxCount: Int = .max,
