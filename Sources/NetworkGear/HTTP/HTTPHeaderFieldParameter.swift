@@ -97,7 +97,7 @@ public struct HTTPHeaderFieldParameter: Sendable {
   }
 
   /// A regular value.
-  public struct Value: Sendable, Equatable, LosslessStringConvertible {
+  public struct Value: Sendable, Equatable, CustomStringConvertible {
     private enum _Value: Sendable, Equatable {
       case token(HTTPTokenString)
       case quotedString(QuotedString)
@@ -130,17 +130,6 @@ public struct HTTPHeaderFieldParameter: Sendable {
 
     public init(quotedString: QuotedString) {
       self.init(_value: .quotedString(quotedString))
-    }
-
-    @inlinable
-    public init?<S>(_ description: S) where S: StringProtocol {
-      if let token = HTTPTokenString(validating: description) {
-        self.init(token: token)
-      } else if let quotedString = QuotedString(validating: description) {
-        self.init(quotedString: quotedString)
-      } else {
-        return nil
-      }
     }
   }
 
@@ -322,6 +311,33 @@ where Input: StringProtocol {
       return (.extended(ExtendedName(_baseName: baseName)), endIndex)
     }
     return (.regular(RegularName(_analyzing: tokenUTF8)), endIndex)
+  }
+}
+
+public struct HTTPHeaderFieldParameterValueParser<Input>: StringParser where Input: StringProtocol {
+  public typealias Output = HTTPHeaderFieldParameter.Value
+
+  private let _string: Input
+
+  public init(input: Input) {
+    self._string = input
+  }
+
+  public mutating func parse() -> (output: HTTPHeaderFieldParameter.Value, endIndex: Input.Index)? {
+    if let (token, endIndex) = HTTPTokenParser<Input>.parse(_string) {
+      return (HTTPHeaderFieldParameter.Value(token: token), endIndex)
+    } else if let (quotedString, endIndex) = QuotedStringParser<Input>.parse(_string) {
+      return (HTTPHeaderFieldParameter.Value(quotedString: quotedString), endIndex)
+    } else {
+      return nil
+    }
+  }
+}
+
+extension HTTPHeaderFieldParameter.Value: _InitializableWithParser, LosslessStringConvertible {
+  @inlinable
+  public init?<S>(_ description: S) where S: StringProtocol {
+    self.init(description, parser: HTTPHeaderFieldParameterValueParser<S>.self)
   }
 }
 

@@ -95,8 +95,10 @@ extension _UTF8Parser {
   }
 }
 
+@usableFromInline
 internal protocol _InitializableWithParser {}
 extension _InitializableWithParser {
+  @usableFromInline
   init?<S, P>( _ string: S, parser: P.Type)
   where S: StringProtocol, P: StringParser, P.Input == S, P.Output == Self {
     guard let parsedResult = P.parse(string),
