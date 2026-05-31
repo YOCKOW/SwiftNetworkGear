@@ -10,48 +10,94 @@ import Foundation
 import Testing
 
 @Suite struct HTTPHeaderFieldParameterTests {
+  typealias NameParserTestPair = (string: String, expect: @Sendable (_ParameterName) throws -> Void)
+
+  static let nameParserTestPairs: Array<NameParserTestPair> = [
+    (
+      string: "foo",
+      expect: { @Sendable in
+        #expect($0.isReqular)
+        #expect($0.attribute == "foo")
+        #expect($0.sectionIndex == nil)
+      }
+    ),
+    (
+      string: "foo*",
+      expect: { @Sendable in
+        #expect($0.isExtended)
+        #expect($0.attribute == "foo")
+        #expect($0.sectionIndex == nil)
+      }
+    ),
+    (
+      string: "bar*0",
+      expect: { @Sendable in
+        #expect($0.isReqular)
+        #expect($0.attribute == "bar")
+        #expect($0.sectionIndex == 0)
+      }
+    ),
+
+    (
+      string: "bar*1*",
+      expect: { @Sendable in
+        #expect($0.isExtended)
+        #expect($0.attribute == "bar")
+        #expect($0.sectionIndex == 1)
+      }
+    ),
+  ]
+
+  static let nameParserTestPairsForHTTPOnly: Array<NameParserTestPair> = [
+    (
+      string: "foo-bar***baz",
+      expect: { @Sendable in
+        #expect($0.isReqular)
+        #expect($0.attribute == "foo-bar***baz")
+        #expect($0.sectionIndex == nil)
+      }
+    ),
+    (
+      string: "foo-bar***baz*",
+      expect: { @Sendable in
+        #expect($0.isExtended)
+        #expect($0.attribute == "foo-bar***baz")
+        #expect($0.sectionIndex == nil)
+      }
+    ),
+    (
+      string: "foo-bar*0*1*baz*0",
+      expect: { @Sendable in
+        #expect($0.isReqular)
+        #expect($0.attribute == "foo-bar*0*1*baz")
+        #expect($0.sectionIndex == 0)
+      }
+    ),
+    (
+      string: "foo-bar*0*1*baz*1*",
+      expect: { @Sendable in
+        #expect($0.isExtended)
+        #expect($0.attribute == "foo-bar*0*1*baz")
+        #expect($0.sectionIndex == 1)
+      }
+    ),
+  ]
+
   @Test(
     "MIMECompatibleParameterNameParser Tests.",
-    arguments: [
-      (
-        string: "foo",
-        expect: { @Sendable in
-          #expect($0.isReqular)
-          #expect($0.attribute == "foo")
-          #expect($0.sectionIndex == nil)
-        }
-      ),
-      (
-        string: "foo*",
-        expect: { @Sendable in
-          #expect($0.isExtended)
-          #expect($0.attribute == "foo")
-          #expect($0.sectionIndex == nil)
-        }
-      ),
-      (
-        string: "bar*0",
-        expect: { @Sendable in
-          #expect($0.isReqular)
-          #expect($0.attribute == "bar")
-          #expect($0.sectionIndex == 0)
-        }
-      ),
-
-      (
-        string: "bar*1*",
-        expect: { @Sendable in
-          #expect($0.isExtended)
-          #expect($0.attribute == "bar")
-          #expect($0.sectionIndex == 1)
-        }
-      ),
-    ] as Array<(string: String, expect: @Sendable (_ParameterName) throws -> Void)>
+    arguments: nameParserTestPairs
   )
-  func test_MIMECompatibleParameterNameParser(
-    pair: (string: String, expect: @Sendable (_ParameterName) throws -> Void)
-  ) throws {
+  func test_MIMECompatibleParameterNameParser(pair: NameParserTestPair) throws {
     let name = try #require(_MIMECompatibleParameterNameParser.parse(pair.string)).output
+    try pair.expect(name)
+  }
+
+  @Test(
+    "HTTPHeaderFieldParameterNameParser Tests.",
+    arguments: nameParserTestPairs + nameParserTestPairsForHTTPOnly
+  )
+  func test_HTTPHeaderFieldParameterNameParser(pair: NameParserTestPair) throws {
+    let name = try #require(_HTTPHeaderFieldParameterNameParser.parse(pair.string)).output
     try pair.expect(name)
   }
 

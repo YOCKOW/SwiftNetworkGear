@@ -296,6 +296,35 @@ where Input: StringProtocol {
   }
 }
 
+internal struct _HTTPHeaderFieldParameterNameParser<Input>: StringParser
+where Input: StringProtocol {
+  typealias Output = _ParameterName
+  typealias RegularName = HTTPHeaderFieldParameter.Name
+  typealias ExtendedName = HTTPHeaderFieldParameter.ExtendedName
+
+  private let _string: Input
+  init(input: Input) {
+    self._string = input
+  }
+
+  mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+    guard let (token, endIndex) = HTTPTokenParser<Input>.parse(_string) else {
+      return nil
+    }
+
+    let tokenUTF8 = token.utf8
+    EXTENDED_NAME: if tokenUTF8.last!._isAsterisk {
+      let baseNameToken = tokenUTF8.dropLast()
+      if baseNameToken.isEmpty {
+        break EXTENDED_NAME
+      }
+      let baseName = RegularName(_analyzing: baseNameToken)
+      return (.extended(ExtendedName(_baseName: baseName)), endIndex)
+    }
+    return (.regular(RegularName(_analyzing: tokenUTF8)), endIndex)
+  }
+}
+
 public struct ExtendedParameterValueParser<Input>: StringParser,
                                                    _UTF8Parser where Input: StringProtocol {
   public typealias Output = HTTPHeaderFieldParameter.ExtendedValue
