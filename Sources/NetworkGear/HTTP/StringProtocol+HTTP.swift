@@ -342,10 +342,6 @@ extension Unicode.UTF8.CodeUnit {
     return self == 0x2F /* "/" */ || self == 0x3F /* "?" */ || _pchar.contains(self)
   }
 
-  internal var _isAvailableInParameterName: Bool {
-    return _attrChar.contains(self)
-  }
-
   internal var _isAvailableInParameterNameForMIME: Bool {
     return _attributeChar.contains(self)
   }

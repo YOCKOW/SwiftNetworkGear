@@ -193,6 +193,109 @@ public struct HTTPHeaderFieldParameter: Sendable {
   }
 }
 
+internal enum _ParameterName: Sendable {
+  case regular(HTTPHeaderFieldParameter.Name)
+  case extended(HTTPHeaderFieldParameter.ExtendedName)
+
+  @inlinable
+  var isReqular: Bool {
+    if case .regular = self {
+      true
+    } else {
+      false
+    }
+  }
+
+  @inlinable
+  var isExtended: Bool {
+    if case .extended = self {
+      true
+    } else {
+      false
+    }
+  }
+
+  @inlinable
+  var attribute: ASCIICaseInsensitiveString {
+    switch self {
+    case .regular(let name):
+      return name.attribute
+    case .extended(let extendedName):
+      return extendedName.attribute
+    }
+  }
+
+  @inlinable
+  var sectionIndex: Int? {
+    switch self {
+    case .regular(let name):
+      return name.sectionIndex
+    case .extended(let extendedName):
+      return extendedName.sectionIndex
+    }
+  }
+}
+
+internal struct _MIMECompatibleParameterNameParser<Input>: StringParser, _UTF8Parser
+where Input: StringProtocol {
+  typealias Output = _ParameterName
+  typealias RegularName = HTTPHeaderFieldParameter.Name
+  typealias ExtendedName = HTTPHeaderFieldParameter.ExtendedName
+
+  let string: Input
+  let utf8: Input.UTF8View
+
+  init(input: Input) {
+    self.string = input
+    self.utf8 = input.utf8
+  }
+
+  mutating func parse() -> (output: _ParameterName, endIndex: Input.Index)? {
+    var index = utf8.startIndex
+
+    guard let attributeString = self.parseString(
+      from: &index,
+      while: \._isAvailableInParameterNameForMIME
+    ) else {
+      return nil
+    }
+
+    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAsterisk) else {
+      let name = RegularName(
+        _validatedAttribute: attributeString._caseInsensitive,
+        sectionIndex: nil
+      )
+      return (.regular(name), index)
+    }
+
+    var numberOfDigits = 0
+    guard let numberString = self.parseString(
+      from: &index,
+      count: &numberOfDigits,
+      while: \._isDigit
+    ) else {
+      let baseName = RegularName(
+        _validatedAttribute: attributeString._caseInsensitive,
+        sectionIndex: nil
+      )
+      return (.extended(ExtendedName(_baseName: baseName)), index)
+    }
+    // Deny large section index
+    if numberOfDigits > 4 {
+      return nil
+    }
+
+    let baseName = RegularName(
+      _validatedAttribute: attributeString._caseInsensitive,
+      sectionIndex: Int(numberString)
+    )
+    if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAsterisk) {
+      return (.extended(ExtendedName(_baseName: baseName)), index)
+    }
+    return (.regular(baseName), index)
+  }
+}
+
 public struct ExtendedParameterValueParser<Input>: StringParser,
                                                    _UTF8Parser where Input: StringProtocol {
   public typealias Output = HTTPHeaderFieldParameter.ExtendedValue
