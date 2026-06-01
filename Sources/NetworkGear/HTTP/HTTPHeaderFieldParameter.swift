@@ -17,7 +17,7 @@ import yExtensions
 /// - References:
 ///     - [RFC 2231](https://datatracker.ietf.org/doc/html/rfc2231)
 ///     - [RFC 8187 §3.1](https://datatracker.ietf.org/doc/html/rfc8187#section-3.1)
-public struct HTTPHeaderFieldParameter: Sendable {
+public struct HTTPHeaderFieldParameter: Sendable, Equatable {
   /// A regular parameter name.
   public struct Name: Sendable, Equatable, CustomStringConvertible {
     public let attribute: ASCIICaseInsensitiveString
@@ -98,7 +98,7 @@ public struct HTTPHeaderFieldParameter: Sendable {
 
   /// A regular value.
   public struct Value: Sendable, Equatable, CustomStringConvertible {
-    private enum _Value: Sendable, Equatable {
+    fileprivate enum _Value: Sendable, Equatable {
       case token(HTTPTokenString)
       case quotedString(QuotedString)
 
@@ -111,7 +111,7 @@ public struct HTTPHeaderFieldParameter: Sendable {
       }
     }
 
-    private let _value: _Value
+    fileprivate let _value: _Value
 
     public var description: String {
       switch self._value {
@@ -179,6 +179,94 @@ public struct HTTPHeaderFieldParameter: Sendable {
       self.languageTagDescription = _validated.languageTagDescription
       self.percentEncodedValue = _validated.percentEncodedValue
     }
+  }
+
+  private enum _NameValuePair: Sendable, Equatable {
+    case regular(name: Name, value: Value)
+    case extended(name: ExtendedName, value: ExtendedValue)
+  }
+
+  private let _nameValuePair: _NameValuePair
+
+  /// A Boolean value indicating whether or not the value is an "extended value".
+  public var isExtended: Bool {
+    if case .extended = _nameValuePair {
+      return true
+    }
+    return false
+  }
+
+  /// A string that is a core part of the name.
+  public var attribute: ASCIICaseInsensitiveString {
+    switch _nameValuePair {
+    case .regular(let name, _):
+      return name.attribute
+    case .extended(let name, _):
+      return name.attribute
+    }
+  }
+
+  /// An index of the section. `nil` is returned if the value is not sectioned.
+  public var sectionIndex: Int? {
+    switch _nameValuePair {
+    case .regular(let name, _):
+      return name.sectionIndex
+    case .extended(let name, _):
+      return name.sectionIndex
+    }
+  }
+
+  /// A regular value.
+  /// `nil` is returned if the value is "extended" one.
+  public var regularValue: Value? {
+    guard case .regular(_, let value) = _nameValuePair else {
+      return nil
+    }
+    return value
+  }
+
+  /// An extended value if available.
+  public var extendedValue: ExtendedValue? {
+    guard case .extended(_, let value) = _nameValuePair else {
+      return nil
+    }
+    return value
+  }
+
+  /// A string of the value.
+  /// `nil` is returned only if the value is percent-encoded and decoding fails.
+  public var value: String? {
+    switch _nameValuePair {
+    case .regular(_, let value):
+      switch value._value {
+      case .token(let token):
+        return token._string
+      case .quotedString(let quotedString):
+        return quotedString.content
+      }
+    case .extended(_, let value):
+      return value.decodedValue
+    }
+  }
+
+  /// Creates a parameter pair of the regular name and the regular value.
+  public init(name: Name, value: Value) {
+    self._nameValuePair = .regular(name: name, value: value)
+  }
+
+  /// Creates a parameter pair of the extended name and the extended value.
+  public init(name: ExtendedName, value: ExtendedValue) {
+    self._nameValuePair = .extended(name: name, value: value)
+  }
+
+  /// Returns a regular parameter.
+  public static func regular(name: Name, value: Value) -> HTTPHeaderFieldParameter {
+    return .init(name: name, value: value)
+  }
+
+  /// Returns an extended parameter.
+  public static func extended(name: ExtendedName, value: ExtendedValue) -> HTTPHeaderFieldParameter {
+    return .init(name: name, value: value)
   }
 }
 
