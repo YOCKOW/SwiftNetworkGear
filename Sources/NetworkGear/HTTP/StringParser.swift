@@ -236,6 +236,10 @@ public struct CRLFParser<Input>: StringParser, _UTF8Parser where Input: StringPr
   }
 }
 
+/// A parser to parse `LWSP`(Linear White-space).
+///
+/// - Refrence:
+///     * [RFC 5234 Appendix B](https://datatracker.ietf.org/doc/html/rfc5234#appendix-B.1)
 public struct LinearWhitespaceParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = Input.SubSequence
 
@@ -250,21 +254,38 @@ public struct LinearWhitespaceParser<Input>: StringParser, _UTF8Parser where Inp
   public func parse() -> (output: Input.SubSequence, endIndex: Input.Index)? {
     var index = utf8.startIndex
 
+    // Implementation Note:
+    //   LWSP = *(WSP / CRLF WSP)
+    //
+    // i.e.) `CRLR` must be followed by `WSP`.
+
+    func __parseWSPs() -> Bool {
+      return !self.parseString(from: &index, while: \._isHTTPWhitespace).isNil
+    }
+
     while index < utf8.endIndex {
-      if let _ = self.parseString(from: &index, while: \._isHTTPWhitespace) {
+      if __parseWSPs() {
         continue
       }
-      guard let (_, endIndex) = CRLFParser<Input.SubSequence>.parse(string[index...]) else {
+
+      let endIndexOfWSP = index
+      guard let (_, endIndexOfCRLF) = CRLFParser<Input.SubSequence>.parse(
+        string[endIndexOfWSP...]
+      ) else {
         break
       }
-      index = endIndex
+      index = endIndexOfCRLF
+      guard __parseWSPs() else {
+        index = endIndexOfWSP
+        break
+      }
     }
 
     guard index > utf8.startIndex else {
       return nil
     }
 
-    return (string[index...], index)
+    return (string[..<index], index)
   }
 }
 

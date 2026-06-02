@@ -52,13 +52,47 @@ typealias _DigitHiraganaParser<Input> = CombinedParser<Input, DigitParser<Input>
 
 @Suite struct StringParserTests {
   @Test func test_LinearWhitespace() throws {
+    let CR = "\u{0D}"
+    let LF = "\u{0A}"
+    let CRLF = CR + LF
+    let SP = "\u{20}"
+    let HTAB = "\u{09}"
+
     #expect(LinearWhitespaceParser.parse("ABC  ").isNil)
-    #expect(LinearWhitespaceParser.parse("\u{0A}").isNil)
-    #expect(LinearWhitespaceParser.parse("\u{0D}").isNil)
-    #expect(LinearWhitespaceParser.parse("\u{0A}\u{0D}").isNil)
-    #expect(try #require(LinearWhitespaceParser.parse("\u{0D}\u{0A}")).output.isEmpty)
-    #expect(try #require(LinearWhitespaceParser.parse("  ")).output.isEmpty)
-    #expect(try #require(LinearWhitespaceParser.parse("  \u{09}\u{0D}\u{0A}  ")).output.isEmpty)
+    #expect(LinearWhitespaceParser.parse(LF).isNil)
+    #expect(LinearWhitespaceParser.parse(CR).isNil)
+    #expect(LinearWhitespaceParser.parse(LF + CR).isNil)
+    #expect(LinearWhitespaceParser.parse(CRLF).isNil)
+    #expect(LinearWhitespaceParser.parse(CRLF + "ABC").isNil)
+
+    do {
+      let string = SP + HTAB + SP + HTAB
+      let result = try #require(LinearWhitespaceParser.parse(string))
+      #expect(result.output == string)
+      #expect(result.endIndex == string.endIndex)
+    }
+
+    do {
+      let string = CRLF + HTAB + SP
+      let result = try #require(LinearWhitespaceParser.parse(string))
+      #expect(result.output == string)
+      #expect(result.endIndex == string.endIndex)
+    }
+
+    do {
+      let string = SP + HTAB + CRLF + HTAB + SP
+      let result = try #require(LinearWhitespaceParser.parse(string))
+      #expect(result.output == string)
+      #expect(result.endIndex == string.endIndex)
+    }
+
+    do {
+      let lwsp = HTAB + SP + CRLF + SP + HTAB
+      let string = lwsp + "ABC"
+      let result = try #require(LinearWhitespaceParser.parse(string))
+      #expect(result.output == lwsp)
+      #expect(string[result.endIndex...] == "ABC")
+    }
   }
 
   @Test func test_CombinedParser() {
