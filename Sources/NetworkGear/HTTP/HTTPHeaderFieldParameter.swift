@@ -574,3 +574,20 @@ extension HTTPHeaderFieldParameter: _InitializableWithParser, LosslessStringConv
     self.init(description, parser: HTTPHeaderFieldParameterParser<S>.self)
   }
 }
+
+
+/// A list of header field parameters.
+public struct HTTPHeaderFieldParameterList {
+  /// All parameters.
+  public private(set) var allParameters: [HTTPHeaderFieldParameter]
+
+  /// A dicrionary: `attribute` -> `sectionIndex` -> parameter
+  private var _parameters: [ASCIICaseInsensitiveString: [Optional<Int>: HTTPHeaderFieldParameter]]
+
+  public mutating func append(_ parameter: HTTPHeaderFieldParameter) {
+    let attribute = parameter.attribute
+    let sectionIndex = parameter.sectionIndex
+    _parameters[attribute, default: [:]][sectionIndex] = parameter
+    allParameters.append(parameter)
+  }
+}
