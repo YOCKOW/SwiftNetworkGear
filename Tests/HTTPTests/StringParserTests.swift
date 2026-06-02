@@ -51,6 +51,16 @@ struct HiraganaParser<Input: StringProtocol>: StringParser {
 typealias _DigitHiraganaParser<Input> = CombinedParser<Input, DigitParser<Input>, HiraganaParser<Input.SubSequence>> where Input: StringProtocol
 
 @Suite struct StringParserTests {
+  @Test func test_LinearWhitespace() throws {
+    #expect(LinearWhitespaceParser.parse("ABC  ").isNil)
+    #expect(LinearWhitespaceParser.parse("\u{0A}").isNil)
+    #expect(LinearWhitespaceParser.parse("\u{0D}").isNil)
+    #expect(LinearWhitespaceParser.parse("\u{0A}\u{0D}").isNil)
+    #expect(try #require(LinearWhitespaceParser.parse("\u{0D}\u{0A}")).output.isEmpty)
+    #expect(try #require(LinearWhitespaceParser.parse("  ")).output.isEmpty)
+    #expect(try #require(LinearWhitespaceParser.parse("  \u{09}\u{0D}\u{0A}  ")).output.isEmpty)
+  }
+
   @Test func test_CombinedParser() {
     #expect(_DigitHiraganaParser<String>.parse("0123").isNil)
     #expect(_DigitHiraganaParser<String>.parse("0123ABC").isNil)

@@ -78,7 +78,7 @@ extension _UTF8Parser {
   }
 
   @inlinable
-  mutating func parseString(
+  func parseString(
     from currentIndex: inout Input.UTF8View.Index,
     minCount: Int = 1,
     maxCount: Int = .max,
@@ -212,6 +212,61 @@ public struct HTTPTokenParser<Input>: StringParser, _UTF8Parser where Input: Str
   }
 }
 
+
+public struct CRLFParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = Input.SubSequence
+
+  let string: Input
+  let utf8: Input.UTF8View
+
+  public init(input: Input) {
+    self.string = input
+    self.utf8 = input.utf8
+  }
+
+  public func parse() -> (output: Input.SubSequence, endIndex: Input.Index)? {
+    var index = utf8.startIndex
+    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isCarriageReturn) else {
+      return nil
+    }
+    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isLineFeed) else {
+      return nil
+    }
+    return (string[..<index], index)
+  }
+}
+
+public struct LinearWhitespaceParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = Input.SubSequence
+
+  let string: Input
+  let utf8: Input.UTF8View
+
+  public init(input: Input) {
+    self.string = input
+    self.utf8 = input.utf8
+  }
+
+  public func parse() -> (output: Input.SubSequence, endIndex: Input.Index)? {
+    var index = utf8.startIndex
+
+    while index < utf8.endIndex {
+      if let _ = self.parseString(from: &index, while: \._isHTTPWhitespace) {
+        continue
+      }
+      guard let (_, endIndex) = CRLFParser<Input.SubSequence>.parse(string[index...]) else {
+        break
+      }
+      index = endIndex
+    }
+
+    guard index > utf8.startIndex else {
+      return nil
+    }
+
+    return (string[index...], index)
+  }
+}
 
 /// A parser that succeeds in parsing only if both two parsers succeed in parsing.
 public struct CombinedParser<Input, FirstParser, SecondParser>: StringParser
