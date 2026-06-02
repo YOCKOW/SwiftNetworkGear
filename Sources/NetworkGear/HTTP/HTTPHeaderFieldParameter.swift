@@ -17,6 +17,11 @@ import yExtensions
 /// - References:
 ///     - [RFC 2231](https://datatracker.ietf.org/doc/html/rfc2231)
 ///     - [RFC 8187 §3.1](https://datatracker.ietf.org/doc/html/rfc8187#section-3.1)
+///
+/// - Examples of parameter:
+///     + `foo=bar`
+///     + `foo="bar"`
+///     + `foo*=UTF-8''percent-encoded-bar`
 public struct HTTPHeaderFieldParameter: Sendable, Equatable {
   /// A regular parameter name.
   public struct Name: Sendable, Equatable, CustomStringConvertible {
@@ -487,5 +492,85 @@ extension HTTPHeaderFieldParameter.ExtendedValue: _InitializableWithParser, Loss
   /// Creates an instance from `string`.
   public init?<S>(_ description: S) where S: StringProtocol {
     self.init(description, parser: ExtendedParameterValueParser<S>.self)
+  }
+}
+
+
+/// A parser for `HTTPHeaderFieldParameter`.
+public class HTTPHeaderFieldParameterParser<Input>: @unchecked Sendable, StringParser, _UTF8Parser
+where Input: StringProtocol {
+  public typealias Output = HTTPHeaderFieldParameter
+
+  let string: Input
+  let utf8: Input.UTF8View
+
+  public required init(input: Input) {
+    self.string = input
+    self.utf8 = input.utf8
+  }
+
+  private func _parseName() -> (name: _ParameterName, endIndex: Input.Index)? {
+    guard let (name, endIndex) =  _HTTPHeaderFieldParameterNameParser<Input>.parse(self.string) else {
+      return nil
+    }
+    return (name, endIndex)
+  }
+
+  public final class MIMECompatible: HTTPHeaderFieldParameterParser, @unchecked Sendable {
+    override func _parseName() -> (name: _ParameterName, endIndex: Input.Index)? {
+      guard let (name, endIndex) = _MIMECompatibleParameterNameParser<Input>.parse(self.string) else {
+        return nil
+      }
+      return (name, endIndex)
+    }
+  }
+
+  public func parse() -> (output: HTTPHeaderFieldParameter, endIndex: Input.Index)? {
+    guard let (name, nameEndIndex) = self._parseName() else {
+      return nil
+    }
+
+    var index = nameEndIndex
+    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isEqualSign) else {
+      return nil
+    }
+
+    switch name {
+    case .regular(let name):
+      guard let (value, endIndex) = HTTPHeaderFieldParameterValueParser<Input.SubSequence>.parse(
+        self.string[index...]
+      ) else {
+        return nil
+      }
+      return (
+        output: HTTPHeaderFieldParameter(name: name, value: value),
+        endIndex: endIndex
+      )
+    case .extended(let extendedName):
+      guard let (extendedValue, endIndex) = ExtendedParameterValueParser<Input.SubSequence>.parse(
+        self.string[index...]
+      ) else {
+        return nil
+      }
+      return (
+        output: HTTPHeaderFieldParameter(name: extendedName, value: extendedValue),
+        endIndex: endIndex
+      )
+    }
+  }
+}
+
+extension HTTPHeaderFieldParameter: _InitializableWithParser, LosslessStringConvertible {
+  public var description: String {
+    switch self._nameValuePair {
+    case .regular(name: let name, value: let value):
+      return "\(name.description)=\(value.description)"
+    case .extended(name: let name, value: let value):
+      return "\(name.description)=\(value.description)"
+    }
+  }
+
+  public init?<S>(_ description: S) where S: StringProtocol {
+    self.init(description, parser: HTTPHeaderFieldParameterParser<S>.self)
   }
 }

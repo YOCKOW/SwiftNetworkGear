@@ -139,4 +139,51 @@ import Testing
     #expect(value2.locale?.language.languageCode?.identifier == "en")
     #expect(value2.decodedValue == "£ rates")
   }
+
+
+  typealias ParamterParserTestPair = (
+    string: String,
+    expect: @Sendable (HTTPHeaderFieldParameter?) throws -> Void
+  )
+  @Test(arguments: [
+    (string: "foo", expect: { @Sendable in #expect($0.isNil) }),
+    (string: "foo=", expect: { @Sendable in #expect($0.isNil) }),
+    (
+      string: "foo=bar",
+      expect: { @Sendable in
+        let parameter = try #require($0)
+        #expect(!parameter.isExtended)
+        #expect(parameter.attribute == "foo")
+        #expect(parameter.sectionIndex == nil)
+        #expect(parameter.value == "bar")
+      }
+    ),
+    (
+      string: #"foo="bar"#,
+      expect: { @Sendable in #expect($0.isNil) }
+    ),
+    (
+      string: #"foo="bar""#,
+      expect: { @Sendable in
+        let parameter = try #require($0)
+        #expect(!parameter.isExtended)
+        #expect(parameter.attribute == "foo")
+        #expect(parameter.sectionIndex == nil)
+        #expect(parameter.value == "bar")
+      }
+    ),
+    (
+      string: "foo*=utf-8''bar",
+      expect: { @Sendable in
+        let parameter = try #require($0)
+        #expect(parameter.isExtended)
+        #expect(parameter.attribute == "foo")
+        #expect(parameter.sectionIndex == nil)
+        #expect(parameter.value == "bar")
+      }
+    ),
+  ] as Array<ParamterParserTestPair>)
+  func test_initialization(pair: ParamterParserTestPair) throws {
+    try pair.expect(HTTPHeaderFieldParameter(pair.string))
+  }
 }
