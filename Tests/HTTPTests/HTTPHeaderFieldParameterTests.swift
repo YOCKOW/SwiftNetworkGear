@@ -188,11 +188,12 @@ import Testing
   }
 
   @Test func test_listParser() throws {
-    let string = "filename=\"my-file.txt\"; \u{0D}\u{0A}  filename*=UTF-8''%E7%A7%81%E3%81%AE%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB.txt;\u{0D}\u{0A}  my-parameter*0=zero; my-parameter*1=one;"
+    let string = "filename=\"my-file.txt\"; \u{0D}\u{0A}  filename*=UTF-8''%E7%A7%81%E3%81%AE%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB.txt;\u{0D}\u{0A}  my-parameter*0=zero; my-parameter*1=\"-one\";"
     let list = try #require(HTTPHeaderFieldParameterList(string))
 
     #expect(list["filename"]?.value == "私のファイル.txt")
     #expect(list["my-parameter", sectionIndex: 0]?.value == "zero")
-    #expect(list["my-parameter", sectionIndex: 1]?.value == "one")
+    #expect(list["my-parameter", sectionIndex: 1]?.value == "-one")
+    #expect(list.combinedValue(for: "my-parameter") == "zero-one")
   }
 }

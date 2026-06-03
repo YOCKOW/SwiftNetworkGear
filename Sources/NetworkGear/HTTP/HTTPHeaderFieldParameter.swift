@@ -617,6 +617,32 @@ public struct HTTPHeaderFieldParameterList: Sendable {
     return groupedByExtended[true] ?? groupedByExtended[false]
   }
 
+  /// A combined string value that is specified by `attribute`
+  /// and is sectioned into several parameters.
+  ///
+  /// - NOTE:
+  ///     This function returns combined value as long as possible even if some values are missing.
+  public func combinedValue(for attribute: ASCIICaseInsensitiveString) -> String? {
+    guard let groupedBySection = self._groupedParameters[attribute] else {
+      return nil
+    }
+    let sections: [Int: [Bool: HTTPHeaderFieldParameter]] = groupedBySection.reduce(into: [:]) {
+      guard let sectionIndex = $1.key else {
+        return
+      }
+      $0[sectionIndex] = $1.value
+    }
+
+    var result = ""
+    for (_, groupedByExtended) in sections.sorted(by: { $0.key < $1.key }) {
+      guard let value = groupedByExtended[true]?.value ?? groupedByExtended[false]?.value else {
+        continue
+      }
+      result += value
+    }
+    return result
+  }
+
   public init() {
     self.allParameters = []
     self._groupedParameters = [:]
