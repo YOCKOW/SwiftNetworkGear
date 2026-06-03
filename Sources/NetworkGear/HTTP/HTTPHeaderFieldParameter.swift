@@ -576,18 +576,123 @@ extension HTTPHeaderFieldParameter: _InitializableWithParser, LosslessStringConv
 }
 
 
+// MARK: - The List
+
 /// A list of header field parameters.
-public struct HTTPHeaderFieldParameterList {
+public struct HTTPHeaderFieldParameterList: Sendable {
   /// All parameters.
   public private(set) var allParameters: [HTTPHeaderFieldParameter]
 
-  /// A dicrionary: `attribute` -> `sectionIndex` -> parameter
-  private var _parameters: [ASCIICaseInsensitiveString: [Optional<Int>: HTTPHeaderFieldParameter]]
+  /// A dicrionary: `attribute` -> `sectionIndex` -> `isExtended` -> parameter
+  private var _groupedParameters: [
+    ASCIICaseInsensitiveString: [
+      Optional<Int>: [Bool: HTTPHeaderFieldParameter]
+    ]
+  ]
+
+  @inlinable
+  public var isEmpty: Bool {
+    return allParameters.isEmpty
+  }
 
   public mutating func append(_ parameter: HTTPHeaderFieldParameter) {
-    let attribute = parameter.attribute
-    let sectionIndex = parameter.sectionIndex
-    _parameters[attribute, default: [:]][sectionIndex] = parameter
+    _groupedParameters[
+      parameter.attribute, default: [:]
+    ][
+      parameter.sectionIndex, default: [:]
+    ][parameter.isExtended] = parameter
     allParameters.append(parameter)
+  }
+
+  /// Returns the parameter whose attribute is `attribute`.
+  /// An extended parameter is returned if available.
+  public subscript(
+    attribute: ASCIICaseInsensitiveString,
+    sectionIndex sectionIndex: Int? = nil
+  ) -> HTTPHeaderFieldParameter? {
+    guard let groupedBySection = self._groupedParameters[attribute],
+          let groupedByExtended = groupedBySection[sectionIndex] else {
+      return nil
+    }
+    return groupedByExtended[true] ?? groupedByExtended[false]
+  }
+
+  public init() {
+    self.allParameters = []
+    self._groupedParameters = [:]
+  }
+
+  public init<S>(_ parameters: S) where S: Sequence, S.Element == HTTPHeaderFieldParameter {
+    self.init()
+    for parameter in parameters {
+      self.append(parameter)
+    }
+  }
+}
+
+extension HTTPHeaderFieldParameterList: Sequence {
+  public typealias Element = HTTPHeaderFieldParameter
+  public typealias Iterator = Array<Element>.Iterator
+
+  public func makeIterator() -> Array<Element>.Iterator {
+    self.allParameters.makeIterator()
+  }
+}
+
+public struct HTTPHeaderFieldParameterListParser<Input>: StringParser, _UTF8Parser
+where Input: StringProtocol {
+  public typealias Output = HTTPHeaderFieldParameterList
+
+  let string: Input
+  let utf8: Input.UTF8View
+
+  public init(input: Input) {
+    self.string = input
+    self.utf8 = input.utf8
+  }
+
+  public func parse() -> (output: HTTPHeaderFieldParameterList, endIndex: Input.Index)? {
+    var index = utf8.startIndex
+
+    func __consumeSeparator() -> Bool {
+      if let (_, spEndIndex) = LinearWhitespaceParser<Input.SubSequence>.parse(self.string[index...]) {
+        index = spEndIndex
+      }
+      guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isSemicolon) else {
+        return false
+      }
+      if let (_, spEndIndex) = LinearWhitespaceParser<Input.SubSequence>.parse(self.string[index...]) {
+        index = spEndIndex
+      }
+      return true
+    }
+
+    var list = HTTPHeaderFieldParameterList()
+    while index < utf8.endIndex {
+      while __consumeSeparator() {}
+      guard let parameterResult = HTTPHeaderFieldParameterParser<Input.SubSequence>.parse(
+        self.string[index...]
+      ) else {
+        break
+      }
+      list.append(parameterResult.output)
+      index = parameterResult.endIndex
+    }
+
+    guard index > utf8.startIndex else {
+      return nil
+    }
+
+    return (list, index)
+  }
+}
+
+extension HTTPHeaderFieldParameterList: _InitializableWithParser, LosslessStringConvertible {
+  public var description: String {
+    return self.allParameters.map(\.description).joined(separator: "; ")
+  }
+
+  public init?<S>(_ description: S) where S: StringProtocol {
+    self.init(description, parser: HTTPHeaderFieldParameterListParser<S>.self)
   }
 }

@@ -165,6 +165,10 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isHyphen: Bool { self == 0x2D }
 
+  /// `;`
+  @inlinable
+  internal var _isSemicolon: Bool { self == 0x3B }
+
   /// `=`
   @inlinable
   internal var _isEqualSign: Bool { self == 0x3D }
