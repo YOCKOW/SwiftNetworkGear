@@ -20,9 +20,11 @@ import Testing
   }
 
   @Test func test_parser() {
-    let attachment = ContentDisposition("attachment; filename=\"myfile.txt\"")
+    let attachment = ContentDisposition("attachment; filename=\"my-file.txt\"; filename*=UTF-8''%E7%A7%81%E3%81%AE%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB.txt;")
     #expect(attachment.type == .attachment)
-    #expect(attachment.filename == "myfile.txt")
+    #expect(attachment.parameterList?[.filename]?.content == "my-file.txt")
+    #expect(attachment.parameterList?[extended: .filename]?.decodedValue == "私のファイル.txt")
+    #expect(attachment.filename == "私のファイル.txt")
 
     let formData = ContentDisposition("form-data; name=\"field\"")
     #expect(formData.type == .formData)

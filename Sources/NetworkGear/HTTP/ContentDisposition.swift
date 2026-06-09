@@ -15,6 +15,7 @@ public struct ContentDisposition: Sendable {
 
   public typealias DispositionType = ContentDispositionValue
 
+  @available(*, deprecated)
   public typealias ParameterKey = ContentDispositionParameterKey
 
   /// A [Disposition Type](https://datatracker.ietf.org/doc/html/rfc6266#section-4.2).

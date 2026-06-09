@@ -1,5 +1,5 @@
 /* *************************************************************************************************
- IANARegisteredContentDispositionParameterKey.swift
+ HTTPHeaderFieldParameterName+IANARegisteredContentDispositionParameterKey.swift
    © 2020,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
@@ -15,7 +15,7 @@ public final class IANARegisteredContentDispositionParameterKey: HTTPUpdaterDele
   public init() {}
 
   public var identifier: String {
-    return "ContentDispositionParameterKey+IANARegistered"
+    return "HTTPHeaderFieldParameterName+IANARegisteredContentDispositionParameterKey"
   }
   
   public var sourceURLs: Array<URL> {
@@ -33,10 +33,10 @@ public final class IANARegisteredContentDispositionParameterKey: HTTPUpdaterDele
     
     var lines = StringLines()
     
-    let typeName = "ContentDispositionParameterKey"
+    let typeName = "HTTPHeaderFieldParameter.Name"
     lines.append("extension \(typeName) {")
     for name in names {
-      lines.append(String.Line("public static let \(try await name.lowerCamelCase.swiftIdentifier) = \(typeName)(rawValue: \(name.debugDescription))", indentLevel: 1)!)
+      lines.append(String.Line("public static let \(try await name.lowerCamelCase.swiftIdentifier) = \(typeName)(_validatedAttribute: \(name.debugDescription), sectionIndex: nil)", indentLevel: 1)!)
     }
     lines.append("}")
     

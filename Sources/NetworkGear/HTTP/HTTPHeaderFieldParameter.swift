@@ -41,7 +41,8 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
       return "\(attribute.description)*\(String(sectionIndex, radix: 10))"
     }
 
-    fileprivate init(
+    @inlinable
+    internal init(
       _validatedAttribute attribute: ASCIICaseInsensitiveString,
       sectionIndex: Int?
     ) {
@@ -106,7 +107,8 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
 
     public var description: String { baseName.description + "*" }
 
-    fileprivate init(_baseName baseName: Name) {
+    @usableFromInline
+    internal init(_baseName baseName: Name) {
       self.baseName = baseName
     }
   }
@@ -141,6 +143,14 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
       switch self._value {
       case .token(let token): return token.description
       case .quotedString(let quotedString): return quotedString.quotedString
+      }
+    }
+
+    /// A string of the value.
+    public var content: String {
+      switch self._value {
+      case .token(let token): return token._string
+      case .quotedString(let quotedString): return quotedString.content
       }
     }
 
@@ -652,6 +662,19 @@ public struct HTTPHeaderFieldParameterList: Sendable {
       return nil
     }
     return groupedByExtended[true] ?? groupedByExtended[false]
+  }
+
+  public subscript(_ name: HTTPHeaderFieldParameter.Name) -> HTTPHeaderFieldParameter.Value? {
+    return _groupedParameters[name.attribute]?[name.sectionIndex]?[false]?.regularValue
+  }
+
+  public subscript(_ name: HTTPHeaderFieldParameter.ExtendedName) -> HTTPHeaderFieldParameter.ExtendedValue? {
+    return _groupedParameters[name.attribute]?[name.sectionIndex]?[true]?.extendedValue
+  }
+
+  @inlinable
+  public subscript(extended name: HTTPHeaderFieldParameter.Name) -> HTTPHeaderFieldParameter.ExtendedValue? {
+    return self[HTTPHeaderFieldParameter.ExtendedName(_baseName: name)]
   }
 
   /// A combined string value that is specified by `attribute`
