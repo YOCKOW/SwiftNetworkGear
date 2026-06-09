@@ -22,11 +22,10 @@ import Testing
   @Test func test_parser() {
     let attachment = ContentDisposition("attachment; filename=\"myfile.txt\"")
     #expect(attachment.type == .attachment)
-    #expect(attachment.parameters?["filename"] == "myfile.txt")
-
+    #expect(attachment.filename == "myfile.txt")
 
     let formData = ContentDisposition("form-data; name=\"field\"")
     #expect(formData.type == .formData)
-    #expect(formData.parameters?["name"] == "field")
+    #expect(formData.parameterList?["name"]?.value == "field")
   }
 }

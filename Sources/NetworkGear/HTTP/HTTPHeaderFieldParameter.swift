@@ -22,12 +22,17 @@ import yExtensions
 ///     + `foo=bar`
 ///     + `foo="bar"`
 ///     + `foo*=UTF-8''percent-encoded-bar`
-public struct HTTPHeaderFieldParameter: Sendable, Equatable {
+public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
   /// A regular parameter name.
-  public struct Name: Sendable, Equatable, CustomStringConvertible {
+  public struct Name: Sendable, Equatable, Hashable, CustomStringConvertible {
     public let attribute: ASCIICaseInsensitiveString
 
     public let sectionIndex: Int?
+
+    public func hash(into hasher: inout Hasher) {
+      hasher.combine(attribute)
+      hasher.combine(sectionIndex)
+    }
 
     public var description: String {
       guard let sectionIndex = self.sectionIndex else {
@@ -85,7 +90,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable {
   }
 
   /// An extended name.
-  public struct ExtendedName: Sendable, Equatable, CustomStringConvertible {
+  public struct ExtendedName: Sendable, Equatable, Hashable, CustomStringConvertible {
     public let baseName: Name
 
     @inlinable
@@ -93,6 +98,11 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable {
 
     @inlinable
     public var sectionIndex: Int? { baseName.sectionIndex }
+
+    public func hash(into hasher: inout Hasher) {
+      hasher.combine(baseName)
+      hasher.combine(1)
+    }
 
     public var description: String { baseName.description + "*" }
 
@@ -102,8 +112,8 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable {
   }
 
   /// A regular value.
-  public struct Value: Sendable, Equatable, CustomStringConvertible {
-    fileprivate enum _Value: Sendable, Equatable {
+  public struct Value: Sendable, Equatable, Hashable, CustomStringConvertible {
+    fileprivate enum _Value: Sendable, Equatable, Hashable {
       case token(HTTPTokenString)
       case quotedString(QuotedString)
 
@@ -112,6 +122,15 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable {
         case (.token(let lToken), .token(let rToken)): return lToken == rToken
         case (.quotedString(let lQS), .quotedString(let rQS)): return lQS.content == rQS.content
         default: return false
+        }
+      }
+
+      func hash(into hasher: inout Hasher) {
+        switch self {
+        case .token(let token):
+          hasher.combine(token)
+        case .quotedString(let quotedString):
+          hasher.combine(quotedString.content)
         }
       }
     }
@@ -138,7 +157,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable {
     }
   }
 
-  public struct ExtendedValue: Sendable, Equatable, CustomStringConvertible {
+  public struct ExtendedValue: Sendable, Equatable, Hashable, CustomStringConvertible {
     /// String representation of "MIME Charset".
     public let stringEncodingDescription: String
 
@@ -186,7 +205,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable {
     }
   }
 
-  private enum _NameValuePair: Sendable, Equatable {
+  private enum _NameValuePair: Sendable, Equatable, Hashable {
     case regular(name: Name, value: Value)
     case extended(name: ExtendedName, value: ExtendedValue)
   }
@@ -221,6 +240,15 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable {
     }
   }
 
+  public var nameDescription: String {
+    switch _nameValuePair {
+    case .regular(let name, _):
+      return name.description
+    case .extended(let name, _):
+      return name.description
+    }
+  }
+
   /// A regular value.
   /// `nil` is returned if the value is "extended" one.
   public var regularValue: Value? {
@@ -251,6 +279,15 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable {
       }
     case .extended(_, let value):
       return value.decodedValue
+    }
+  }
+
+  public var valueDescription: String {
+    switch _nameValuePair {
+    case .regular(_, let value):
+      return value.description
+    case .extended(_, let value):
+      return value.description
     }
   }
 
@@ -584,7 +621,7 @@ public struct HTTPHeaderFieldParameterList: Sendable {
   public private(set) var allParameters: [HTTPHeaderFieldParameter]
 
   /// A dicrionary: `attribute` -> `sectionIndex` -> `isExtended` -> parameter
-  private var _groupedParameters: [
+  internal private(set) var _groupedParameters: [
     ASCIICaseInsensitiveString: [
       Optional<Int>: [Bool: HTTPHeaderFieldParameter]
     ]
@@ -632,6 +669,9 @@ public struct HTTPHeaderFieldParameterList: Sendable {
       }
       $0[sectionIndex] = $1.value
     }
+    if sections.isEmpty {
+      return nil
+    }
 
     var result = ""
     for (_, groupedByExtended) in sections.sorted(by: { $0.key < $1.key }) {
@@ -665,6 +705,33 @@ extension HTTPHeaderFieldParameterList: Sequence {
   }
 }
 
+internal struct _SemicolonSeparatorParser<Input>: StringParser, _UTF8Parser
+where Input: StringProtocol {
+  typealias Output = Input.SubSequence
+
+  let string: Input
+  let utf8: Input.UTF8View
+  
+  init(input: Input) {
+    self.string = input
+    self.utf8 = input.utf8
+  }
+
+  func parse() -> (output: Input.SubSequence, endIndex: Input.Index)? {
+    var index = utf8.startIndex
+    if let (_, spaceEndIndex) = LinearWhitespaceParser<Input>.parse(self.string) {
+      index = spaceEndIndex
+    }
+    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isSemicolon) else {
+      return nil
+    }
+    if let (_, spaceEndIndex) = LinearWhitespaceParser<Input.SubSequence>.parse(self.string[index...]) {
+      index = spaceEndIndex
+    }
+    return (string[..<index], index)
+  }
+}
+
 public struct HTTPHeaderFieldParameterListParser<Input>: StringParser, _UTF8Parser
 where Input: StringProtocol {
   public typealias Output = HTTPHeaderFieldParameterList
@@ -681,16 +748,11 @@ where Input: StringProtocol {
     var index = utf8.startIndex
 
     func __consumeSeparator() -> Bool {
-      if let (_, spEndIndex) = LinearWhitespaceParser<Input.SubSequence>.parse(self.string[index...]) {
-        index = spEndIndex
+      if let (_, sepEndIndex) = _SemicolonSeparatorParser<Input.SubSequence>.parse(self.string[index...]) {
+        index = sepEndIndex
+        return true
       }
-      guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isSemicolon) else {
-        return false
-      }
-      if let (_, spEndIndex) = LinearWhitespaceParser<Input.SubSequence>.parse(self.string[index...]) {
-        index = spEndIndex
-      }
-      return true
+      return false
     }
 
     var list = HTTPHeaderFieldParameterList()
