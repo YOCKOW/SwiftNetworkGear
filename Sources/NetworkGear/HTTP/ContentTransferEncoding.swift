@@ -26,14 +26,15 @@ public enum ContentTransferEncoding: String, RawRepresentable, Sendable {
 
   @inlinable
   public init?<S>(rawValue: S) where S: StringProtocol {
-    switch rawValue._caseInsensitive {
-    case "7bit": self = .`7bit`
-    case "8bit": self = .`8bit`
-    case "base64": self = .base64
-    case "binary": self = .binary
-    case "quoted-printable": self = .quotedPrintable
-    default: return nil
-    }
+    let caseInsensitive = rawValue._caseInsensitive
+    func __is(_ string: String) -> Bool { caseInsensitive._isEqual(to: string) }
+
+    if __is("7bit") { self = .`7bit` }
+    else if __is("8bit") { self = .`8bit` }
+    else if __is("base64") { self = .base64 }
+    else if __is("binary") { self = .binary }
+    else if __is("quoted-printable") { self = .quotedPrintable }
+    else { return nil }
   }
 }
 

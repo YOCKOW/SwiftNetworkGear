@@ -485,7 +485,7 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
           if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
             return nil
           }
-          return (Value(_validatedString: string[..<index]._caseInsensitive), index)
+          return (Value(_validatedString: string[..<index]._string._caseInsensitive), index)
         }
       }
 
@@ -558,7 +558,7 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
 
         return (
           Extension(
-            _validatedString: string[..<valuesResult.endIndex]._caseInsensitive,
+            _validatedString: string[..<valuesResult.endIndex]._string._caseInsensitive,
             singleton: singleton,
             values: valuesResult.output
           ),
@@ -1032,7 +1032,7 @@ public struct LanguageTagStringParser<Input>: StringParser where Input: StringPr
       return (
         LanguageTagString(
           _validatedString: (
-            extensionsAreCanonicallyOrdered ? string[..<index]._caseInsensitive : nil
+            extensionsAreCanonicallyOrdered ? string[..<index]._string._caseInsensitive : nil
           ),
           parsedTag: .languageTag(
             language: language,
@@ -1048,7 +1048,7 @@ public struct LanguageTagStringParser<Input>: StringParser where Input: StringPr
     } else if let privateUseTagResult = LanguageTagString.PrivateUseTag.Parser<Input>.parse(string) {
       return (
         LanguageTagString(
-          _validatedString: string[..<privateUseTagResult.endIndex]._caseInsensitive,
+          _validatedString: string[..<privateUseTagResult.endIndex]._string._caseInsensitive,
           parsedTag: .privateUseTag(privateUseTagResult.output)
         ),
         privateUseTagResult.endIndex
@@ -1056,7 +1056,7 @@ public struct LanguageTagStringParser<Input>: StringParser where Input: StringPr
     } else if let grandfatheredTagResult = LanguageTagString.GrandfatheredTag.Parser<Input>.parse(string) {
       return (
         LanguageTagString(
-          _validatedString: string[..<grandfatheredTagResult.endIndex]._caseInsensitive,
+          _validatedString: string[..<grandfatheredTagResult.endIndex]._string._caseInsensitive,
           parsedTag: .grandfatheredTag(grandfatheredTagResult.output)
         ),
         grandfatheredTagResult.endIndex

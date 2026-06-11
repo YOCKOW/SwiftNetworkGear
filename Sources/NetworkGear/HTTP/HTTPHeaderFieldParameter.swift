@@ -391,7 +391,7 @@ where Input: StringProtocol {
 
     guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAsterisk) else {
       let name = RegularName(
-        _validatedAttribute: attributeString._caseInsensitive,
+        _validatedAttribute: attributeString._string._caseInsensitive,
         sectionIndex: nil
       )
       return (.regular(name), index)
@@ -404,7 +404,7 @@ where Input: StringProtocol {
       while: \._isDigit
     ) else {
       let baseName = RegularName(
-        _validatedAttribute: attributeString._caseInsensitive,
+        _validatedAttribute: attributeString._string._caseInsensitive,
         sectionIndex: nil
       )
       return (.extended(ExtendedName(_baseName: baseName)), index)
@@ -415,7 +415,7 @@ where Input: StringProtocol {
     }
 
     let baseName = RegularName(
-      _validatedAttribute: attributeString._caseInsensitive,
+      _validatedAttribute: attributeString._string._caseInsensitive,
       sectionIndex: Int(numberString)
     )
     if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAsterisk) {

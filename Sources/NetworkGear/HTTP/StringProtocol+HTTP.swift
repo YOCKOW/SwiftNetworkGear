@@ -371,6 +371,10 @@ extension StringProtocol {
     if case let string as String = self {
       return string
     }
+    if case let substring as Substring = self {
+      return String(substring)
+    }
+    // Never reach here...
     return String(decoding: self.utf8, as: Unicode.UTF8.self)
   }
 }
