@@ -7,6 +7,106 @@
 
 import Foundation
 
+private struct _SetCookieHeaderFieldValueParser<Input>: StringParser,
+                                                        _UTF8Parser where Input: StringProtocol {
+  typealias Output = HTTPCookieProperties
+
+  let string: Input
+  let utf8: Input.UTF8View
+  let url: URL?
+  let removingPercentEncoding: Bool
+
+  init(input: Input, url: URL?, removingPercentEncoding: Bool) {
+    self.string = input
+    self.utf8 = input.utf8
+    self.url = url
+    self.removingPercentEncoding = removingPercentEncoding
+  }
+
+  init(input: Input) {
+    self.init(input: input, url: nil, removingPercentEncoding: true)
+  }
+
+  private struct _NameParser: StringParser, _UTF8Parser {
+    typealias Output = Input.SubSequence.SubSequence
+    let string: Input.SubSequence
+    let utf8: Input.SubSequence.UTF8View
+    init(input: Input.SubSequence) {
+      self.string = input
+      self.utf8 = input.utf8
+    }
+    func parse() -> (output: Output, endIndex: Input.Index)? {
+      var index = utf8.startIndex
+      guard let name = self.parseString(from: &index, while: \._isAvailableInCookieName) else {
+        return nil
+      }
+      return (name, index)
+    }
+  }
+
+  private struct _ValueParser: StringParser, _UTF8Parser {
+    typealias Output = Input.SubSequence.SubSequence
+    let string: Input.SubSequence
+    let utf8: Input.SubSequence.UTF8View
+    init(input: Input.SubSequence) {
+      self.string = input
+      self.utf8 = input.utf8
+    }
+    func parse() -> (output: Output, endIndex: Input.Index)? {
+      var index = utf8.startIndex
+      if let value = self.parseString(from: &index, while: \._isAvailableInCookieValue) {
+        return (value, index)
+      }
+      guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isDoubleQuotationMark) else {
+        return nil
+      }
+      guard let value = self.parseString(from: &index, while: \._isAvailableInCookieValue) else {
+        return nil
+      }
+      guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isDoubleQuotationMark) else {
+        return nil
+      }
+      return (value, index)
+    }
+  }
+
+  func parse() -> (output: HTTPCookieProperties, endIndex: Input.Index)? {
+    // Reference: https://datatracker.ietf.org/doc/html/rfc6265#section-4.1
+
+    var index = utf8.startIndex
+
+    guard let rawName = _NameParser.parse(string, from: &index) else {
+      return nil
+    }
+    guard let name = removingPercentEncoding ? rawName.removingPercentEncoding : rawName._string else {
+      return nil
+    }
+
+    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isEqualSign) else {
+      return nil
+    }
+
+    guard let rawValue = _ValueParser.parse(string, from: &index) else {
+      return nil
+    }
+    guard let value = removingPercentEncoding ? rawValue.removingPercentEncoding : rawValue._string else {
+      return nil
+    }
+
+    let now = Date()
+    var properties = HTTPCookieProperties([:])
+    properties.name = name
+    properties.value = value
+    properties.creationDate = now
+    properties.lastAccessDate = now
+
+
+
+    return (properties, index)
+  }
+}
+
+
 private func _attributes<S>(_ string: S) -> [String:String] where S: StringProtocol {
   let pairs = string.components(separatedBy:";").map { String($0._trimmed) }
   return pairs.reduce(into:[:]) { (result:inout [String:String], string:String) -> Void in

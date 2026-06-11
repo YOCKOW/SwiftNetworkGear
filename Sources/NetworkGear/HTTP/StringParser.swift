@@ -25,6 +25,20 @@ extension StringParser {
     var parser = Self.init(input: input)
     return parser.parse()
   }
+
+  /// Parses `input` from given `index` and returns `output`.
+  /// `index` will be rewritten to the end index if parsing succeeds.
+  @inlinable
+  public static func parse<C>(
+    _ input: C,
+    from index: inout Input.Index
+  ) -> Output? where C: Collection, C.SubSequence == Input {
+    guard let (output, endIndex) = Self.parse(input[index...]) else {
+      return nil
+    }
+    index = endIndex
+    return output
+  }
 }
 
 internal protocol _UTF8Parser: StringParser {
