@@ -29,11 +29,11 @@ where FollowerParser: StringParser,
       Input: StringProtocol {
   typealias Output = FollowerParser.Output
 
-  let string: Input
+  let input: Input
   let utf8: Input.UTF8View
 
   init(input: Input) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
   }
 
@@ -42,7 +42,7 @@ where FollowerParser: StringParser,
     guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isHyphen) else {
       return nil
     }
-    return FollowerParser.parse(string[index...])
+    return FollowerParser.parse(input[index...])
   }
 }
 
@@ -70,11 +70,11 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
       where Input: StringProtocol {
         typealias Output = Input.SubSequence
 
-        let string: Input
+        let input: Input
         let utf8: Input.UTF8View
 
         init(input: Input) {
-          self.string = input
+          self.input = input
           self.utf8 = input.utf8
         }
 
@@ -108,27 +108,27 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
       internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
         typealias Output = ExtendedLanguage
 
-        let string: Input
+        let input: Input
         let utf8: Input.UTF8View
 
         init(input: Input) {
-          self.string = input
+          self.input = input
           self.utf8 = input.utf8
         }
 
         mutating func parse() -> (output: ExtendedLanguage, endIndex: Input.Index)? {
-          guard let first3AlphaResult = _3AlphabetParser<Input>.parse(string) else {
+          guard let first3AlphaResult = _3AlphabetParser<Input>.parse(input) else {
             return nil
           }
 
           func __createResult(endIndex: Input.Index) -> (ExtendedLanguage, Input.Index) {
             return (
-              ExtendedLanguage(ASCIICaseInsensitiveString(String(string[..<endIndex]))),
+              ExtendedLanguage(ASCIICaseInsensitiveString(String(input[..<endIndex]))),
               endIndex
             )
           }
           if let more3AlphaResult = _OneOrTwoHyphenAnd3AlphaParser<Input.SubSequence>.parse(
-            string[first3AlphaResult.endIndex...]
+            input[first3AlphaResult.endIndex...]
           ) {
             return __createResult(endIndex: more3AlphaResult.endIndex)
           } else {
@@ -157,11 +157,11 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
     internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
       typealias Output = Language
 
-      let string: Input
+      let input: Input
       let utf8: Input.UTF8View
 
       init(input: Input) {
-        self.string = input
+        self.input = input
         self.utf8 = input.utf8
       }
 
@@ -179,7 +179,7 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
         }
 
         func __createResult(endIndex: Input.Index) -> (Output, Input.Index) {
-          return (Language(ASCIICaseInsensitiveString(String(string[..<endIndex]))), endIndex)
+          return (Language(ASCIICaseInsensitiveString(String(input[..<endIndex]))), endIndex)
         }
 
         if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
@@ -194,7 +194,7 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
           }
           utf8.formIndex(after: &index)
           guard let extlangResult = ExtendedLanguage.Parser<Input.SubSequence>.parse(
-            string[index...]
+            input[index...]
           ) else {
             return __createResult(endIndex: shortestCodeEndIndex)
           }
@@ -231,11 +231,11 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
     internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
       typealias Output = Script
 
-      let string: Input
+      let input: Input
       let utf8: Input.UTF8View
 
       init(input: Input) {
-        self.string = input
+        self.input = input
         self.utf8 = input.utf8
       }
 
@@ -280,11 +280,11 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
     internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
       typealias Output = Region
 
-      let string: Input
+      let input: Input
       let utf8: Input.UTF8View
 
       init(input: Input) {
-        self.string = input
+        self.input = input
         self.utf8 = input.utf8
       }
 
@@ -342,11 +342,11 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
     internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
       typealias Output = Variant
 
-      let string: Input
+      let input: Input
       let utf8: Input.UTF8View
 
       init(input: Input) {
-        self.string = input
+        self.input = input
         self.utf8 = input.utf8
       }
 
@@ -378,7 +378,7 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
           if let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isAlphanumeric) {
             return nil
           }
-          return (Variant(ASCIICaseInsensitiveString(String(string[..<index]))), index)
+          return (Variant(ASCIICaseInsensitiveString(String(input[..<index]))), index)
         }
       }
     }
@@ -464,11 +464,11 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
       internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
         typealias Output = Value
 
-        let string: Input
+        let input: Input
         let utf8: Input.UTF8View
 
         init(input: Input) {
-          self.string = input
+          self.input = input
           self.utf8 = input.utf8
         }
 
@@ -524,11 +524,11 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
     internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
       typealias Output = Extension
 
-      let string: Input
+      let input: Input
       let utf8: Input.UTF8View
 
       init(input: Input) {
-        self.string = input
+        self.input = input
         self.utf8 = input.utf8
       }
 
@@ -550,7 +550,7 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
             Value.Parser<Input.SubSequence.SubSequence.SubSequence>,
             Input.SubSequence.SubSequence
           >
-        >(input: string[index...])
+        >(input: input[index...])
 
         guard let valuesResult = valuesParser.parse() else {
           return nil
@@ -558,7 +558,7 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
 
         return (
           Extension(
-            _validatedString: string[..<valuesResult.endIndex]._string._caseInsensitive,
+            _validatedString: input[..<valuesResult.endIndex]._string._caseInsensitive,
             singleton: singleton,
             values: valuesResult.output
           ),
@@ -632,11 +632,11 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
     internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
       typealias Output = PrivateUseTag
 
-      let string: Input
+      let input: Input
       let utf8: Input.UTF8View
 
       init(input: Input) {
-        self.string = input
+        self.input = input
         self.utf8 = input.utf8
       }
 
@@ -675,7 +675,7 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
 
         guard let _ = __consumeNextTag() else { return nil }
         while let _ = __consumeNextTag() {}
-        return (PrivateUseTag(ASCIICaseInsensitiveString(String(string[..<index]))), index)
+        return (PrivateUseTag(ASCIICaseInsensitiveString(String(input[..<index]))), index)
       }
     } // PrivateUseTag.Parser
 

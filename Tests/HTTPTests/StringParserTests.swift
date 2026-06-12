@@ -10,10 +10,10 @@ import Testing
 
 struct DigitParser<Input: StringProtocol>: StringParser, _UTF8Parser {
   typealias Output = Int
-  let string: Input
+  let input: Input
   let utf8: Input.UTF8View
   init(input: Input) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
   }
   mutating func parse() -> (output: Int, endIndex: Input.Index)? {
@@ -21,7 +21,7 @@ struct DigitParser<Input: StringProtocol>: StringParser, _UTF8Parser {
     guard let parsedResult = self.parseString(from: &index, while: \._isDigit) else {
       return nil
     }
-    return (Int(String(string[..<parsedResult.endIndex]))!, parsedResult.endIndex)
+    return (Int(String(input[..<parsedResult.endIndex]))!, parsedResult.endIndex)
   }
 }
 

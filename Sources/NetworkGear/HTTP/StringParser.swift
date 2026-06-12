@@ -42,12 +42,12 @@ extension StringParser {
 }
 
 internal protocol _UTF8Parser: StringParser {
-  var string: Input { get }
+  var input: Input { get }
   var utf8: Input.UTF8View { get }
 }
 
 extension _UTF8Parser {
-  var utf8: Input.UTF8View { self.string.utf8 }
+  var utf8: Input.UTF8View { self.input.utf8 }
 }
 
 extension _UTF8Parser {
@@ -88,7 +88,7 @@ extension _UTF8Parser {
       currentIndex = startIndex
       return nil
     }
-    return self.string[startIndex..<currentIndex]
+    return self.input[startIndex..<currentIndex]
   }
 
   @inlinable
@@ -198,11 +198,11 @@ extension FixedWidthInteger {
 public struct HTTPTokenParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = HTTPTokenString
 
-  internal let string: Input
+  internal let input: Input
   internal let utf8: Input.UTF8View
 
   public init(input: Input) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
   }
 
@@ -230,11 +230,11 @@ public struct HTTPTokenParser<Input>: StringParser, _UTF8Parser where Input: Str
 public struct CRLFParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = Input.SubSequence
 
-  let string: Input
+  let input: Input
   let utf8: Input.UTF8View
 
   public init(input: Input) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
   }
 
@@ -246,7 +246,7 @@ public struct CRLFParser<Input>: StringParser, _UTF8Parser where Input: StringPr
     guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isLineFeed) else {
       return nil
     }
-    return (string[..<index], index)
+    return (input[..<index], index)
   }
 }
 
@@ -257,11 +257,11 @@ public struct CRLFParser<Input>: StringParser, _UTF8Parser where Input: StringPr
 public struct LinearWhitespaceParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = Input.SubSequence
 
-  let string: Input
+  let input: Input
   let utf8: Input.UTF8View
 
   public init(input: Input) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
   }
 
@@ -284,7 +284,7 @@ public struct LinearWhitespaceParser<Input>: StringParser, _UTF8Parser where Inp
 
       let endIndexOfWSP = index
       guard let (_, endIndexOfCRLF) = CRLFParser<Input.SubSequence>.parse(
-        string[endIndexOfWSP...]
+        input[endIndexOfWSP...]
       ) else {
         break
       }
@@ -299,7 +299,7 @@ public struct LinearWhitespaceParser<Input>: StringParser, _UTF8Parser where Inp
       return nil
     }
 
-    return (string[..<index], index)
+    return (input[..<index], index)
   }
 }
 
@@ -394,11 +394,11 @@ public struct ListParser<Input, ElementParser>: StringParser, _UTF8Parser
 where Input: StringProtocol, ElementParser: StringParser, ElementParser.Input == Input.SubSequence {
   public typealias Output = [ElementParser.Output]
 
-  internal let string: Input
+  internal let input: Input
   internal let utf8: Input.UTF8View
 
   public init(input: Input) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
   }
 
@@ -422,7 +422,7 @@ where Input: StringProtocol, ElementParser: StringParser, ElementParser.Input ==
     }
 
     while true {
-      var parser = ElementParser(input: string[index...])
+      var parser = ElementParser(input: input[index...])
       if let (element, endIndex) = parser.parse() {
         elements.append(element)
         index = endIndex

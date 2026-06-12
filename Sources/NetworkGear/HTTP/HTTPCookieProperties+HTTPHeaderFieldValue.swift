@@ -11,13 +11,13 @@ private struct _SetCookieHeaderFieldValueParser<Input>: StringParser,
                                                         _UTF8Parser where Input: StringProtocol {
   typealias Output = HTTPCookieProperties
 
-  let string: Input
+  let input: Input
   let utf8: Input.UTF8View
   let url: URL?
   let removingPercentEncoding: Bool
 
   init(input: Input, url: URL?, removingPercentEncoding: Bool) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
     self.url = url
     self.removingPercentEncoding = removingPercentEncoding
@@ -29,10 +29,10 @@ private struct _SetCookieHeaderFieldValueParser<Input>: StringParser,
 
   private struct _NameParser: StringParser, _UTF8Parser {
     typealias Output = Input.SubSequence.SubSequence
-    let string: Input.SubSequence
+    let input: Input.SubSequence
     let utf8: Input.SubSequence.UTF8View
     init(input: Input.SubSequence) {
-      self.string = input
+      self.input = input
       self.utf8 = input.utf8
     }
     func parse() -> (output: Output, endIndex: Input.Index)? {
@@ -46,10 +46,10 @@ private struct _SetCookieHeaderFieldValueParser<Input>: StringParser,
 
   private struct _ValueParser: StringParser, _UTF8Parser {
     typealias Output = Input.SubSequence.SubSequence
-    let string: Input.SubSequence
+    let input: Input.SubSequence
     let utf8: Input.SubSequence.UTF8View
     init(input: Input.SubSequence) {
-      self.string = input
+      self.input = input
       self.utf8 = input.utf8
     }
     func parse() -> (output: Output, endIndex: Input.Index)? {
@@ -75,7 +75,7 @@ private struct _SetCookieHeaderFieldValueParser<Input>: StringParser,
 
     var index = utf8.startIndex
 
-    guard let rawName = _NameParser.parse(string, from: &index) else {
+    guard let rawName = _NameParser.parse(input, from: &index) else {
       return nil
     }
     guard let name = removingPercentEncoding ? rawName.removingPercentEncoding : rawName._string else {
@@ -86,7 +86,7 @@ private struct _SetCookieHeaderFieldValueParser<Input>: StringParser,
       return nil
     }
 
-    guard let rawValue = _ValueParser.parse(string, from: &index) else {
+    guard let rawValue = _ValueParser.parse(input, from: &index) else {
       return nil
     }
     guard let value = removingPercentEncoding ? rawValue.removingPercentEncoding : rawValue._string else {

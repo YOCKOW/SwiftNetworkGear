@@ -159,16 +159,16 @@ extension CacheControlDirective {
   public struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
     public typealias Output = CacheControlDirective
 
-    let string: Input
+    let input: Input
     let utf8: Input.UTF8View
 
     public init(input: Input) {
-      self.string = input
+      self.input = input
       self.utf8 = input.utf8
     }
 
     public mutating func parse() -> (output: CacheControlDirective, endIndex: Input.Index)? {
-      guard let (name, nameEndIndex) = HTTPTokenParser<Input>.parse(string) else {
+      guard let (name, nameEndIndex) = HTTPTokenParser<Input>.parse(input) else {
         return nil
       }
 
@@ -188,7 +188,7 @@ extension CacheControlDirective {
           return nil
         }
 
-        let argumentString = string[currentIndex...]
+        let argumentString = input[currentIndex...]
         PARSE_QUOTED_STRING: if allowQuotedString {
           guard let (quotedString, argumentEndIndex) = QuotedStringParser<Input.SubSequence>.parse(argumentString) else {
             break PARSE_QUOTED_STRING

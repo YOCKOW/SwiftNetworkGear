@@ -146,11 +146,11 @@ public struct QuotedString: Sendable {
 public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = QuotedString
 
-  internal let string: Input
+  internal let input: Input
   internal let utf8: Input.UTF8View
 
   public init(input: Input) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
   }
 
@@ -188,7 +188,7 @@ public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: 
         escaped = false
         contentUTF8.append(codeUnit)
       } else if codeUnit._isDoubleQuotationMark {
-        let quotedString = String(self.string[..<index])
+        let quotedString = String(self.input[..<index])
         let content = String(decoding: contentUTF8, as: Unicode.UTF8.self)
         _result = (
           output: QuotedString(quotedString: quotedString, content: content),

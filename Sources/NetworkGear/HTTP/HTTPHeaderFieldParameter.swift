@@ -371,11 +371,11 @@ where Input: StringProtocol {
   typealias RegularName = HTTPHeaderFieldParameter.Name
   typealias ExtendedName = HTTPHeaderFieldParameter.ExtendedName
 
-  let string: Input
+  let input: Input
   let utf8: Input.UTF8View
 
   init(input: Input) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
   }
 
@@ -485,11 +485,11 @@ public struct ExtendedParameterValueParser<Input>: StringParser,
                                                    _UTF8Parser where Input: StringProtocol {
   public typealias Output = HTTPHeaderFieldParameter.ExtendedValue
 
-  let string: Input
+  let input: Input
   let utf8: Input.UTF8View
 
   public init(input: Input) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
   }
 
@@ -507,7 +507,7 @@ public struct ExtendedParameterValueParser<Input>: StringParser,
     }
 
     var languageTagDescription: LanguageTagString? = nil
-    if let langTagResult = LanguageTagStringParser<Input.SubSequence>.parse(string[index...]) {
+    if let langTagResult = LanguageTagStringParser<Input.SubSequence>.parse(input[index...]) {
       languageTagDescription = langTagResult.output
       index = langTagResult.endIndex
     }
@@ -548,16 +548,16 @@ public class HTTPHeaderFieldParameterParser<Input>: @unchecked Sendable, StringP
 where Input: StringProtocol {
   public typealias Output = HTTPHeaderFieldParameter
 
-  let string: Input
+  let input: Input
   let utf8: Input.UTF8View
 
   public required init(input: Input) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
   }
 
   private func _parseName() -> (name: _ParameterName, endIndex: Input.Index)? {
-    guard let (name, endIndex) =  _HTTPHeaderFieldParameterNameParser<Input>.parse(self.string) else {
+    guard let (name, endIndex) =  _HTTPHeaderFieldParameterNameParser<Input>.parse(self.input) else {
       return nil
     }
     return (name, endIndex)
@@ -565,7 +565,7 @@ where Input: StringProtocol {
 
   public final class MIMECompatible: HTTPHeaderFieldParameterParser, @unchecked Sendable {
     override func _parseName() -> (name: _ParameterName, endIndex: Input.Index)? {
-      guard let (name, endIndex) = _MIMECompatibleParameterNameParser<Input>.parse(self.string) else {
+      guard let (name, endIndex) = _MIMECompatibleParameterNameParser<Input>.parse(self.input) else {
         return nil
       }
       return (name, endIndex)
@@ -585,7 +585,7 @@ where Input: StringProtocol {
     switch name {
     case .regular(let name):
       guard let (value, endIndex) = HTTPHeaderFieldParameterValueParser<Input.SubSequence>.parse(
-        self.string[index...]
+        self.input[index...]
       ) else {
         return nil
       }
@@ -595,7 +595,7 @@ where Input: StringProtocol {
       )
     case .extended(let extendedName):
       guard let (extendedValue, endIndex) = ExtendedParameterValueParser<Input.SubSequence>.parse(
-        self.string[index...]
+        self.input[index...]
       ) else {
         return nil
       }
@@ -732,26 +732,26 @@ internal struct _SemicolonSeparatorParser<Input>: StringParser, _UTF8Parser
 where Input: StringProtocol {
   typealias Output = Input.SubSequence
 
-  let string: Input
+  let input: Input
   let utf8: Input.UTF8View
   
   init(input: Input) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
   }
 
   func parse() -> (output: Input.SubSequence, endIndex: Input.Index)? {
     var index = utf8.startIndex
-    if let (_, spaceEndIndex) = LinearWhitespaceParser<Input>.parse(self.string) {
+    if let (_, spaceEndIndex) = LinearWhitespaceParser<Input>.parse(self.input) {
       index = spaceEndIndex
     }
     guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isSemicolon) else {
       return nil
     }
-    if let (_, spaceEndIndex) = LinearWhitespaceParser<Input.SubSequence>.parse(self.string[index...]) {
+    if let (_, spaceEndIndex) = LinearWhitespaceParser<Input.SubSequence>.parse(self.input[index...]) {
       index = spaceEndIndex
     }
-    return (string[..<index], index)
+    return (input[..<index], index)
   }
 }
 
@@ -759,11 +759,11 @@ public struct HTTPHeaderFieldParameterListParser<Input>: StringParser, _UTF8Pars
 where Input: StringProtocol {
   public typealias Output = HTTPHeaderFieldParameterList
 
-  let string: Input
+  let input: Input
   let utf8: Input.UTF8View
 
   public init(input: Input) {
-    self.string = input
+    self.input = input
     self.utf8 = input.utf8
   }
 
@@ -771,7 +771,7 @@ where Input: StringProtocol {
     var index = utf8.startIndex
 
     func __consumeSeparator() -> Bool {
-      if let (_, sepEndIndex) = _SemicolonSeparatorParser<Input.SubSequence>.parse(self.string[index...]) {
+      if let (_, sepEndIndex) = _SemicolonSeparatorParser<Input.SubSequence>.parse(self.input[index...]) {
         index = sepEndIndex
         return true
       }
@@ -782,7 +782,7 @@ where Input: StringProtocol {
     while index < utf8.endIndex {
       while __consumeSeparator() {}
       guard let parameterResult = HTTPHeaderFieldParameterParser<Input.SubSequence>.parse(
-        self.string[index...]
+        self.input[index...]
       ) else {
         break
       }
