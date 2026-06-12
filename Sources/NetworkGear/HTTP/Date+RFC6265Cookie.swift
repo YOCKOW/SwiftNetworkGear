@@ -61,12 +61,7 @@ internal struct WeekdayParser<Input>: StringParser,
       __parseDayIfPossible()
       return (.friday, index)
     } else if let _ = self.parseASCIICaseInsensitivePrefix("sat", from: &index) {
-      let endIndexOfSat = index
-      if let _ = self.parseASCIICaseInsensitivePrefix("ur", from: &index) {
-        __parseDayIfPossible()
-      } else {
-        index = endIndexOfSat
-      }
+      _ = self.parseASCIICaseInsensitivePrefix("urday", from: &index)
       return (.saturday, index)
     } else {
       return nil
@@ -79,6 +74,27 @@ extension Weekday: _InitializableWithParser {
     self.init(string, parser: WeekdayParser<S>.self)
   }
 }
+
+//internal enum Month: Int {
+//  case january = 1
+//  case february = 2
+//  case march = 3
+//  case april = 4
+//  case may = 5
+//  case june = 6
+//  case july = 7
+//  case august = 8
+//  case september = 9
+//  case october = 10
+//  case november = 11
+//  case december = 12
+//}
+
+//internal struct MonthNameParser<Input>: StringParser, _InputAccessibleParser where Input: StringProtocol {
+//  typealias Output = Month
+//  let input: Input
+//
+//}
 
 
 private extension Unicode.Scalar {

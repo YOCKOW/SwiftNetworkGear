@@ -48,7 +48,7 @@ import yExtensions
 
     #expect(Weekday("Sat") == .saturday)
     #expect(Weekday("Satu").isNil)
-    #expect(Weekday("Satu").isNil)
+    #expect(Weekday("Satur").isNil)
     #expect(Weekday("Saturday") == .saturday)
   }
 
