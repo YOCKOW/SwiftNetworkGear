@@ -60,6 +60,11 @@ extension ASCIICaseInsensitiveStringProtocol {
     }
     return myIndex
   }
+
+  @usableFromInline
+  internal func _endIndex<S>(ofPrefix prefix: S) -> String.Index? where S: ASCIICaseInsensitiveStringProtocol {
+    return self._endIndex(ofPrefix: prefix._string)
+  }
 }
 
 /// A string that is always compared to another string with

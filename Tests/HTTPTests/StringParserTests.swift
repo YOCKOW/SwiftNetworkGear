@@ -51,6 +51,33 @@ struct HiraganaParser<Input: StringProtocol>: StringParser {
 typealias _DigitHiraganaParser<Input> = CombinedParser<Input, DigitParser<Input>, HiraganaParser<Input.SubSequence>> where Input: StringProtocol
 
 @Suite struct StringParserTests {
+  @Test func test_prefixParser() throws {
+    struct __Parser: _InputAccessibleParser {
+      typealias Input = String
+      typealias Output = Substring
+      let input: String
+      init(input: String) {
+        self.input = input
+      }
+      mutating func parse() -> (output: Substring, endIndex: String.Index)? {
+        var index = input.startIndex
+        guard let prefix = self.parseASCIICaseInsensitivePrefix("prefix", from: &index) else {
+          return nil
+        }
+        return (prefix, index)
+      }
+    }
+
+    #expect(__Parser.parse("").isNil)
+    #expect(__Parser.parse("foo-bar-baz").isNil)
+    #expect(!__Parser.parse("prefix").isNil)
+
+    let string = "PREFIX-SUFFIX"
+    let result = try #require(__Parser.parse(string))
+    #expect(result.output == "PREFIX")
+    #expect(string[result.endIndex...] == "-SUFFIX")
+  }
+
   @Test func test_LinearWhitespace() throws {
     let CR = "\u{0D}"
     let LF = "\u{0A}"

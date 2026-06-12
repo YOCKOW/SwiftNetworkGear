@@ -41,7 +41,34 @@ extension StringParser {
   }
 }
 
-internal protocol _UTF8Parser: StringParser {
+internal protocol _InputAccessibleParser: StringParser {
+  var input: Input { get }
+}
+
+extension _InputAccessibleParser {
+  @inlinable
+  func parseASCIICaseInsensitivePrefix<S>(
+    _ prefix: S,
+    from index: inout Input.Index
+  ) -> Input.SubSequence? where S: StringProtocol {
+    let startIndex = index
+    guard let endIndex = self.input[index...]._caseInsensitive._endIndex(ofPrefix: prefix) else {
+      return nil
+    }
+    index = endIndex
+    return self.input[startIndex..<endIndex]
+  }
+
+  @inlinable
+  func parseASCIICaseInsensitivePrefix<S>(
+    _ prefix: S,
+    from index: inout Input.Index
+  ) -> Input.SubSequence? where S: ASCIICaseInsensitiveStringProtocol {
+    return self.parseASCIICaseInsensitivePrefix(prefix._string, from: &index)
+  }
+}
+
+internal protocol _UTF8Parser: _InputAccessibleParser {
   var input: Input { get }
   var utf8: Input.UTF8View { get }
 }
