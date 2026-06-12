@@ -1,12 +1,85 @@
 /* *************************************************************************************************
  Date+RFC6265Cookie.swift
-   © 2017-2018,2023 YOCKOW.
+   © 2017-2018,2023,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
 import Foundation
 import yExtensions
+
+/// Day of the week.
+internal enum Weekday: Sendable, Equatable, Hashable {
+  case sunday
+  case monday
+  case tuesday
+  case wednesday
+  case thursday
+  case friday
+  case saturday
+}
+
+internal struct WeekdayParser<Input>: StringParser,
+                                      _InputAccessibleParser where Input: StringProtocol {
+  typealias Output = Weekday
+  let input: Input
+  init(input: Input) {
+    self.input = input
+  }
+
+  func parse() -> (output: Weekday, endIndex: Input.Index)? {
+    var index = input.startIndex
+
+    func __parseDayIfPossible()  {
+      _ = self.parseASCIICaseInsensitivePrefix("day", from: &index)
+    }
+
+    if let _ = self.parseASCIICaseInsensitivePrefix("sun", from: &index) {
+      __parseDayIfPossible()
+      return (.sunday, index)
+    } else if let _ = self.parseASCIICaseInsensitivePrefix("mon", from: &index) {
+      __parseDayIfPossible()
+      return (.monday, index)
+    } else if let _ = self.parseASCIICaseInsensitivePrefix("tue", from: &index) {
+      if let _ = self.parseASCIICaseInsensitivePrefix("s", from: &index) {
+        __parseDayIfPossible()
+      }
+      return (.tuesday, index)
+    } else if let _ = self.parseASCIICaseInsensitivePrefix("wed", from: &index) {
+      if let _ = self.parseASCIICaseInsensitivePrefix("nes", from: &index) {
+        __parseDayIfPossible()
+      }
+      return (.wednesday, index)
+    } else if let _ = self.parseASCIICaseInsensitivePrefix("thu", from: &index) {
+      // Accept "Thur" too.
+      if let _ = self.parseASCIICaseInsensitivePrefix("r", from: &index),
+         let _ = self.parseASCIICaseInsensitivePrefix("s", from: &index) {
+        __parseDayIfPossible()
+      }
+      return (.thursday, index)
+    } else if let _ = self.parseASCIICaseInsensitivePrefix("fri", from: &index) {
+      __parseDayIfPossible()
+      return (.friday, index)
+    } else if let _ = self.parseASCIICaseInsensitivePrefix("sat", from: &index) {
+      let endIndexOfSat = index
+      if let _ = self.parseASCIICaseInsensitivePrefix("ur", from: &index) {
+        __parseDayIfPossible()
+      } else {
+        index = endIndexOfSat
+      }
+      return (.saturday, index)
+    } else {
+      return nil
+    }
+  }
+}
+
+extension Weekday: _InitializableWithParser {
+  public init?<S>(_ string: S) where S: StringProtocol {
+    self.init(string, parser: WeekdayParser<S>.self)
+  }
+}
+
 
 private extension Unicode.Scalar {
   var _isCookieDateSeparator: Bool {

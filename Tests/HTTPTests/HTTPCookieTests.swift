@@ -13,8 +13,45 @@ import FoundationNetworking
 #endif
 import NetworkGear
 import Testing
+import yExtensions
 
 @Suite struct HTTPCookieTests {
+  @Test func test_WeekdayParser() {
+    #expect(Weekday("foo").isNil)
+
+    #expect(Weekday("Sun") == .sunday)
+    #expect(Weekday("Sund").isNil)
+    #expect(Weekday("Sunday") == .sunday)
+
+    #expect(Weekday("Mon") == .monday)
+    #expect(Weekday("Mond").isNil)
+    #expect(Weekday("Monday") == .monday)
+
+    #expect(Weekday("Tue") == .tuesday)
+    #expect(Weekday("Tues") == .tuesday)
+    #expect(Weekday("Tuesd").isNil)
+    #expect(Weekday("Tuesday") == .tuesday)
+
+    #expect(Weekday("Wed") == .wednesday)
+    #expect(Weekday("Wedne").isNil)
+    #expect(Weekday("Wednesday") == .wednesday)
+
+    #expect(Weekday("Thu") == .thursday)
+    #expect(Weekday("Thur") == .thursday)
+    #expect(Weekday("Thurs") == .thursday)
+    #expect(Weekday("Thursd").isNil)
+    #expect(Weekday("Thursday") == .thursday)
+
+    #expect(Weekday("Fri") == .friday)
+    #expect(Weekday("Frid").isNil)
+    #expect(Weekday("Friday") == .friday)
+
+    #expect(Weekday("Sat") == .saturday)
+    #expect(Weekday("Satu").isNil)
+    #expect(Weekday("Satu").isNil)
+    #expect(Weekday("Saturday") == .saturday)
+  }
+
   @Test func test_date() throws {
     let rfc1123_string = "Mon, 03 Oct 1983 16:21:09 GMT"
     let traditional_string = "Mon, 03-Oct-1983 16:21:09 GMT"
