@@ -8,6 +8,8 @@
 import Foundation
 import yExtensions
 
+// MARK: - Day of the week
+
 /// Day of the week.
 internal enum Weekday: Sendable, Equatable, Hashable {
   case sunday
@@ -75,26 +77,78 @@ extension Weekday: _InitializableWithParser {
   }
 }
 
-//internal enum Month: Int {
-//  case january = 1
-//  case february = 2
-//  case march = 3
-//  case april = 4
-//  case may = 5
-//  case june = 6
-//  case july = 7
-//  case august = 8
-//  case september = 9
-//  case october = 10
-//  case november = 11
-//  case december = 12
-//}
+// MARK: - Month
 
-//internal struct MonthNameParser<Input>: StringParser, _InputAccessibleParser where Input: StringProtocol {
-//  typealias Output = Month
-//  let input: Input
-//
-//}
+internal enum Month: Int {
+  case january = 1
+  case february = 2
+  case march = 3
+  case april = 4
+  case may = 5
+  case june = 6
+  case july = 7
+  case august = 8
+  case september = 9
+  case october = 10
+  case november = 11
+  case december = 12
+}
+
+internal struct MonthNameParser<Input>: StringParser, _InputAccessibleParser where Input: StringProtocol {
+  typealias Output = Month
+
+  let input: Input
+
+  init(input: Input) {
+    self.input = input
+  }
+
+  func parse() -> (output: Month, endIndex: Input.Index)? {
+    var index = input.startIndex
+
+    func __parse(prefix: String, suffix: String) -> Bool {
+      guard let _ = self.parseASCIICaseInsensitivePrefix(prefix, from: &index) else {
+        return false
+      }
+      _ = self.parseASCIICaseInsensitivePrefix(suffix, from: &index)
+      return true
+    }
+
+    if __parse(prefix: "jan", suffix: "uary") {
+      return (.january, index)
+    } else if __parse(prefix: "feb", suffix: "ruary") {
+      return (.february, index)
+    } else if __parse(prefix: "mar", suffix: "ch") {
+      return (.march, index)
+    } else if __parse(prefix: "apr", suffix: "il") {
+      return (.april, index)
+    } else if __parse(prefix: "may", suffix: "") {
+      return (.may, index)
+    } else if __parse(prefix: "jun", suffix: "e") {
+      return (.june, index)
+    } else if __parse(prefix: "jul", suffix: "y") {
+      return (.july, index)
+    } else if __parse(prefix: "aug", suffix: "ust") {
+      return (.august, index)
+    }  else if __parse(prefix: "sep", suffix: "tember") {
+      return (.september, index)
+    } else if __parse(prefix: "oct", suffix: "ober") {
+      return (.october, index)
+    } else if __parse(prefix: "nov", suffix: "ember") {
+      return (.november, index)
+    } else if __parse(prefix: "dec", suffix: "ember") {
+      return (.december, index)
+    }
+
+    return nil
+  }
+}
+
+extension Month: _InitializableWithParser {
+  init?<S>(_ string: S) where S: StringProtocol {
+    self.init(string, parser: MonthNameParser<S>.self)
+  }
+}
 
 
 private extension Unicode.Scalar {

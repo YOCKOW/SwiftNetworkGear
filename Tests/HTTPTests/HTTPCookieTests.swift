@@ -52,6 +52,57 @@ import yExtensions
     #expect(Weekday("Saturday") == .saturday)
   }
 
+  @Test func test_MonthNameParser() {
+    #expect(Month("foo").isNil)
+
+    #expect(Month("Jan") == .january)
+    #expect(Month("Janu").isNil)
+    #expect(Month("January") == .january)
+
+    #expect(Month("Feb") == .february)
+    #expect(Month("Febr").isNil)
+    #expect(Month("February") == .february)
+
+    #expect(Month("Mar") == .march)
+    #expect(Month("Marc").isNil)
+    #expect(Month("March") == .march)
+
+    #expect(Month("Apr") == .april)
+    #expect(Month("Apri").isNil)
+    #expect(Month("April") == .april)
+
+    #expect(Month("May") == .may)
+    #expect(Month("Mayday").isNil)
+
+    #expect(Month("Jun") == .june)
+    #expect(Month("Junee").isNil)
+    #expect(Month("June") == .june)
+
+    #expect(Month("Jul") == .july)
+    #expect(Month("Juli").isNil)
+    #expect(Month("July") == .july)
+
+    #expect(Month("Aug") == .august)
+    #expect(Month("Augu").isNil)
+    #expect(Month("August") == .august)
+
+    #expect(Month("Sep") == .september)
+    #expect(Month("Sept").isNil)
+    #expect(Month("September") == .september)
+
+    #expect(Month("Oct") == .october)
+    #expect(Month("Octo").isNil)
+    #expect(Month("October") == .october)
+
+    #expect(Month("Nov") == .november)
+    #expect(Month("Nove").isNil)
+    #expect(Month("November") == .november)
+
+    #expect(Month("Dec") == .december)
+    #expect(Month("Dece").isNil)
+    #expect(Month("December") == .december)
+  }
+
   @Test func test_date() throws {
     let rfc1123_string = "Mon, 03 Oct 1983 16:21:09 GMT"
     let traditional_string = "Mon, 03-Oct-1983 16:21:09 GMT"
