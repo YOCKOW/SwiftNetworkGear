@@ -95,16 +95,6 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
         }
       } // _3AlphabetParser
 
-      private final class _OneOrTwoHyphenAnd3AlphaParser<Input>: RepetitionParser<
-        Input,
-        _HyphenFollowedBy<_3AlphabetParser<Input.SubSequence>, Input.SubSequence>
-      > where Input: StringProtocol {
-        override var maxCount: Int {
-          get { 2 }
-          set { super.maxCount = 2 }
-        }
-      } // _OneOrTwoHyphenAnd3AlphaParser
-
       internal struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
         typealias Output = ExtendedLanguage
 
@@ -127,9 +117,15 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
               endIndex
             )
           }
-          if let more3AlphaResult = _OneOrTwoHyphenAnd3AlphaParser<Input.SubSequence>.parse(
-            input[first3AlphaResult.endIndex...]
-          ) {
+
+          var more3AlphaParser = RepetitionParser<
+            Input.SubSequence,
+            _HyphenFollowedBy<
+              _3AlphabetParser<Input.SubSequence.SubSequence>,
+              Input.SubSequence.SubSequence
+            >
+          >(input: input[first3AlphaResult.endIndex...], minCount: 1, maxCount: 2)
+          if let more3AlphaResult = more3AlphaParser.parse() {
             return __createResult(endIndex: more3AlphaResult.endIndex)
           } else {
             var index = first3AlphaResult.endIndex
@@ -544,7 +540,7 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
 
         let singleton = Singleton(_validatedValue: singletonByte)
 
-        let valuesParser = RepetitionParser<
+        var valuesParser = RepetitionParser<
           Input.SubSequence,
           _HyphenFollowedBy<
             Value.Parser<Input.SubSequence.SubSequence.SubSequence>,

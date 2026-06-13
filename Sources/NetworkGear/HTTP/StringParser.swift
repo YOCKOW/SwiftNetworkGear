@@ -11,8 +11,12 @@ import yExtensions
 public protocol StringParser<Input, Output> where Input: StringProtocol {
   associatedtype Input
   associatedtype Output
+  associatedtype Configuration = Never
 
-  /// Initializes with `input` which is a target of the parser.
+  /// Creates a parser for `input` with `configuration`.
+  init(input: Input, configuration: Configuration?)
+
+  /// Creates a parser for `input` without configuration.
   init(input: Input)
 
   /// Parse the string which is passed when initialized.
@@ -20,9 +24,29 @@ public protocol StringParser<Input, Output> where Input: StringProtocol {
 }
 
 extension StringParser {
+  public init(input: Input) {
+    self.init(input: input, configuration: nil)
+  }
+}
+
+extension StringParser where Configuration == Never {
+  @available(*, unavailable, message: "Required `init(input: Input)` must be implemented in each type.")
+  public init(input: Input) {
+    fatalError()
+  }
+
+  public init(input: Input, configuration: Configuration?) {
+    self.init(input: input)
+  }
+}
+
+extension StringParser {
   @inlinable
-  public static func parse(_ input: Input) -> (output: Output, endIndex: Input.Index)?  {
-    var parser = Self.init(input: input)
+  public static func parse(
+    _ input: Input,
+    configuration: Configuration? = nil
+  ) -> (output: Output, endIndex: Input.Index)? {
+    var parser = Self.init(input: input, configuration: configuration)
     return parser.parse()
   }
 
@@ -31,9 +55,10 @@ extension StringParser {
   @inlinable
   public static func parse<C>(
     _ input: C,
-    from index: inout Input.Index
+    from index: inout Input.Index,
+    configuration: Configuration? = nil
   ) -> Output? where C: Collection, C.SubSequence == Input {
-    guard let (output, endIndex) = Self.parse(input[index...]) else {
+    guard let (output, endIndex) = Self.parse(input[index...], configuration: configuration) else {
       return nil
     }
     index = endIndex
@@ -337,10 +362,25 @@ where Input: StringProtocol,
       SecondParser: StringParser, SecondParser.Input == Input.SubSequence {
   public typealias Output = (firstOutput: FirstParser.Output, secondOutput: SecondParser.Output)
 
-  private let _string: Input
+  public struct Configuration {
+    public let firstParserConfiguration: FirstParser.Configuration?
+    public let secondParserConfiguration: SecondParser.Configuration?
 
-  public init(input: Input) {
+    public init(
+      _ firstParserConfiguration: FirstParser.Configuration?,
+      _ secondParserConfiguration: SecondParser.Configuration?
+    ) {
+      self.firstParserConfiguration = firstParserConfiguration
+      self.secondParserConfiguration = secondParserConfiguration
+    }
+  }
+
+  private let _string: Input
+  private let _configuration: Configuration?
+
+  public init(input: Input, configuration: Configuration?) {
     self._string = input
+    self._configuration = configuration
   }
 
   private var _result: (output: Output, endIndex: Input.Index)? = nil
@@ -353,10 +393,16 @@ where Input: StringProtocol,
     defer {
       _parsed = true
     }
-    guard let firstResult = FirstParser.parse(_string) else {
+    guard let firstResult = FirstParser.parse(
+      _string,
+      configuration: _configuration?.firstParserConfiguration
+    ) else {
       return nil
     }
-    guard let secondResult = SecondParser.parse(_string[firstResult.endIndex...]) else {
+    guard let secondResult = SecondParser.parse(
+      _string[firstResult.endIndex...],
+      configuration: _configuration?.secondParserConfiguration
+    ) else {
       return nil
     }
     _result = (
@@ -368,28 +414,161 @@ where Input: StringProtocol,
 }
 
 /// A parser that parses a string repeatedly using `RepeatParser`.
-open class RepetitionParser<Input, RepeatParser>: StringParser
+public struct RepetitionParser<Input, RepeatParser>: StringParser
 where Input: StringProtocol, RepeatParser: StringParser, RepeatParser.Input == Input.SubSequence {
   public typealias Output = Array<RepeatParser.Output>
 
-  private let _string: Input
+  public struct Configuration {
+    public var minCount: Int
 
-  // TODO: I want `minCount` and `maxCount` to be set by values in generics.
-  //       The feature requires macOS >=26.0...😖
+    public var maxCount: Int
+
+    /// Configuration generator.
+    /// The argument of each closure is a partial result at that point.
+    public var eachConfiguration: Optional<([RepeatParser.Output]) -> RepeatParser.Configuration?>
+
+    public init(
+      minCount: Int,
+      maxCount: Int,
+      eachConfiguration: Optional<([RepeatParser.Output]) -> RepeatParser.Configuration?>
+    ) {
+      self.minCount = minCount
+      self.maxCount = maxCount
+      self.eachConfiguration = eachConfiguration
+    }
+  }
+
+  private let _string: Input
+  private var _configuration: Configuration?
 
   /// The number of min count to repeat parsing.
-  open var minCount: Int = 1
+  public var minCount: Int {
+    get {
+      return self._configuration?.minCount ?? 1
+    }
+    set {
+      let newMinCount = max(0, newValue)
+      guard var currentConfig = self._configuration else {
+        self._configuration = Configuration(
+          minCount: newMinCount,
+          maxCount: .max,
+          eachConfiguration: nil
+        )
+        return
+      }
+      currentConfig.minCount = newMinCount
+      self._configuration = currentConfig
+    }
+  }
 
   /// The number of max count to repeat parsing.
-  open var maxCount: Int = .max
+  public var maxCount: Int {
+    get {
+      return self._configuration?.maxCount ?? .max
+    }
+    set {
+      guard var currentConfig = self._configuration else {
+        self._configuration = Configuration(
+          minCount: 1,
+          maxCount: newValue,
+          eachConfiguration: nil
+        )
+        return
+      }
+      currentConfig.maxCount = newValue
+      self._configuration = currentConfig
+    }
+  }
 
-  public required init(input: Input) {
+  public var eachConfiguration: Optional<([RepeatParser.Output]) -> RepeatParser.Configuration?> {
+    get {
+      return self._configuration?.eachConfiguration
+    }
+    set {
+      guard var currentConfig = self._configuration else {
+        self._configuration = Configuration(
+          minCount: 1,
+          maxCount: .max,
+          eachConfiguration: newValue
+        )
+        return
+      }
+      currentConfig.eachConfiguration = newValue
+      self._configuration = currentConfig
+    }
+  }
+
+  public init(input: Input, configuration: Configuration?) {
     self._string = input
+    self._configuration = configuration
+  }
+
+  @inlinable
+  public init(
+    input: Input,
+    minCount: Int,
+    maxCount: Int,
+    eachConfiguration: Optional<([RepeatParser.Output]) -> RepeatParser.Configuration?>
+  ) {
+    self.init(
+      input: input,
+      configuration: Configuration(
+        minCount: minCount,
+        maxCount: maxCount,
+        eachConfiguration: eachConfiguration
+      )
+    )
+  }
+
+  @inlinable
+  public init(
+    input: Input,
+    minCount: Int
+  ) {
+    self.init(
+      input: input,
+      configuration: Configuration(
+        minCount: minCount,
+        maxCount: .max,
+        eachConfiguration: nil
+      )
+    )
+  }
+
+  @inlinable
+  public init(
+    input: Input,
+    maxCount: Int
+  ) {
+    self.init(
+      input: input,
+      configuration: Configuration(
+        minCount: 1,
+        maxCount: maxCount,
+        eachConfiguration: nil
+      )
+    )
+  }
+
+  @inlinable
+  public init(
+    input: Input,
+    minCount: Int,
+    maxCount: Int
+  ) {
+    self.init(
+      input: input,
+      configuration: Configuration(
+        minCount: minCount,
+        maxCount: maxCount,
+        eachConfiguration: nil
+      )
+    )
   }
 
   private var _result: (output: Output, endIndex: Input.Index)? = nil
   private var _parsed: Bool = false
-  public final func parse() -> (output: Output, endIndex: Input.Index)? {
+  public mutating func parse() -> (output: Output, endIndex: Input.Index)? {
     if _parsed {
       return _result
     }
@@ -400,7 +579,10 @@ where Input: StringProtocol, RepeatParser: StringParser, RepeatParser.Input == I
 
     var output: Output = []
     var index = _string.startIndex
-    while let parsedResult = RepeatParser.parse(_string[index...]) {
+    while let parsedResult = RepeatParser.parse(
+      _string[index...],
+      configuration: self._configuration?.eachConfiguration?(output)
+    ) {
       output.append(parsedResult.output)
       index = parsedResult.endIndex
       if output.count == maxCount {
@@ -421,12 +603,20 @@ public struct ListParser<Input, ElementParser>: StringParser, _UTF8Parser
 where Input: StringProtocol, ElementParser: StringParser, ElementParser.Input == Input.SubSequence {
   public typealias Output = [ElementParser.Output]
 
+  public struct Configuration {
+    /// Configuration generator.
+    /// The argument of each closure is a partial result at that point.
+    public var eachConfiguration: Optional<([ElementParser.Output]) -> ElementParser.Configuration?>
+  }
+
   internal let input: Input
   internal let utf8: Input.UTF8View
+  private var _configuration: Configuration?
 
-  public init(input: Input) {
+  public init(input: Input, configuration: Configuration?) {
     self.input = input
     self.utf8 = input.utf8
+    self._configuration = configuration
   }
 
   private var _result: (output: Output, endIndex: Input.Index)? = nil
@@ -449,7 +639,10 @@ where Input: StringProtocol, ElementParser: StringParser, ElementParser.Input ==
     }
 
     while true {
-      var parser = ElementParser(input: input[index...])
+      var parser = ElementParser(
+        input: input[index...],
+        configuration: _configuration?.eachConfiguration?(elements)
+      )
       if let (element, endIndex) = parser.parse() {
         elements.append(element)
         index = endIndex

@@ -544,36 +544,48 @@ extension HTTPHeaderFieldParameter.ExtendedValue: _InitializableWithParser, Loss
 
 
 /// A parser for `HTTPHeaderFieldParameter`.
-public class HTTPHeaderFieldParameterParser<Input>: @unchecked Sendable, StringParser, _UTF8Parser
+public struct HTTPHeaderFieldParameterParser<Input>: @unchecked Sendable, StringParser, _UTF8Parser
 where Input: StringProtocol {
   public typealias Output = HTTPHeaderFieldParameter
 
+  public struct Configuration {
+    public enum Mode {
+      case `default`
+      case mimeCompatible
+    }
+
+    public var mode: Mode
+
+    public init(mode: Mode) {
+      self.mode = mode
+    }
+  }
+
   let input: Input
   let utf8: Input.UTF8View
+  public let configuration: Configuration?
 
-  public required init(input: Input) {
+  public var mode: Configuration.Mode {
+    return self.configuration?.mode ?? .default
+  }
+
+  public init(input: Input, configuration: Configuration?) {
     self.input = input
     self.utf8 = input.utf8
+    self.configuration = configuration
   }
 
-  private func _parseName() -> (name: _ParameterName, endIndex: Input.Index)? {
-    guard let (name, endIndex) =  _HTTPHeaderFieldParameterNameParser<Input>.parse(self.input) else {
-      return nil
-    }
-    return (name, endIndex)
-  }
-
-  public final class MIMECompatible: HTTPHeaderFieldParameterParser, @unchecked Sendable {
-    override func _parseName() -> (name: _ParameterName, endIndex: Input.Index)? {
-      guard let (name, endIndex) = _MIMECompatibleParameterNameParser<Input>.parse(self.input) else {
-        return nil
-      }
-      return (name, endIndex)
-    }
+  public init(input: Input, mode: Configuration.Mode) {
+    self.init(input: input, configuration: Configuration(mode: mode))
   }
 
   public func parse() -> (output: HTTPHeaderFieldParameter, endIndex: Input.Index)? {
-    guard let (name, nameEndIndex) = self._parseName() else {
+    var nameParser: any StringParser<Input, _ParameterName> = switch self.mode {
+    case .default: _HTTPHeaderFieldParameterNameParser<Input>(input: self.input)
+    case .mimeCompatible: _MIMECompatibleParameterNameParser(input: self.input)
+    }
+
+    guard let (name, nameEndIndex) = nameParser.parse() else {
       return nil
     }
 
@@ -758,13 +770,21 @@ where Input: StringProtocol {
 public struct HTTPHeaderFieldParameterListParser<Input>: StringParser, _UTF8Parser
 where Input: StringProtocol {
   public typealias Output = HTTPHeaderFieldParameterList
+  public typealias Configuration = HTTPHeaderFieldParameterParser<Input.SubSequence>.Configuration
 
   let input: Input
   let utf8: Input.UTF8View
 
-  public init(input: Input) {
+  public let configuration: Configuration?
+
+  public init(input: Input, configuration: Configuration?) {
     self.input = input
     self.utf8 = input.utf8
+    self.configuration = configuration
+  }
+
+  public init(input: Input, mode: Configuration.Mode) {
+    self.init(input: input, configuration: Configuration(mode: mode))
   }
 
   public func parse() -> (output: HTTPHeaderFieldParameterList, endIndex: Input.Index)? {
@@ -782,7 +802,7 @@ where Input: StringProtocol {
     while index < utf8.endIndex {
       while __consumeSeparator() {}
       guard let parameterResult = HTTPHeaderFieldParameterParser<Input.SubSequence>.parse(
-        self.input[index...]
+        self.input[index...], configuration: self.configuration
       ) else {
         break
       }

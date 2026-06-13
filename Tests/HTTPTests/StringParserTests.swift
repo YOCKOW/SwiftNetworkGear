@@ -141,7 +141,7 @@ typealias _DigitHiraganaParser<Input> = CombinedParser<Input, DigitParser<Input>
     #expect(try #require(result.output.last).secondOutput == "かきくけこ")
     #expect(result.endIndex == string.endIndex)
 
-    let limitedParser = RepetitionParser<String, _DigitHiraganaParser<Substring>>(input: string)
+    var limitedParser = RepetitionParser<String, _DigitHiraganaParser<Substring>>(input: string)
     limitedParser.maxCount = 1
     // Workaround for https://github.com/swiftlang/swift-testing/issues/1360
     let limitedResult = try #require(limitedParser.parse() ?? nil)
