@@ -187,15 +187,12 @@ internal struct DayMonthYearParser<Input>: StringParser, _UTF8Parser where Input
   func parse() -> (output: Output, endIndex: Input.Index)? {
     var index = utf8.startIndex
 
-    guard
-      let dayString = self.parseString(
-        from: &index,
-        minCount: 2,
-        maxCount: 2,
-        while: \._isDigit
-      ),
-      let day = Int(dayString, radix: 10)
-    else {
+    guard let day = self.parseInt(
+      from: &index,
+      minNumberOfDigits: 2,
+      maxNumberOfDigits: 2,
+      radix: 10
+    ) else {
       return nil
     }
 
@@ -211,15 +208,12 @@ internal struct DayMonthYearParser<Input>: StringParser, _UTF8Parser where Input
       return nil
     }
 
-    guard
-      let yearString = self.parseString(
-        from: &index,
-        minCount: 2,
-        maxCount: 4,
-        while: \._isDigit
-      ),
-      let year = Int(yearString, radix: 10)
-    else {
+    guard let year = self.parseInt(
+      from: &index,
+      minNumberOfDigits: 2,
+      maxNumberOfDigits: 4,
+      radix: 10
+    ) else {
       return nil
     }
 
@@ -228,6 +222,58 @@ internal struct DayMonthYearParser<Input>: StringParser, _UTF8Parser where Input
   }
 }
 
+
+// MARK: - HH:mm:ss
+
+internal struct HourMinuteSecondParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  typealias Output = (hour: Int, minute: Int, second: Int)
+  
+  struct Configuration {
+    let separator: (Unicode.UTF8.CodeUnit) -> Bool
+    
+    init(separator: @escaping (Unicode.UTF8.CodeUnit) -> Bool) {
+      self.separator = separator
+    }
+  }
+
+  let input: Input
+  let utf8: Input.UTF8View
+  let configuration: Configuration?
+  var separator: (Unicode.UTF8.CodeUnit) -> Bool { configuration?.separator ?? \._isColon }
+
+  init(input: Input, configuration: Configuration?) {
+    self.input = input
+    self.utf8 = input.utf8
+    self.configuration = configuration
+  }
+
+  func parse() -> (output: Output, endIndex: Input.Index)? {
+    var index = utf8.startIndex
+
+    func __parse2Digits() -> Int? {
+      return self.parseInt(from: &index, minNumberOfDigits: 2, maxNumberOfDigits: 2, radix: 10)
+    }
+
+    guard let hour = __parse2Digits() else {
+      return nil
+    }
+    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: separator) else {
+      return nil
+    }
+    guard let minute = __parse2Digits() else {
+      return nil
+    }
+    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: separator) else {
+      return nil
+    }
+    guard let second = __parse2Digits() else {
+      return nil
+    }
+
+    let result: Output = (hour: hour, minute: minute, second: second)
+    return (result, index)
+  }
+}
 
 private extension Unicode.Scalar {
   var _isCookieDateSeparator: Bool {

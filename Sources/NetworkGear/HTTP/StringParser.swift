@@ -159,6 +159,36 @@ extension _UTF8Parser {
       while: isAllowedCodeUnit
     )
   }
+
+  @inlinable
+  func parseInt(
+    from  currentIndex: inout Input.UTF8View.Index,
+    minNumberOfDigits: Int = 1,
+    maxNumberOfDigits: Int = .max,
+    radix: Int = 10
+  ) -> Int? {
+    assert(1 < radix && radix <= 36)
+    guard let intDescription = self.parseString(
+      from: &currentIndex,
+      minCount: minNumberOfDigits,
+      maxCount: maxNumberOfDigits,
+      while: { unit in
+        if radix <= 10 {
+          return 0x30 <= unit && unit < 0x30 + radix
+        }
+
+        // radix > 10
+        return (
+          unit._isDigit ||
+          (0x41 <= unit && unit < 0x41 + radix - 10) ||
+          (0x61 <= unit && unit < 0x61 + radix - 10)
+        )
+      }
+    ) else {
+      return nil
+    }
+    return Int(intDescription, radix: radix)
+  }
 }
 
 @usableFromInline
