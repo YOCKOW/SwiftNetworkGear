@@ -150,6 +150,84 @@ extension Month: _InitializableWithParser {
   }
 }
 
+// MARK: - dd MMM yyyy
+
+private extension Int {
+  var _normalizedYear: Int {
+    switch self {
+    case 0...69: return self + 2000
+    case 79...99: return self + 1900
+    default: return self
+    }
+  }
+}
+
+internal struct DayMonthYearParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  typealias Output = (day: Int, month: Month, year: Int)
+
+  struct Configuration {
+    let separator: (Unicode.UTF8.CodeUnit) -> Bool
+
+    init(separator: @escaping (Unicode.UTF8.CodeUnit) -> Bool) {
+      self.separator = separator
+    }
+  }
+
+  let input: Input
+  let utf8: Input.UTF8View
+  let configuration: Configuration?
+  var separator: (Unicode.UTF8.CodeUnit) -> Bool { configuration?.separator ?? \._isHTTPWhitespace }
+
+  init(input: Input, configuration: Configuration?) {
+    self.input = input
+    self.utf8 = input.utf8
+    self.configuration = configuration
+  }
+
+  func parse() -> (output: Output, endIndex: Input.Index)? {
+    var index = utf8.startIndex
+
+    guard
+      let dayString = self.parseString(
+        from: &index,
+        minCount: 2,
+        maxCount: 2,
+        while: \._isDigit
+      ),
+      let day = Int(dayString, radix: 10)
+    else {
+      return nil
+    }
+
+    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: separator) else {
+      return nil
+    }
+
+    guard let month = MonthNameParser.parse(input, from: &index) else {
+      return nil
+    }
+
+    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: separator) else {
+      return nil
+    }
+
+    guard
+      let yearString = self.parseString(
+        from: &index,
+        minCount: 2,
+        maxCount: 4,
+        while: \._isDigit
+      ),
+      let year = Int(yearString, radix: 10)
+    else {
+      return nil
+    }
+
+    let result: Output = (day: day, month: month, year: year._normalizedYear)
+    return (result, index)
+  }
+}
+
 
 private extension Unicode.Scalar {
   var _isCookieDateSeparator: Bool {
