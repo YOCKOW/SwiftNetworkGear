@@ -108,6 +108,16 @@ import yExtensions
     let traditional_string = "Mon, 03-Oct-1983 16:21:09 GMT"
     let incorrect_string = "Mon, 03/Oct/'83 16:21:09 GMT"
 
+    TEST_RFC1123DateParser: do {
+      let parsed = try #require(RFC1123DateParser<String>.parse(rfc1123_string)).output
+      #expect(parsed.year == 1983)
+      #expect(parsed.month == 10)
+      #expect(parsed.day == 3)
+      #expect(parsed.hour == 16)
+      #expect(parsed.minute == 21)
+      #expect(parsed.second == 9)
+    }
+
     let fromRFC1123 = Date(cookieDateString:rfc1123_string)
     let fromTraditional = Date(cookieDateString:traditional_string)
     let fromIncorrect = Date(cookieDateString:incorrect_string)

@@ -184,6 +184,12 @@ internal struct DayMonthYearParser<Input>: StringParser, _UTF8Parser where Input
     self.configuration = configuration
   }
 
+  init(input: Input, separator: @escaping (Unicode.UTF8.CodeUnit) -> Bool) {
+    self.input = input
+    self.utf8 = input.utf8
+    self.configuration = Configuration(separator: separator)
+  }
+
   func parse() -> (output: Output, endIndex: Input.Index)? {
     var index = utf8.startIndex
 
@@ -219,6 +225,19 @@ internal struct DayMonthYearParser<Input>: StringParser, _UTF8Parser where Input
 
     let result: Output = (day: day, month: month, year: year._normalizedYear)
     return (result, index)
+  }
+
+  static func parse(
+    _ input: Input,
+    from index: inout Input.Index,
+    separator: @escaping (Unicode.UTF8.CodeUnit) -> Bool
+  ) -> Output? {
+    let parser = DayMonthYearParser<Input.SubSequence>(input: input[index...], separator: separator)
+    guard let (output, endIndex) = parser.parse() else {
+      return nil
+    }
+    index = endIndex
+    return output
   }
 }
 
@@ -274,6 +293,106 @@ internal struct HourMinuteSecondParser<Input>: StringParser, _UTF8Parser where I
     return (result, index)
   }
 }
+
+// MARK: - Date (RFC 1123 Date / Traditional Cookie Date)
+
+extension _UTF8Parser {
+  private func _parseWeekdayCommaSpace(from currentIndex: inout Input.Index) -> Weekday? {
+    var index = currentIndex
+    guard let weekday = WeekdayParser<Input.SubSequence>.parse(input, from: &index) else {
+      return nil
+    }
+    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isComma) else {
+      return nil
+    }
+    guard let _ = self.parseSpaces(from: &index) else {
+      return nil
+    }
+    currentIndex = index
+    return weekday
+  }
+
+  private func _parseSpaceGMT(from currentIndex: inout Input.Index) -> Input.SubSequence? {
+    var index = currentIndex
+    guard let _ = self.parseSpaces(from: &index) else {
+      return nil
+    }
+    guard let gmt = self.parseASCIICaseInsensitivePrefix("GMT", from: &index) else {
+      return nil
+    }
+    currentIndex = index
+    return gmt
+  }
+
+  fileprivate func _parseWeekdayDayMonthYearHourMinuteSecondGMT(
+    from currentIndex: inout Input.Index,
+    dateSeparator: @escaping (Unicode.UTF8.CodeUnit) -> Bool
+  ) -> DateComponents? {
+    var index = currentIndex
+
+    guard let _ = self._parseWeekdayCommaSpace(from: &index) else {
+      return nil
+    }
+
+    guard let dmy = DayMonthYearParser<Input>.parse(
+      input,
+      from: &index,
+      separator: dateSeparator
+    ) else {
+      return nil
+    }
+
+    guard let _ = self.parseSpaces(from: &index) else {
+      return nil
+    }
+
+    guard let hms = HourMinuteSecondParser<Input.SubSequence>.parse(input, from: &index) else {
+      return nil
+    }
+
+    guard let _ = self._parseSpaceGMT(from: &index) else {
+      return nil
+    }
+
+    currentIndex = index
+    return DateComponents(
+      calendar: Calendar(identifier:.gregorian),
+      timeZone: TimeZone(secondsFromGMT: 0)!,
+      year: dmy.year,
+      month: dmy.month.rawValue,
+      day: dmy.day,
+      hour: hms.hour,
+      minute: hms.minute,
+      second: hms.second
+    )
+  }
+}
+
+/// A parser to parse a string formatted with the format defined in RFC 1123.
+/// e.g.) `Sun, 06 Nov 1994 08:49:37 GMT`
+public struct RFC1123DateParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = DateComponents
+
+  let input: Input
+  let utf8: Input.UTF8View
+
+  public init(input: Input) {
+    self.input = input
+    self.utf8 = input.utf8
+  }
+
+  public func parse() -> (output: DateComponents, endIndex: Input.Index)? {
+    var index = utf8.startIndex
+    guard let dateComponents = self._parseWeekdayDayMonthYearHourMinuteSecondGMT(
+      from: &index,
+      dateSeparator: \._isHTTPWhitespace
+    ) else {
+      return nil
+    }
+    return (dateComponents, index)
+  }
+}
+
 
 private extension Unicode.Scalar {
   var _isCookieDateSeparator: Bool {
