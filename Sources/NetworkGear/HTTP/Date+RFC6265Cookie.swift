@@ -393,6 +393,32 @@ public struct RFC1123DateParser<Input>: StringParser, _UTF8Parser where Input: S
   }
 }
 
+/// A parser to parse a string formatted with the format defined in RFC 1123.
+/// e.g.) `Fri, 24-Jan-2003 16:41:00 GMT`
+public struct TraditionalHTTPCookieDateParser<Input>: StringParser,
+                                                      _UTF8Parser where Input: StringProtocol {
+  public typealias Output = DateComponents
+
+  let input: Input
+  let utf8: Input.UTF8View
+
+  public init(input: Input) {
+    self.input = input
+    self.utf8 = input.utf8
+  }
+
+  public func parse() -> (output: DateComponents, endIndex: Input.Index)? {
+    var index = utf8.startIndex
+    guard let dateComponents = self._parseWeekdayDayMonthYearHourMinuteSecondGMT(
+      from: &index,
+      dateSeparator: \._isHyphen
+    ) else {
+      return nil
+    }
+    return (dateComponents, index)
+  }
+}
+
 
 private extension Unicode.Scalar {
   var _isCookieDateSeparator: Bool {

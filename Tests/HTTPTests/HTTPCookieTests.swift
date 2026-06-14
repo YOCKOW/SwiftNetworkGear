@@ -118,6 +118,16 @@ import yExtensions
       #expect(parsed.second == 9)
     }
 
+    TEST_TraditionalHTTPCookieDateParser: do {
+      let parsed = try #require(TraditionalHTTPCookieDateParser<String>.parse(traditional_string)).output
+      #expect(parsed.year == 1983)
+      #expect(parsed.month == 10)
+      #expect(parsed.day == 3)
+      #expect(parsed.hour == 16)
+      #expect(parsed.minute == 21)
+      #expect(parsed.second == 9)
+    }
+
     let fromRFC1123 = Date(cookieDateString:rfc1123_string)
     let fromTraditional = Date(cookieDateString:traditional_string)
     let fromIncorrect = Date(cookieDateString:incorrect_string)
