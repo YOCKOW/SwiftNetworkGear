@@ -7,25 +7,68 @@
 
 import Foundation
 
-private struct _SetCookieHeaderFieldValueParser<Input>: StringParser,
-                                                        _UTF8Parser where Input: StringProtocol {
-  typealias Output = HTTPCookieProperties
+public struct SetCookieHeaderFieldValueParser<Input>: StringParser, _UTF8Parser
+where Input: StringProtocol {
+  public typealias Output = HTTPCookieProperties
+
+  public struct Configuration {
+    /// The URL that the cookie is sent from.
+    public var url: URL?
+
+    /// A Boolean value indicating whether or not percent-encoding should be removed from
+    /// the name and the value of the cookie.
+    public var removingPercentEncoding: Bool
+
+    public init(url: URL? = nil, removingPercentEncoding: Bool = true) {
+      self.url = url
+      self.removingPercentEncoding = removingPercentEncoding
+    }
+  }
+
 
   let input: Input
   let utf8: Input.UTF8View
-  let url: URL?
-  let removingPercentEncoding: Bool
+  var configuration: Configuration?
 
-  init(input: Input, url: URL?, removingPercentEncoding: Bool) {
+  /// The URL that the cookie is sent from.
+  public var url: URL? {
+    get {
+      return self.configuration?.url
+    }
+    set {
+      var newConfig = self.configuration ?? Configuration()
+      newConfig.url = newValue
+      self.configuration = newConfig
+    }
+  }
+
+  /// A Boolean value indicating whether or not percent-encoding should be removed from
+  /// the name and the value of the cookie.
+  public var removingPercentEncoding: Bool {
+    get {
+      return self.configuration?.removingPercentEncoding ?? true
+    }
+    set {
+      var newConfig = self.configuration ?? Configuration()
+      newConfig.removingPercentEncoding = newValue
+      self.configuration = newConfig
+    }
+  }
+
+
+  public init(input: Input, configuration: Configuration?) {
     self.input = input
     self.utf8 = input.utf8
-    self.url = url
-    self.removingPercentEncoding = removingPercentEncoding
+    self.configuration = configuration
   }
 
-  init(input: Input) {
-    self.init(input: input, url: nil, removingPercentEncoding: true)
+  public init(input: Input, url: URL?, removingPercentEncoding: Bool) {
+    self.input = input
+    self.utf8 = input.utf8
+    self.configuration = Configuration(url: url, removingPercentEncoding: removingPercentEncoding)
   }
+
+
 
   private struct _NameParser: StringParser, _UTF8Parser {
     typealias Output = Input.SubSequence.SubSequence
@@ -70,7 +113,7 @@ private struct _SetCookieHeaderFieldValueParser<Input>: StringParser,
     }
   }
 
-  func parse() -> (output: HTTPCookieProperties, endIndex: Input.Index)? {
+  public func parse() -> (output: HTTPCookieProperties, endIndex: Input.Index)? {
     // Reference: https://datatracker.ietf.org/doc/html/rfc6265#section-4.1
 
     var index = utf8.startIndex
