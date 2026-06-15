@@ -133,4 +133,10 @@ typealias _DigitHiraganaParser<Input> = CombinedParser<Input, DigitParser<Input>
     #expect(try #require(limitedResult.output.first).secondOutput == "あいうえお")
     #expect(limitedResult.endIndex != string.endIndex)
   }
+
+  @Test func test_trimmingParser() throws {
+    var parser = TrimmingParser<String, HiraganaParser<Substring>>(input: "   あいうえお    ")
+    let hiragana = try #require(parser.parse()?.output)
+    #expect(hiragana == "あいうえお")
+  }
 }

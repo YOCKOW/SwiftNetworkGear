@@ -765,3 +765,55 @@ where Input: StringProtocol, ElementParser: StringParser, ElementParser.Input ==
 }
 public typealias TokenListParser<Input> =
   ListParser<Input, HTTPTokenParser<Input.SubSequence>> where Input: StringProtocol
+
+
+/// A parser to parse the output of `ContentParser` trimming leading/trailing whitespaces.
+public struct TrimmingParser<Input, ContentParser>: StringParser, _UTF8Parser
+where Input: StringProtocol, ContentParser: StringParser, ContentParser.Input == Input.SubSequence {
+  public typealias Output = ContentParser.Output
+  public typealias Configuration = ContentParser.Configuration
+
+  let input: Input
+  let utf8: Input.UTF8View
+  public var configuration: Configuration?
+
+  public init(input: Input, configuration: Configuration?) {
+    self.input = input
+    self.utf8 = input.utf8
+    self.configuration = configuration
+  }
+
+  public init(input: Input) {
+    self.init(input: input, configuration: nil)
+  }
+
+  private var _result: (output: Output, endIndex: Input.Index)? = nil
+  private var _parsed: Bool = false
+  public mutating func parse() -> (output: ContentParser.Output, endIndex: Input.Index)? {
+    if _parsed {
+      return _result
+    }
+
+    defer {
+      _parsed = true
+    }
+
+    var currentIndex = utf8.startIndex
+
+    func __consumeWhitespaces() {
+      _ = self.parseString(from: &currentIndex, while: { $0._isHTTPWhitespace || $0._isNewline })
+    }
+
+    __consumeWhitespaces()
+    guard let content = ContentParser.parse(
+      input,
+      from: &currentIndex,
+      configuration: configuration
+    ) else {
+      return nil
+    }
+    __consumeWhitespaces()
+    _result = (content, currentIndex)
+    return _result
+  }
+}
