@@ -491,16 +491,7 @@ where Input: StringProtocol,
     self._configuration = configuration
   }
 
-  private var _result: (output: Output, endIndex: Input.Index)? = nil
-  private var _parsed: Bool = false
   public mutating func parse() -> (output: Output, endIndex: Input.Index)? {
-    if _parsed {
-      return _result
-    }
-
-    defer {
-      _parsed = true
-    }
     guard let firstResult = FirstParser.parse(
       _string,
       configuration: _configuration?.firstParserConfiguration
@@ -513,11 +504,10 @@ where Input: StringProtocol,
     ) else {
       return nil
     }
-    _result = (
+    return (
       output: (firstResult.output, secondResult.output),
       endIndex: secondResult.endIndex
     )
-    return _result
   }
 }
 
@@ -674,17 +664,7 @@ where Input: StringProtocol, RepeatParser: StringParser, RepeatParser.Input == I
     )
   }
 
-  private var _result: (output: Output, endIndex: Input.Index)? = nil
-  private var _parsed: Bool = false
   public mutating func parse() -> (output: Output, endIndex: Input.Index)? {
-    if _parsed {
-      return _result
-    }
-
-    defer {
-      _parsed = true
-    }
-
     var output: Output = []
     var index = _string.startIndex
     while let parsedResult = RepeatParser.parse(
@@ -727,17 +707,7 @@ where Input: StringProtocol, ElementParser: StringParser, ElementParser.Input ==
     self._configuration = configuration
   }
 
-  private var _result: (output: Output, endIndex: Input.Index)? = nil
-  private var _parsed: Bool = false
   public mutating func parse() -> (output: Output, endIndex: Input.Index)? {
-    if _parsed {
-      return _result
-    }
-
-    defer {
-      _parsed = true
-    }
-
     var elements: [ElementParser.Output] = []
     var index = utf8.startIndex
 
