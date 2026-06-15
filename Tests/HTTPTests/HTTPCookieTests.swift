@@ -106,6 +106,7 @@ import yExtensions
   @Test func test_date() throws {
     let rfc1123_string = "Mon, 03 Oct 1983 16:21:09 GMT"
     let traditional_string = "Mon, 03-Oct-1983 16:21:09 GMT"
+    let asctime_string = "Mon Oct  3 16:21:09 1983"
     let incorrect_string = "Mon, 03/Oct/'83 16:21:09 GMT"
 
     TEST_RFC1123DateParser: do {
@@ -126,6 +127,14 @@ import yExtensions
       #expect(parsed.hour == 16)
       #expect(parsed.minute == 21)
       #expect(parsed.second == 9)
+    }
+
+    TEST_HTTPCookieDateParser: do {
+      let parsedRFC1123 = try #require(HTTPCookieDateParser<String>.parse(rfc1123_string)).output
+      let parsedTraditional = try #require(HTTPCookieDateParser<String>.parse(traditional_string)).output
+      let parsedANSI_C = try #require(HTTPCookieDateParser<String>.parse(asctime_string)).output
+      #expect(parsedRFC1123 == parsedTraditional)
+      #expect(parsedRFC1123 == parsedANSI_C)
     }
 
     let fromRFC1123 = Date(cookieDateString:rfc1123_string)

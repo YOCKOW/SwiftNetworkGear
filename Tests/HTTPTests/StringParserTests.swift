@@ -8,23 +8,6 @@
 @testable import NetworkGear
 import Testing
 
-struct DigitParser<Input: StringProtocol>: StringParser, _UTF8Parser {
-  typealias Output = Int
-  let input: Input
-  let utf8: Input.UTF8View
-  init(input: Input) {
-    self.input = input
-    self.utf8 = input.utf8
-  }
-  mutating func parse() -> (output: Int, endIndex: Input.Index)? {
-    var index = self.utf8.startIndex
-    guard let parsedResult = self.parseString(from: &index, while: \._isDigit) else {
-      return nil
-    }
-    return (Int(String(input[..<parsedResult.endIndex]))!, parsedResult.endIndex)
-  }
-}
-
 struct HiraganaParser<Input: StringProtocol>: StringParser {
   typealias Output = Input.SubSequence
   let string: Input

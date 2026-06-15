@@ -323,6 +323,70 @@ public struct HTTPTokenParser<Input>: StringParser, _UTF8Parser where Input: Str
 }
 
 
+/// A parser to parse an integer.
+public struct DigitParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = Int
+
+  public struct Configuration {
+    public let minNumberOfDigits: Int
+    public let maxNumberOfDigits: Int
+    public let radix: Int
+
+    public init(
+      minNumberOfDigits: Int = 1,
+      maxNumberOfDigits: Int = .max,
+      radix: Int = 10
+    ) {
+      self.minNumberOfDigits = minNumberOfDigits
+      self.maxNumberOfDigits = maxNumberOfDigits
+      self.radix = radix
+    }
+  }
+
+  let input: Input
+  let utf8: Input.UTF8View
+  let configuration: Configuration?
+
+  public var minNumberOfDigits: Int { configuration?.minNumberOfDigits ?? 1 }
+  public var maxNumberOfDigits: Int { configuration?.maxNumberOfDigits ?? .max }
+  public var radix: Int { configuration?.radix ?? 10 }
+
+  public init(input: Input, configuration: Configuration?) {
+    self.input = input
+    self.utf8 = input.utf8
+    self.configuration = configuration
+  }
+
+  public init(
+    input: Input,
+    minNumberOfDigits: Int,
+    maxNumberOfDigits: Int,
+    radix: Int = 10
+  ) {
+    self.input = input
+    self.utf8 = input.utf8
+    self.configuration = .init(
+      minNumberOfDigits: minNumberOfDigits,
+      maxNumberOfDigits: maxNumberOfDigits,
+      radix: radix
+    )
+  }
+
+  public mutating func parse() -> (output: Int, endIndex: Input.Index)? {
+    var index = self.utf8.startIndex
+    guard let integer = self.parseInt(
+      from: &index,
+      minNumberOfDigits: minNumberOfDigits,
+      maxNumberOfDigits: maxNumberOfDigits,
+      radix: radix
+    ) else {
+      return nil
+    }
+    return (integer, index)
+  }
+}
+
+
 public struct CRLFParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = Input.SubSequence
 
