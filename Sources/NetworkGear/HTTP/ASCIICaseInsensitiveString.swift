@@ -172,6 +172,15 @@ public struct ASCIICaseInsensitiveSubstring: ASCIICaseInsensitiveStringProtocol,
   }
 
   @inlinable
+  internal init<S>(_ string: S) where S: StringProtocol {
+    if case let substring as Substring = string {
+      self.init(substring)
+    } else {
+      self.init(string._string)
+    }
+  }
+
+  @inlinable
   public init(stringLiteral value: StringLiteralType) {
     self.init(Substring(stringLiteral: value))
   }

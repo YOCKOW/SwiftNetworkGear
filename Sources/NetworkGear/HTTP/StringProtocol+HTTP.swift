@@ -5,6 +5,8 @@
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
 
+import Ranges
+
 private typealias _U8CodeSet = Set<Unicode.UTF8.CodeUnit>
 private extension _U8CodeSet {
   init(_ string: String) {
@@ -160,6 +162,10 @@ extension Unicode.UTF8.CodeUnit {
   /// `,`
   @inlinable
   internal var _isComma: Bool { self == 0x2C }
+
+  /// `/`
+  @inlinable
+  internal var _isSlash: Bool { self == 0x2F }
 
   /// `-`
   @inlinable
@@ -384,6 +390,7 @@ extension StringProtocol {
 }
 
 extension StringProtocol where Self.UTF8View: BidirectionalCollection {
+  @inlinable
   internal var _trimmed: SubSequence {
     let myUTF8 = self.utf8
     guard let firstIndex = myUTF8.firstIndex(where: { !$0._isHTTPWhitespace && !$0._isNewline }) else {
@@ -391,6 +398,38 @@ extension StringProtocol where Self.UTF8View: BidirectionalCollection {
     }
     let lastIndex = myUTF8.lastIndex(where: { !$0._isHTTPWhitespace && !$0._isNewline })!
     return self[firstIndex...lastIndex]
+  }
+}
+
+extension StringProtocol {
+  @inlinable
+  internal var _trimmed: SubSequence {
+    if case let string as String = self,
+       case let trimmed as SubSequence = string._trimmed {
+      return trimmed
+    }
+    if case let substring as Substring = self,
+       case let trimmed as SubSequence = substring._trimmed {
+      return trimmed
+    }
+
+    // Never reach?
+    let myUTF8 = self.utf8
+    guard let firstIndexOfNonWhitespace = myUTF8.firstIndex(
+      where: { !$0._isHTTPWhitespace && !$0._isNewline }
+    ) else {
+      return self[startIndex..<startIndex]
+    }
+    var lastIndexOfNonWhitespace = firstIndexOfNonWhitespace
+    var currentIndex = myUTF8.index(after: firstIndexOfNonWhitespace)
+    while currentIndex < myUTF8.endIndex {
+      let byte = myUTF8[currentIndex]
+      if !byte._isHTTPWhitespace && !byte._isNewline {
+        lastIndexOfNonWhitespace = currentIndex
+      }
+      myUTF8.formIndex(after: &currentIndex)
+    }
+    return self[firstIndexOfNonWhitespace...lastIndexOfNonWhitespace]
   }
 }
 

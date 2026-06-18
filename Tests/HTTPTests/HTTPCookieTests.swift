@@ -186,35 +186,39 @@ import yExtensions
     }
   }
 
-  @Test func test_responseHeader() throws {
-    let future = Date(timeIntervalSinceNow:10000.0)
-    let future_string = DateFormatter.rfc1123.string(from:future)
-    let setCookieValue = HTTPHeaderFieldValue(rawValue:
-      "name=value; expires=\(future_string); path=/A/B/C; domain=EXAMPLE.COM; Secure; HttpOnly"
-    )!
+  struct __ResponseHeaderTestCase {
+    let url: String
+    let expectSuccess: Bool
+  }
+  @Test(
+    arguments: Array<__ResponseHeaderTestCase>([
+      .init(url: "https://example.net/A/B/C", expectSuccess: false),
+      .init(url: "https://example.com/A/B/C/D/E", expectSuccess: true),
+      .init(url: "http://sub.example.com/A/B/C/D/E", expectSuccess: true),
+      .init(url: "https://com/A/B/C/D/E", expectSuccess: false),
+    ])
+  )
+  func test_responseHeader(case aCase: __ResponseHeaderTestCase) throws {
+    let future = Date(timeIntervalSinceNow: 10000.0)
+    let futureString = DateFormatter.rfc1123.string(from:future)
+    let setCookieValue = try #require(
+      HTTPHeaderFieldValue(
+        rawValue: "name=value; expires=\(futureString); path=/A/B/C; domain=EXAMPLE.COM; Secure; HttpOnly"
+      )
+    )
 
-    let cases:[(String, Bool, SourceLocation)] = [
-      ("https://example.net/A/B/C", false, #_sourceLocation),
-      ("https://example.com/A/B/C/D/E", true, #_sourceLocation),
-      ("http://sub.example.com/A/B/C/D/E", true, #_sourceLocation),
-      ("https://com/A/B/C/D/E", false, #_sourceLocation),
-    ]
-
-    for test in cases {
-      let properties =
-        HTTPCookieProperties(responseHeaderFieldValue:setCookieValue, for:URL(string:test.0)!)
-      if !test.1 {
-        #expect(properties == nil, sourceLocation: test.2)
-      } else {
-        let properties = try #require(properties, sourceLocation: test.2)
-        #expect(properties.name == "name", sourceLocation: test.2)
-        #expect(properties.value == "value", sourceLocation: test.2)
-        #expect(properties.domain == Domain("EXAMPLE.COM")?.description, sourceLocation: test.2)
-        #expect(properties.path == "/A/B/C", sourceLocation: test.2)
-        #expect(properties.secure, sourceLocation: test.2)
-        #expect(properties.httpOnly, sourceLocation: test.2)
-        #expect(properties.hostOnly == false, sourceLocation: test.2)
-      }
+    let url = try #require(URL(string: aCase.url))
+    let properties = HTTPCookieProperties(responseHeaderFieldValue: setCookieValue, for: url)
+    if !aCase.expectSuccess {
+      #expect(properties.isNil)
+    } else {
+      #expect(properties?.name == "name")
+      #expect(properties?.value == "value")
+      #expect(properties?.domain == Domain("EXAMPLE.COM")?.description)
+      #expect(properties?.path == "/A/B/C")
+      #expect(properties?.secure == true)
+      #expect(properties?.httpOnly == true)
+      #expect(properties?.hostOnly == false)
     }
   }
 
