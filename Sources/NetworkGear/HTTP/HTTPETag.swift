@@ -13,36 +13,8 @@ import yExtensions
 public struct HTTPOpaqueTagContentString: Sendable, Equatable, Hashable {
   private let _string: String
 
-  public init?<S>(validating string: S) where S: StringProtocol {
-    let utf8 = string.utf8
-    var utf8Iterator = utf8.makeIterator()
-    guard let firstByte = utf8Iterator.next() else {
-      self._string = ""
-      return
-    }
-
-    if firstByte._isDoubleQuotationMark {
-      var contentUTF8: [UInt8] = []
-      while let byte = utf8Iterator.next() {
-        if byte._isDoubleQuotationMark {
-          guard utf8Iterator.next().isNil else {
-            return nil
-          }
-          self._string = String(bytes: contentUTF8, encoding: .utf8)!
-          return
-        }
-        guard byte._isAvailableInHTTPOpaqueTagContent else {
-          return nil
-        }
-        contentUTF8.append(byte)
-      }
-      return nil
-    } else {
-      guard utf8.allSatisfy(\._isAvailableInHTTPOpaqueTagContent) else {
-        return nil
-      }
-      self._string = String(string)
-    }
+  fileprivate init<S>(_alreadyValidatedString string: S) where S: StringProtocol {
+    self._string = string._string
   }
 
   public subscript<T>(dynamicMember dynamicMember: KeyPath<String, T>) -> T {
@@ -67,6 +39,48 @@ extension HTTPOpaqueTagContentString: Collection, BidirectionalCollection {
 
 extension HTTPOpaqueTagContentString: CustomStringConvertible {
   public var description: String { self._string }
+}
+
+public struct HTTPOpaqueTagContentParser<Input>: StringParser, _UTF8Parser
+where Input: StringProtocol {
+  public typealias Output = HTTPOpaqueTagContentString
+
+  let input: Input
+  let utf8: Input.UTF8View
+
+  public init(input: Input) {
+    self.input = input
+    self.utf8 = input.utf8
+  }
+
+  public mutating func parse() -> (output: HTTPOpaqueTagContentString, endIndex: Input.Index)? {
+    if utf8.isEmpty {
+      return (HTTPOpaqueTagContentString(_alreadyValidatedString: ""), input.startIndex)
+    }
+
+    let startsWithDoubleQuotationMark = utf8.first!._isDoubleQuotationMark
+    var currentIndex = (
+      startsWithDoubleQuotationMark ? utf8.index(after: utf8.startIndex)
+      : utf8.startIndex
+    )
+
+    let content = self.parseString(from: &currentIndex, while: \._isAvailableInHTTPOpaqueTagContent) ?? ""
+    if startsWithDoubleQuotationMark {
+      guard let _ = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: \._isDoubleQuotationMark
+      ) else {
+        return nil
+      }
+    }
+    return (HTTPOpaqueTagContentString(_alreadyValidatedString: content), currentIndex)
+  }
+}
+
+extension HTTPOpaqueTagContentString: _InitializableWithParser {
+  public init?<S>(validating string: S) where S: StringProtocol {
+    self.init(string, parser: HTTPOpaqueTagContentParser<S>.self)
+  }
 }
 
 extension HTTPOpaqueTagContentString: ExpressibleByStringLiteral {

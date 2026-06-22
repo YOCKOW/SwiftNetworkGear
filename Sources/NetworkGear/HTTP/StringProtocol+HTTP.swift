@@ -271,7 +271,14 @@ extension Unicode.UTF8.CodeUnit {
   /// Returns the Boolean value whether or not the value is available in `opaque-tag` defined in
   /// [RFC 9110](https://datatracker.ietf.org/doc/html/rfc9110#section-8.8.3).
   internal var _isAvailableInHTTPOpaqueTagContent: Bool {
-    return self == 0x21 || (0x23 <= self && self <= 0x7E) || self._isHTTPObsoleted
+    if self == 0x21 || (0x23 <= self && self <= 0x7E) {
+      return true
+    }
+    #if HTTP_ALLOW_OBSOLTED_TEXT
+    return _isHTTPObsoleted
+    #else
+    return false
+    #endif
   }
 
   /// Returns the Boolean value whether or not the value is available in MIME Type tokens.
