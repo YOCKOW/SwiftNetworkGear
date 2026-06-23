@@ -110,28 +110,54 @@ public enum HTTPETag: Sendable {
   case any
 }
 
-extension HTTPETag {
-  /// Initialize from `string`
-  /// e.g.) "foo", W/"bar"
-  public init?(_ string: String) {
-    if string == "*" {
-      self = .any
-      return
+/// A parser to parser an entity tag.
+public struct HTTPETagParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = HTTPETag
+
+  let input: Input
+  let utf8:Input.UTF8View
+
+  public init(input: Input) {
+    self.input = input
+    self.utf8 = input.utf8
+  }
+
+  public mutating func parse() -> (output: HTTPETag, endIndex: Input.Index)? {
+    guard let firstByte = self.utf8.first else {
+      return nil
     }
 
-    if string.hasPrefix(#"W/""#) {
-      let startIndex = string.index(string.startIndex, offsetBy: 2)
-      guard let content = HTTPOpaqueTagContentString(validating: string[startIndex...]) else {
+    if firstByte._isAsterisk {
+      return (.any, self.utf8.index(after: self.utf8.startIndex))
+    } else if firstByte._isDoubleQuotationMark { // STRONG TAG
+      guard let (content, endIndex) = HTTPOpaqueTagContentParser<Input>.parse(input) else {
         return nil
       }
-      self = .weak(content)
-    } else if string.hasPrefix(#"""#) {
-      guard let content = HTTPOpaqueTagContentString(validating: string) else {
+      return (.strong(content), endIndex)
+    } else { // WEAK TAG
+      var currentIndex = self.utf8.startIndex
+      guard let _ = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: { $0 == 0x57 } // W
+      ) else {
         return nil
       }
-      self = .strong(content)
-    } else {
-      return nil
+      guard let _ = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: \._isSlash
+      ) else {
+        return nil
+      }
+      guard currentIndex < self.utf8.endIndex, self.utf8[currentIndex]._isDoubleQuotationMark else {
+        return nil
+      }
+      guard let content = HTTPOpaqueTagContentParser<Input.SubSequence>.parse(
+        input,
+        from: &currentIndex
+      ) else {
+        return nil
+      }
+      return (.weak(content), currentIndex)
     }
   }
 }
@@ -150,6 +176,15 @@ extension HTTPETag: CustomStringConvertible {
     }
   }
 }
+
+extension HTTPETag: _InitializableWithParser, LosslessStringConvertible {
+  /// Initialize from `string`
+  /// e.g.) "foo", W/"bar"
+  public init?<S>(_ string: S) where S: StringProtocol {
+    self.init(string, parser: HTTPETagParser<S>.self)
+  }
+}
+
 
 extension HTTPETag: Equatable {
   public static func ==(lhs:HTTPETag, rhs:HTTPETag) -> Bool {
