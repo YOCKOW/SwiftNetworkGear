@@ -24,7 +24,27 @@ import Testing
     #expect(strong != weak)
   }
 
-  @Test func test_list() {
+  @Test func test_list() throws {
+    #expect(HTTPETagList(string: "*") == .any)
+
+    let list = try #require(HTTPETagList(string: #""A", "B", W/"C",  "D" "#))
+    guard case .list(let array) = list else {
+      Issue.record("Unexpected Error")
+      return
+    }
+    #expect(array[0] == .strong("A"))
+    #expect(array[1] == .strong("B"))
+    #expect(array[2] == .weak("C"))
+    #expect(array[3] == .strong("D"))
+
+    #expect(list.contains(.strong("A")))
+    #expect(list.contains(.weak("C")))
+    #expect(list.contains(.strong("C"), weakComparison: true))
+    #expect(list.contains(.weak("D"), weakComparison: true))
+  }
+
+  @available(*, deprecated)
+  @Test func test_list_deprecated() {
     let trial = { (string:String, expectedError:HTTPETagParseError) -> Void in
       do {
         _ = try HTTPETagList(string)

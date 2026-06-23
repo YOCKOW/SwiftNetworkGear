@@ -62,3 +62,67 @@ extension HTTPETagList: CustomStringConvertible {
     }
   }
 }
+
+
+/// A parser to parse a list of `HTTPETag`s.
+public struct HTTPETagListParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = HTTPETagList
+
+  let input: Input
+  let utf8: Input.UTF8View
+
+  public init(input: Input) {
+    self.input = input
+    self.utf8 = input.utf8
+  }
+
+  public mutating func parse() -> (output: HTTPETagList, endIndex: Input.Index)? {
+    guard let firstByte = utf8.first else {
+      return nil
+    }
+
+    if firstByte._isAsterisk {
+      return (.any, self.utf8.index(after: self.utf8.startIndex))
+    }
+
+    var currentIndex = self.utf8.startIndex
+    var tagSet: Set<HTTPETag> = []
+    var tagList: Array<HTTPETag> = []
+
+    func __consumeSeparator() -> Bool {
+      !self.parseString(from: &currentIndex, while: { $0._isHTTPWhitespace || $0._isComma }).isNil
+    }
+
+    while currentIndex < self.utf8.endIndex {
+      guard let (tag, endIndex) = HTTPETagParser<Input.SubSequence>.parse(input[currentIndex...]) else {
+        break
+      }
+
+      APPEND: do {
+        if case .any = tag {
+          return nil
+        }
+        if tagSet.contains(tag) {
+          break APPEND
+        }
+        tagSet.insert(tag)
+        tagList.append(tag)
+      }
+      currentIndex = endIndex
+
+      guard __consumeSeparator() else {
+        break
+      }
+    }
+
+    return (.list(tagList), currentIndex)
+  }
+}
+
+extension HTTPETagList: _InitializableWithParser {
+  /// Initialize from `string`.
+  /// - parameter string: such as ` "A", "B", W/"C" `
+  public init?<S>(string: S) where S: StringProtocol {
+    self.init(string, parser: HTTPETagListParser<S>.self)
+  }
+}
