@@ -227,14 +227,126 @@ public struct MIMEType: Sendable {
       self.init(string: string)
     }
   }
-  
-  public enum Tree: String, Comparable, Sendable {
-    case vnd
-    case prs
-    case x
-    
+
+  public struct TreeString: Sendable,
+                            Equatable,
+                            Hashable,
+                            CustomStringConvertible,
+                            _InitializableWithParser,
+                            LosslessStringConvertible {
+    @usableFromInline let _string: ASCIICaseInsensitiveString
+
+    @inlinable
+    public var description: String {
+      return _string.description
+    }
+
+    @inlinable
+    internal init<S>(_validatedString string: S) where S: StringProtocol {
+      self._string = ASCIICaseInsensitiveString(string)
+    }
+
+    private struct _Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+      typealias Output = TreeString
+      let input: Input
+      let utf8: Input.UTF8View
+      init(input: Input) {
+        self.input = input
+        self.utf8 = input.utf8
+      }
+      mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+        var currentIndex = self.utf8.startIndex
+        guard let _ = self.readCurrentCodeUnit(
+          at: &currentIndex,
+          ifAllowedCodeUnit: \._isAlphanumeric
+        ) else {
+          return nil
+        }
+        _ = self.parseString(
+          from: &currentIndex,
+          maxCount: 126,
+          while: { !$0._isPeriod && !$0._isPlusSign && $0._isAvailableInMIMETypeRestrictedName }
+        )
+        return (TreeString(_validatedString: input[..<currentIndex]), currentIndex)
+      }
+    }
+
+    public init?<S>(_ description: S) where S: StringProtocol {
+      self.init(description, parser: _Parser<S>.self)
+    }
+  }
+
+  public enum Tree: Sendable,
+                    Equatable,
+                    Comparable,
+                    Hashable,
+                    RawRepresentable {
+    public typealias RawValue = String
+
+    /// Vendor Tree (`vnd.`)
+    case vendor
+    public static let vnd: Tree = .vendor
+
+    /// Personal or Vanity Tree  (`prs.`)
+    case personal
+    public static let prs: Tree = .personal
+
+    /// Unregistered  Tree  (`x.`)
+    case unregistered
+    public static let x: Tree = .unregistered
+
+    /// A tree that may be registered in the future.
+    case future(TreeString)
+
+    @inlinable
+    public var rawValue: String {
+      return switch self {
+      case .vendor: "vnd"
+      case .personal: "prs"
+      case .unregistered: "x"
+      case .future(let str): str._string._string
+      }
+    }
+
+    private var _string: TreeString {
+      return switch self {
+      case .future(let string): string
+      default: TreeString(_validatedString: self.rawValue)
+      }
+    }
+
+    public static func ==(lhs: Tree, rhs: Tree) -> Bool {
+      return lhs._string == rhs._string
+    }
+
     public static func <(lhs: Tree, rhs: Tree) -> Bool {
-      return lhs.rawValue < rhs.rawValue
+      return lhs._string._string._compare(with: rhs._string._string) == .orderedAscending
+    }
+
+    public func hash(into hasher: inout Hasher) {
+      hasher.combine(_string)
+    }
+
+    @inlinable
+    public init(string: TreeString) {
+      switch string._string {
+      case "vnd":
+        self = .vendor
+      case "prs":
+        self = .personal
+      case "x":
+        self = .unregistered
+      default:
+        self = .future(string)
+      }
+    }
+
+    @inlinable
+    public init?<S>(rawValue: S) where S: StringProtocol {
+      guard let string = TreeString(rawValue) else {
+        return nil
+      }
+      self.init(string: string)
     }
   }
   
