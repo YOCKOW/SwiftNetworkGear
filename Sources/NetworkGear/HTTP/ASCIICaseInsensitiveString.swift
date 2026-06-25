@@ -5,6 +5,7 @@
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
+import Foundation
 import Ranges
 import yExtensions
 
@@ -65,6 +66,41 @@ extension ASCIICaseInsensitiveStringProtocol {
   internal func _endIndex<S>(ofPrefix prefix: S) -> String.Index? where S: ASCIICaseInsensitiveStringProtocol {
     return self._endIndex(ofPrefix: prefix._string)
   }
+
+  @usableFromInline
+  internal func _compare<S>(with other: S) -> ComparisonResult where S: StringProtocol{
+    var myUTF8Iterator = self._string.utf8.makeIterator()
+    var otherUTF8Iterator = other._string.utf8.makeIterator()
+    while true {
+      switch (myUTF8Iterator.next(), otherUTF8Iterator.next()) {
+      case (nil, nil):
+        return .orderedSame
+      case (nil, .some):
+        return .orderedAscending
+      case (.some, nil):
+        return .orderedDescending
+      case (.some(var myByte), .some(var otherByte)):
+        if 0x61 <= myByte && myByte <= 0x7A {
+          myByte -= 0x20
+        }
+        if 0x61 <= otherByte && otherByte <= 0x7A {
+          otherByte -= 0x20
+        }
+        if myByte == otherByte {
+          continue
+        } else if myByte < otherByte {
+          return .orderedAscending
+        } else {
+          return .orderedDescending
+        }
+      }
+    }
+  }
+
+  @inlinable
+  internal func _compare<S>(with other: S) -> ComparisonResult where S: ASCIICaseInsensitiveStringProtocol {
+    return self._compare(with: other._string)
+  }
 }
 
 /// A string that is always compared to another string with
@@ -97,6 +133,11 @@ public struct ASCIICaseInsensitiveString: ASCIICaseInsensitiveStringProtocol,
   @inlinable
   public init(_ string: String) {
     self._string = string
+  }
+
+  @inlinable
+  public init<S>(_ string: S) where S: StringProtocol {
+    self.init(string._string)
   }
 
   @inlinable

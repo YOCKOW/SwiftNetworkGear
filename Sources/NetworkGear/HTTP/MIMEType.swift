@@ -5,7 +5,68 @@
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
+import Foundation
 import yExtensions
+
+/// A parser to parse a string defined as `restricted-name` in
+/// [RFC 6838 §4.2](https://datatracker.ietf.org/doc/html/rfc6838#section-4.2).
+private struct _MIMETypeRestrictedNameParser<Input>: StringParser, _UTF8Parser
+where Input: StringProtocol {
+  typealias Output = (
+    name: Input.SubSequence,
+    indexOfFirstPeriod: Input.Index?,
+    indexOfLastPlusSign: Input.Index?
+  )
+
+  let input: Input
+  let utf8: Input.UTF8View
+
+  init(input: Input) {
+    self.input = input
+    self.utf8 = input.utf8
+  }
+
+  mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+    var currentIndex = self.utf8.startIndex
+    guard let _ = self.readCurrentCodeUnit(
+      at: &currentIndex,
+      ifAllowedCodeUnit: \._isAlphanumeric
+    ) else {
+      return nil
+    }
+
+    var count = 0
+    var previousIndex = currentIndex
+    var indexOfFirstPeriod: Input.Index? = nil
+    var indexOfLastPlusSign: Input.Index? = nil
+    while let byte = self.readCurrentCodeUnit(
+      at: &currentIndex,
+      ifAllowedCodeUnit: \._isAvailableInMIMETypeRestrictedName
+    ) {
+      guard count < 126 else {
+        break
+      }
+      defer {
+        count += 1
+        previousIndex = currentIndex
+      }
+      if byte._isPeriod && indexOfFirstPeriod.isNil && indexOfLastPlusSign.isNil {
+        indexOfFirstPeriod = previousIndex
+      }
+      if byte._isPlusSign {
+        indexOfLastPlusSign = previousIndex
+      }
+    }
+    let output: Output = (
+      name: input[..<currentIndex],
+      indexOfFirstPeriod: indexOfFirstPeriod,
+      indexOfLastPlusSign: indexOfLastPlusSign
+    )
+    return (output, currentIndex)
+  }
+}
+
+
 
 /// # MIMEType
 /// Represents MIME Type (a.k.a. media type and content type)
@@ -18,21 +79,152 @@ import yExtensions
 /// - `suffix`: Suffix
 /// - `parameters`: Companion data such as *charset=UTF-8*
 public struct MIMEType: Sendable {
-  public enum TopLevelType: String, Comparable, Sendable {
+  /// A string which is available for type part of MIME Type.
+  public struct TopLevelTypeString: Sendable,
+                                    Equatable,
+                                    Comparable,
+                                    Hashable,
+                                    CustomStringConvertible,
+                                    _InitializableWithParser,
+                                    LosslessStringConvertible {
+    @usableFromInline internal let _string: ASCIICaseInsensitiveString
+
+    @inlinable
+    public static func ==(lhs: TopLevelTypeString, rhs: TopLevelTypeString) -> Bool {
+      return lhs._string == rhs._string
+    }
+
+    @inlinable
+    public static func <(lhs: TopLevelTypeString, rhs: TopLevelTypeString) -> Bool {
+      return lhs._string._compare(with: rhs._string) == .orderedAscending
+    }
+
+    public func hash(into hasher: inout Hasher) {
+      hasher.combine(_string)
+    }
+
+    public var description: String { _string._string }
+
+    @inlinable
+    internal init<S>(_validatedString string: S) where S: StringProtocol {
+      self._string = ASCIICaseInsensitiveString(string)
+    }
+
+    /// A parser to parse a `TopLevelString`.
+    public struct Parser<Input>: StringParser where Input: StringProtocol {
+      public typealias Output = TopLevelTypeString
+
+      let input: Input
+      public init(input: Input) {
+        self.input = input
+      }
+
+      public mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+        guard let result = _MIMETypeRestrictedNameParser<Input>.parse(input) else {
+          return nil
+        }
+        return (
+          output: TopLevelTypeString(_validatedString: result.output.name),
+          endIndex: result.endIndex
+        )
+      }
+    }
+
+    @inlinable
+    public init?<S>(_ description: S) where S: StringProtocol {
+      self.init(description, parser: Parser<S>.self)
+    }
+  }
+
+  public enum TopLevelType: Sendable, RawRepresentable, Equatable, Comparable, Hashable {
+    public typealias RawValue = String
+
     case application
     case audio
     case example
     case font
+    case haptics
     case image
     case message
     case model
     case multipart
     case text
     case video
-    case chemical
-    
+    case unofficial(TopLevelTypeString)
+
+    public static let chemical: TopLevelType = .unofficial(TopLevelTypeString(_validatedString: "chemical"))
+
+    @inlinable
+    public var rawValue: String {
+      return switch self {
+      case .application: "application"
+      case .audio: "audio"
+      case .example: "example"
+      case .font: "font"
+      case .haptics: "haptics"
+      case .image: "image"
+      case .message: "message"
+      case .model: "model"
+      case .multipart: "multipart"
+      case .text: "text"
+      case .video: "video"
+      case .unofficial(let string): string._string._string
+      }
+    }
+
+    private var _string: TopLevelTypeString {
+      return switch self {
+      case .unofficial(let string): string
+      default: TopLevelTypeString(_validatedString: self.rawValue)
+      }
+    }
+
+    public static func ==(lhs: TopLevelType, rhs: TopLevelType) -> Bool {
+      return lhs._string == rhs._string
+    }
+
     public static func <(lhs: TopLevelType, rhs: TopLevelType) -> Bool {
-      return lhs.rawValue < rhs.rawValue
+      return lhs._string < rhs._string
+    }
+
+    public func hash(into hasher: inout Hasher) {
+      hasher.combine(_string)
+    }
+
+    public init(string: TopLevelTypeString) {
+      switch string._string {
+      case "application":
+        self = .application
+      case "audio":
+        self = .audio
+      case "example":
+        self = .example
+      case "font":
+        self = .font
+      case "haptics":
+        self = .haptics
+      case "image":
+        self = .image
+      case "message":
+        self = .message
+      case "model":
+        self = .model
+      case "multipart":
+        self = .multipart
+      case "text":
+        self = .text
+      case "video":
+        self = .video
+      default:
+        self = .unofficial(string)
+      }
+    }
+
+    public init?<S>(rawValue: S) where S: StringProtocol {
+      guard let string = TopLevelTypeString(rawValue) else {
+        return nil
+      }
+      self.init(string: string)
     }
   }
   

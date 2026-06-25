@@ -159,9 +159,17 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isAsterisk: Bool { self == 0x2A }
 
+  /// `+`
+  @inlinable
+  internal var _isPlusSign: Bool { self == 0x2B }
+
   /// `,`
   @inlinable
   internal var _isComma: Bool { self == 0x2C }
+
+  /// `.`
+  @inlinable
+  internal var _isPeriod: Bool { self == 0x2E }
 
   /// `/`
   @inlinable
@@ -377,6 +385,15 @@ extension Unicode.UTF8.CodeUnit {
 
   internal var _isAvailableInPercentEncodedContentInExtendedValue: Bool {
     return _percentEncodedInURL.contains(self) || _attrChar.contains(self)
+  }
+
+  // MIME Type
+
+  private static let _mimeTypeRestrictedName = _DIGIT.union(_ALPHA).union("!#$&-^_").union(".+")
+  /// A Boolean value that indicates whether or not the integer(character) is available
+  /// _from the second onwards_ in `MIMETypeNameComponent`.
+  internal var _isAvailableInMIMETypeRestrictedName: Bool {
+    return Self._mimeTypeRestrictedName.contains(self)
   }
 }
 
