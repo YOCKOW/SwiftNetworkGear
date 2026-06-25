@@ -349,9 +349,51 @@ public struct MIMEType: Sendable {
       self.init(string: string)
     }
   }
-  
-  public typealias Subtype = String
-  
+
+  @dynamicMemberLookup
+  public struct Subtype: Sendable,
+                         Equatable,
+                         Hashable,
+                         CustomStringConvertible,
+                         ExpressibleByStringLiteral {
+    public typealias StringLiteralType = String
+    public typealias ExtendedGraphemeClusterLiteralType = String.ExtendedGraphemeClusterLiteralType
+    public typealias UnicodeScalarLiteralType = String.UnicodeScalarLiteralType
+
+    @usableFromInline let _string: ASCIICaseInsensitiveString
+
+    @inlinable
+    public subscript<T>(dynamicMember dynamicMember: KeyPath<String, T>) -> T {
+      return _string._string[keyPath: dynamicMember]
+    }
+
+    @inlinable
+    public var description: String { _string.description }
+
+    @inlinable
+    internal init<S>(_validatedString string: S) where S: StringProtocol {
+      self._string = ASCIICaseInsensitiveString(string)
+    }
+
+    @usableFromInline
+    internal init?<S>(_validating string: S) where S: StringProtocol {
+      guard let result = _MIMETypeRestrictedNameParser<S>.parse(string) else {
+        return nil
+      }
+      self.init(_validatedString: result.output.name)
+    }
+
+    @inlinable
+    public init(stringLiteral value: String) {
+      guard let instance = Subtype(_validating: value) else {
+        fatalError("Unexpected string for `Subtype`?!")
+      }
+      self = instance
+    }
+
+    public static let octetStream: Subtype = Subtype(_validatedString: "octet-stream")
+  }
+
   public enum Suffix: String, Comparable, Sendable {
     case xml
     case json
@@ -374,18 +416,8 @@ public struct MIMEType: Sendable {
     internal var _type: TopLevelType
     
     internal var _tree: Tree?
-    
-    private var __subtype: Subtype = "octet-stream"
-    internal var _subtype: Subtype {
-      get { return self.__subtype }
-      set {
-         if newValue.isEmpty { fatalError("Subtype cannot be empty.") }
-        guard newValue.utf8.allSatisfy(\._isAvailableInMIMETypeToken) else {
-          fatalError("Invalid string for MIME Type.")
-        }
-        self.__subtype = newValue.lowercased()
-      }
-    }
+
+    internal var _subtype: Subtype
     
     internal var _suffix: Suffix?
     
@@ -422,7 +454,7 @@ public struct MIMEType: Sendable {
     get { return self._core._tree }
     set { self._core._tree = newValue }
   }
-  public var subtype: String {
+  public var subtype: Subtype {
     get { return self._core._subtype }
     set { self._core._subtype = newValue }
   }
@@ -452,13 +484,17 @@ public struct MIMEType: Sendable {
     self._core = core
     self.parameters = parameters
   }
-  
+
   /// Default initializer
+  @available(*, deprecated)
   public init?(type:TopLevelType,
                tree:Tree? = nil,
-               subtype:String,
+               subtype subtypeString: String,
                suffix:Suffix? = nil,
                parameters:[String:String]? = nil) {
+    guard let subtype = Subtype(_validating: subtypeString) else {
+      return nil
+    }
     self.init(core:_Core(type:type, tree:tree, subtype:subtype, suffix:suffix),
               parameters:parameters)
   }
@@ -537,7 +573,7 @@ extension MIMEType: CustomStringConvertible {
   public var description: String {
     var desc : String = "\(self.type.rawValue)/"
     if let tree = self.tree { desc += "\(tree.rawValue)." }
-    desc += self.subtype
+    desc += self.subtype.description
     if let suffix = self.suffix { desc += "+\(suffix.rawValue)" }
     
     if let parameters = self.parameters {
