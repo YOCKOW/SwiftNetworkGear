@@ -959,9 +959,15 @@ extension MIMEType {
   public var possiblePathExtensions:Set<MIMEType.PathExtension>? {
     return _mimeType_to_ext[self._core]
   }
-  
+
+  public init?(pathExtension: MIMEType.PathExtension, parameters: [ParameterName: String]? = nil) {
+    guard let core = _ext_to_mimeType[pathExtension] else { return nil }
+    self.init(core: core, parameters: parameters)
+  }
+
   /// Initialize with a path extension.
-  public init?(pathExtension:MIMEType.PathExtension, parameters:[String:String]? = nil) {
+  @available(*, deprecated, message: "Use another initializer which takes `[ParameterName: String]` for 'parameters' instead.")
+  public init?(pathExtension:MIMEType.PathExtension, parameters:[String:String]?) {
     guard let core = _ext_to_mimeType[pathExtension] else { return nil }
     if let stringParameters = parameters {
       guard let convertedParameters = MIMEType._convertParameters(stringParameters) else {
