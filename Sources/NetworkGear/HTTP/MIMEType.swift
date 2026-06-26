@@ -617,26 +617,96 @@ public struct MIMEType: Sendable {
       self.init(string: string)
     }
   }
-  
-  public typealias Parameters = Dictionary<String, String>
-  
+
+  /// A parameter name of a media type.
+  @dynamicMemberLookup
+  public struct ParameterName: Sendable,
+                               Equatable,
+                               Hashable,
+                               CustomStringConvertible,
+                               _InitializableWithParser,
+                               LosslessStringConvertible,
+                               ExpressibleByStringLiteral {
+    public typealias StringLiteralType = String
+    public typealias ExtendedGraphemeClusterLiteralType = String.ExtendedGraphemeClusterLiteralType
+    public typealias UnicodeScalarLiteralType = String.UnicodeScalarLiteralType
+
+    @usableFromInline let _string: ASCIICaseInsensitiveString
+
+    @inlinable
+    public var description: String { _string._string }
+
+    @inlinable
+    public subscript<T>(dynamicMember dynamicMember: KeyPath<String, T>) -> T {
+      return _string._string[keyPath: dynamicMember]
+    }
+
+    @inlinable
+    internal init<S>(_validatedString string: S) where S: StringProtocol {
+      self._string = ASCIICaseInsensitiveString(string)
+    }
+
+    /// A parser for a parameter name.
+    public struct Parser<Input>: StringParser where Input: StringProtocol {
+      public typealias Output = ParameterName
+
+      let input: Input
+      public init(input: Input) {
+        self.input = input
+      }
+
+      public mutating func parse() -> (output: ParameterName, endIndex: Input.Index)? {
+        guard let result = _MIMETypeRestrictedNameParser<Input>.parse(input) else {
+          return nil
+        }
+        return (
+          output: ParameterName(_validatedString: result.output.name),
+          endIndex: result.endIndex
+        )
+      }
+    }
+
+    @usableFromInline
+    internal init?<S>(_validating string: S) where S: StringProtocol {
+      guard let result = _MIMETypeRestrictedNameParser<S>.parse(string) else {
+        return nil
+      }
+      self.init(_validatedString: result.output.name)
+    }
+
+    @inlinable
+    public init?<S>(_ description: S) where S: StringProtocol {
+      self.init(description, parser: Parser<S>.self)
+    }
+
+    @inlinable
+    public init(stringLiteral value: String) {
+      guard let instance = ParameterName(_validating: value) else {
+        fatalError("Unexpected string for `ParameterName`?!")
+      }
+      self = instance
+    }
+  }
+
+  public typealias Parameters = Dictionary<ParameterName, String>
+
   /// Holds properties of `MIMEType` except parameters.
   internal struct _Core: Hashable, Sendable {
     internal var _type: TopLevelType
-    
+
     internal var _tree: Tree?
 
     internal var _subtype: Subtype
-    
+
     internal var _suffix: Suffix?
-    
+
     internal init(type:TopLevelType, tree:Tree?, subtype:Subtype, suffix:Suffix?) {
       self._type = type
       self._tree = tree
       self._subtype = subtype
       self._suffix = suffix
     }
-    
+
     internal static func ==(lhs:_Core, rhs:_Core) -> Bool {
       return (
         lhs._type == rhs._type &&
@@ -645,7 +715,7 @@ public struct MIMEType: Sendable {
         lhs._suffix == rhs._suffix
       )
     }
-    
+
     public func hash(into hasher:inout Hasher) {
       hasher.combine(self._type)
       hasher.combine(self._tree)
@@ -653,7 +723,7 @@ public struct MIMEType: Sendable {
       hasher.combine(self._suffix)
     }
   }
-  
+
   internal var _core: _Core
   public var type: TopLevelType {
     get { return self._core._type }
@@ -671,52 +741,71 @@ public struct MIMEType: Sendable {
     get { return self._core._suffix }
     set { self._core._suffix = newValue }
   }
-  
-  internal var _parameters: Parameters?
-  public var parameters: [String:String]? {
-    get {
-      return self._parameters
-    }
-    set {
-      if let newParameters = newValue {
-        for key in newParameters.keys {
-          guard key.utf8.allSatisfy(\._isAvailableInMIMETypeToken) else {
-            fatalError("Invalid key exists.")
-          }
-        }
-      }
-      self._parameters = newValue
-    }
-  }
-  
-  internal init?(core:_Core, parameters:Parameters?) {
+
+  public var parameters: [ParameterName: String]?
+
+  internal init(core: _Core, parameters: Parameters?) {
     self._core = core
     self.parameters = parameters
   }
 
   /// Default initializer
-  @available(*, deprecated)
-  public init?(type:TopLevelType,
-               tree:Tree? = nil,
-               subtype subtypeString: String,
-               suffix:Suffix? = nil,
-               parameters:[String:String]? = nil) {
-    guard let subtype = Subtype(_validating: subtypeString) else {
-      return nil
-    }
-    self.init(core:_Core(type:type, tree:tree, subtype:subtype, suffix:suffix),
-              parameters:parameters)
+  public init(
+    type: TopLevelType,
+    tree: Tree? = nil,
+    subtype: Subtype,
+    suffix: Suffix? = nil,
+    parameters: [ParameterName: String]? = nil
+  ) {
+    self.init(
+      core: _Core(type: type, tree: tree, subtype: subtype, suffix: suffix),
+      parameters: parameters
+    )
   }
 }
 
-extension MIMEType: Hashable {
+extension MIMEType {
+  fileprivate static func _convertParameters(_ stringParameters: [String: String]) -> Parameters? {
+    var parameterPairs: [(key: ParameterName, value: String)] = []
+    for (stringKey, stringValue) in stringParameters {
+      guard let name = ParameterName(stringKey) else {
+        return nil
+      }
+      parameterPairs.append((name, stringValue))
+    }
+    return Parameters(uniqueKeysWithValues: parameterPairs)
+  }
+
+  @available(*, deprecated)
+  public init?(type:TopLevelType,
+               tree:Tree?,
+               subtype subtypeString: String,
+               suffix:Suffix?,
+               parameters:[String:String]?) {
+    guard let subtype = Subtype(_validating: subtypeString) else {
+      return nil
+    }
+
+    let core = _Core(type: type, tree: tree, subtype: subtype, suffix: suffix)
+    if let stringParamters = parameters {
+      guard let params = MIMEType._convertParameters(stringParamters) else {
+        return nil
+      }
+      self.init(core: core, parameters: params)
+    } else {
+      self.init(core: core, parameters: nil)
+    }
+  }
+}
+
+extension MIMEType: Equatable, Hashable {
   public static func ==(lhs:MIMEType, rhs:MIMEType) -> Bool {
-    return lhs._core == rhs._core && lhs._parameters == rhs._parameters
+    return lhs._core == rhs._core && lhs.parameters == rhs.parameters
   }
   
   public func hash(into hasher:inout Hasher) {
     hasher.combine(self._core)
-    hasher.combine(self._parameters)
+    hasher.combine(self.parameters)
   }
 }
 
@@ -774,7 +863,14 @@ extension MIMEType {
   /// Initialize with a path extension.
   public init?(pathExtension:MIMEType.PathExtension, parameters:[String:String]? = nil) {
     guard let core = _ext_to_mimeType[pathExtension] else { return nil }
-    self.init(core:core, parameters:parameters)
+    if let stringParameters = parameters {
+      guard let convertedParameters = MIMEType._convertParameters(stringParameters) else {
+        return nil
+      }
+      self.init(core:core, parameters: convertedParameters)
+    } else {
+      self.init(core: core, parameters: nil)
+    }
   }
 }
 
@@ -801,5 +897,5 @@ extension MIMEType: CustomStringConvertible {
 }
 
 extension MIMEType {
-  public static let wwwFormURLEncoded: MIMEType = .init(type: .application, subtype: "x-www-form-urlencoded")!
+  public static let wwwFormURLEncoded: MIMEType = .init(type: .application, subtype: "x-www-form-urlencoded")
 }
