@@ -624,6 +624,7 @@ public struct MIMEType: Sendable {
   public struct ParameterName: Sendable,
                                Equatable,
                                Hashable,
+                               Comparable,
                                CustomStringConvertible,
                                _InitializableWithParser,
                                LosslessStringConvertible,
@@ -633,6 +634,10 @@ public struct MIMEType: Sendable {
     public typealias UnicodeScalarLiteralType = String.UnicodeScalarLiteralType
 
     @usableFromInline let _string: ASCIICaseInsensitiveString
+
+    public static func <(lhs: ParameterName, rhs: ParameterName) -> Bool {
+      return lhs._string._compare(with: rhs._string) == .orderedAscending
+    }
 
     @inlinable
     public var description: String { _string._string }
@@ -873,15 +878,14 @@ public struct MIMETypeParser<Input>: StringParser, _UTF8Parser where Input: Stri
     let core = MIMEType._Core(type: topLevelType, tree: tree, subtype: subtype, suffix: suffix)
 
     func __parseNextParameter() -> (name: MIMEType.ParameterName, value: String)? {
-      var tmpCurrentIndex = currentIndex
-
       guard let _ = _SemicolonSeparatorParser<Input.SubSequence>.parse(
         input,
-        from: &tmpCurrentIndex
+        from: &currentIndex
       ) else {
         return nil
       }
 
+      var tmpCurrentIndex = currentIndex
       guard let nameResult = _MIMETypeRestrictedNameParser<Input.SubSequence>.parse(
         input,
         from: &tmpCurrentIndex
@@ -971,24 +975,44 @@ extension MIMEType {
 }
 
 extension MIMEType: CustomStringConvertible {
-  public var description: String {
+  @usableFromInline
+  internal func _description(sortParameters: Bool) -> String {
     var desc : String = "\(self.type.rawValue)/"
     if let tree = self.tree { desc += "\(tree.rawValue)." }
     desc += self.subtype.description
     if let suffix = self.suffix { desc += "+\(suffix.rawValue)" }
-    
+
     if let parameters = self.parameters {
-      for (key, value) in parameters {
-        desc += "; \(key)="
+      func __appendDescription(name: ParameterName, value: String) {
+        desc += "; \(name.description)="
         if value.utf8.allSatisfy(\._isAvailableInMIMETypeToken) {
           desc += value
         } else {
-          let escapedValue = value.replacingOccurrences(of:"\\", with:"\\\\").replacingOccurrences(of:"\"", with:"\\\"")
-          desc += "\"\(escapedValue)\""
+          if let quotedString = value._quotedString {
+            desc += quotedString
+          } else {
+            // FIXME: This may not be the correct way...
+            desc += value.addingPercentEncoding(whereAllowedASCIICharacters: \._isAvailableInHTTPToken)!
+          }
+        }
+      }
+
+      if sortParameters {
+        for (name, value) in parameters.sorted(by: { $0.key < $1.key }) {
+          __appendDescription(name: name, value: value)
+        }
+      } else {
+        for (name, value) in parameters {
+          __appendDescription(name: name, value: value)
         }
       }
     }
     return desc
+  }
+
+  @inlinable
+  public var description: String {
+    return _description(sortParameters: false)
   }
 }
 

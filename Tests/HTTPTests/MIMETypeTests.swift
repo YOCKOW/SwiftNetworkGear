@@ -10,15 +10,48 @@ import Testing
 
 @Suite final class MIMETypeTests {
   @Test func test_parser() throws {
-    let xhtml_type_utf8_string = "application/xhtml+xml; charset=UTF-8; myparameter=myvalue"
-    let xhtml_type = try #require(MIMEType(xhtml_type_utf8_string))
+    JSON_API: do {
+      let string = "application/vnd.api+json"
+      let type = try #require(MIMEType(string))
 
-    #expect(xhtml_type.type == .application)
-    #expect(xhtml_type.tree == nil)
-    #expect(xhtml_type.subtype == "xhtml")
-    #expect(xhtml_type.suffix == .xml)
-    #expect(xhtml_type.parameters?["charset"] == "UTF-8")
-    #expect(xhtml_type.parameters?["myparameter"] == "myvalue")
+      #expect(type.type == .application)
+      #expect(type.tree == .vnd)
+      #expect(type.subtype == "api")
+      #expect(type.suffix == .json)
+
+      #expect(type.description == string)
+    }
+
+    XHTML_UTF8: do {
+      let string = "application/xhtml+xml; charset=UTF-8; myparameter=myvalue"
+      let type = try #require(MIMEType(string))
+
+      #expect(type.type == .application)
+      #expect(type.tree == nil)
+      #expect(type.subtype == "xhtml")
+      #expect(type.suffix == .xml)
+      #expect(type.parameters?["charset"] == "UTF-8")
+      #expect(type.parameters?["myparameter"] == "myvalue")
+
+      #expect(type._description(sortParameters: true) == string)
+    }
+
+    JUST_FOR_TEST: do {
+      let string = #"example/x.foo.bar.baz+gzip; my-name=my-value; with-spaces="a b c"; "#
+      let type = try #require(MIMEType(string))
+
+      #expect(type.type == .example)
+      #expect(type.tree == .x)
+      #expect(type.subtype == "foo.bar.baz")
+      #expect(type.suffix == .gzip)
+      #expect(type.parameters?["my-name"] == "my-value")
+      #expect(type.parameters?["with-spaces"] == "a b c")
+
+      #expect(
+        type._description(sortParameters: true) ==
+        #"example/x.foo.bar.baz+gzip; my-name=my-value; with-spaces="a b c""#
+      )
+    }
   }
 
   @Test func test_pathExtensions() {
