@@ -394,18 +394,227 @@ public struct MIMEType: Sendable {
     public static let octetStream: Subtype = Subtype(_validatedString: "octet-stream")
   }
 
-  public enum Suffix: String, Comparable, Sendable {
+  public struct SuffixString: Sendable,
+                              Equatable,
+                              Hashable,
+                              CustomStringConvertible,
+                              _InitializableWithParser,
+                              LosslessStringConvertible {
+    @usableFromInline let _string: ASCIICaseInsensitiveString
+
+    @inlinable
+    public var description: String {
+      return _string.description
+    }
+
+    @inlinable
+    internal init<S>(_validatedString string: S) where S: StringProtocol {
+      self._string = ASCIICaseInsensitiveString(string)
+    }
+
+    private struct _Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+      typealias Output = SuffixString
+      let input: Input
+      let utf8: Input.UTF8View
+      init(input: Input) {
+        self.input = input
+        self.utf8 = input.utf8
+      }
+      mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+        var currentIndex = self.utf8.startIndex
+        guard let _ = self.readCurrentCodeUnit(
+          at: &currentIndex,
+          ifAllowedCodeUnit: \._isAlphanumeric
+        ) else {
+          return nil
+        }
+        _ = self.parseString(
+          from: &currentIndex,
+          maxCount: 126,
+          while: { !$0._isPlusSign && $0._isAvailableInMIMETypeRestrictedName }
+        )
+        return (SuffixString(_validatedString: input[..<currentIndex]), currentIndex)
+      }
+    }
+
+    public init?<S>(_ description: S) where S: StringProtocol {
+      self.init(description, parser: _Parser<S>.self)
+    }
+  }
+
+  /// Structured Syntax Suffix
+  ///
+  /// - Refernces:
+  ///     + [RFC 6838 §4.2.8](https://datatracker.ietf.org/doc/html/rfc6838#section-4.2.8)
+  ///     + ["Structured Syntax Suffixes"](https://www.iana.org/assignments/media-type-structured-suffix/media-type-structured-suffix.xml)
+  public enum Suffix: Sendable, RawRepresentable, Equatable, Comparable, Hashable {
+    public typealias RawValue = String
+
+    /// Extensible Markup Language (XML)
     case xml
+
+    /// JavaScript Object Notation (JSON)
     case json
+
+    /// Basic Encoding Rules (BER) message transfer syntax
     case ber
-    case der
-    case fastinfoset
-    case wbxml
-    case zip
+
+    /// Concise Binary Object Representation (CBOR)
     case cbor
-    
+
+    /// Distinguished Encoding Rules (DER) message transfer syntax
+    case der
+
+    /// Fast Infoset document format
+    case fastInfoset
+    @available(*, deprecated, renamed: "fastInfoset") public static let fastinfoset: Suffix = .fastInfoset
+
+    /// WAP Binary XML (WBXML) document format
+    case wbxml
+
+    /// ZIP file storage and transfer format
+    case zip
+
+
+    /// Type Length Value
+    case tlv
+
+    /// JSON Text Sequence
+    case jsonTextSequence
+    public static let jsonSeq: Suffix = .jsonTextSequence
+
+    /// SQLite3 database
+    case sqlite3
+
+    /// JSON Web Token (JWT)
+    case jwt
+
+    /// gzip file storage and transfer format
+    case gzip
+
+    /// CBOR Sequence
+    case cborSequence
+    public static let cborSeq: Suffix = .cborSequence
+
+    /// Zstandard
+    case zstd
+
+    /// YAML Ain't Markup Language (YAML)
+    case yaml
+
+    /// CBOR Object Signing and Encryption (COSE) object
+    case cose
+
+    /// CBOR Web Token (CWT)
+    case cwt
+
+    /// SD-JWT
+    case sdJWT
+
+    /// Comma-Separated Values (CSV)
+    case csv
+
+    /// ASN.1 Unaligned Packed Encoding Rules
+    case uper
+
+    /// ASN.1 JSON Encoding Rules
+    case jer
+
+    /// JSON Web Signature (JWS)
+    case jws
+
+    /// SD-CWT
+    case sdCWT
+
+    case future(SuffixString)
+
+    @inlinable
+    public var rawValue: String {
+      return switch self {
+      case .xml: "xml"
+      case .json: "json"
+      case .ber: "ber"
+      case .cbor: "cbor"
+      case .der: "der"
+      case .fastInfoset: "fastinfoset"
+      case .wbxml: "wbxml"
+      case .zip: "zip"
+      case .tlv: "tlv"
+      case .jsonTextSequence: "json-seq"
+      case .sqlite3: "sqlite3"
+      case .jwt: "jwt"
+      case .gzip: "gzip"
+      case .cborSequence: "cbor-seq"
+      case .zstd: "zstd"
+      case .yaml: "yaml"
+      case .cose: "cose"
+      case .cwt: "cwt"
+      case .sdJWT: "sd-jwt"
+      case .csv: "csv"
+      case .uper: "uper"
+      case .jer: "jer"
+      case .jws: "jws"
+      case .sdCWT: "sd-cwt"
+      case .future(let string): string._string._string
+      }
+    }
+
+    private var _string: SuffixString {
+      return switch self {
+      case .future(let string): string
+      default: SuffixString(_validatedString: self.rawValue)
+      }
+    }
+
+    public static func ==(lhs: Suffix, rhs: Suffix) -> Bool {
+      return lhs._string == rhs._string
+    }
+
     public static func <(lhs: Suffix, rhs: Suffix) -> Bool {
-      return lhs.rawValue < rhs.rawValue
+      return lhs._string._string._compare(with: rhs._string._string) == .orderedAscending
+    }
+
+    public func hash(into hasher: inout Hasher) {
+      hasher.combine(_string)
+    }
+
+    @inlinable
+    public init(string: SuffixString) {
+      switch string._string {
+      case "xml": self = .xml
+      case "json": self = .json
+      case "ber": self = .ber
+      case "cbor": self = .cbor
+      case "der": self = .der
+      case "fastinfoset": self = .fastInfoset
+      case "wbxml": self = .wbxml
+      case "zip": self = .zip
+      case "tlv": self = .tlv
+      case "json-seq": self = .jsonTextSequence
+      case "sqlite3": self = .sqlite3
+      case "jwt": self = .jwt
+      case "gzip": self = .gzip
+      case "cbor-seq": self = .cborSequence
+      case "zstd": self = .zstd
+      case "yaml": self = .yaml
+      case "cose": self = .cose
+      case "cwt": self = .cwt
+      case "sd-jwt": self = .sdJWT
+      case "csv": self = .csv
+      case "uper": self = .uper
+      case "jer": self = .jer
+      case "jws": self = .jws
+      case "sd-cwt": self = .sdCWT
+      default: self = .future(string)
+      }
+    }
+
+    @inlinable
+    public init?<S>(rawValue: S) where S: StringProtocol {
+      guard let string = SuffixString(rawValue) else {
+        return nil
+      }
+      self.init(string: string)
     }
   }
   
