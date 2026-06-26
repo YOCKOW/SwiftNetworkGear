@@ -6,6 +6,7 @@
  ************************************************************************************************ */
 
 import Foundation
+import Ranges
 import yExtensions
 
 /// A parser to parse a string defined as `restricted-name` in
@@ -809,48 +810,143 @@ extension MIMEType: Equatable, Hashable {
   }
 }
 
-extension MIMEType {
+/// A parser to parse media type such as "application/xhtml+xml; charset=UTF-8".
+public struct MIMETypeParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = MIMEType
+
+  let input: Input
+  let utf8: Input.UTF8View
+  public init(input: Input) {
+    self.input = input
+    self.utf8 = input.utf8
+  }
+
+  public mutating func parse() -> (output: MIMEType, endIndex: Input.Index)? {
+    var currentIndex = self.utf8.startIndex
+
+    guard let topLevelTypeString = MIMEType.TopLevelTypeString.Parser<Input.SubSequence>.parse(
+      input,
+      from: &currentIndex
+    ) else {
+      return nil
+    }
+
+    guard let _ = self.readCurrentCodeUnit(at: &currentIndex, ifAllowedCodeUnit: \._isSlash) else {
+      return nil
+    }
+
+    guard let treeSubtypeSuffixStringResult = _MIMETypeRestrictedNameParser<Input.SubSequence>.parse(
+      input,
+      from: &currentIndex
+    ) else {
+      return nil
+    }
+
+    let topLevelType = MIMEType.TopLevelType(string: topLevelTypeString)
+    let tree: MIMEType.Tree? = treeSubtypeSuffixStringResult.indexOfFirstPeriod.map {
+      let treeString = MIMEType.TreeString(
+        _validatedString: treeSubtypeSuffixStringResult.name[..<$0]
+      )
+      return MIMEType.Tree(string: treeString)
+    }
+    let subtype: MIMEType.Subtype = ({ () -> MIMEType.Subtype in
+      let wholeString = treeSubtypeSuffixStringResult.name
+      let indexOfFirstPeriod = treeSubtypeSuffixStringResult.indexOfFirstPeriod
+      let indexOfLastPlusSign = treeSubtypeSuffixStringResult.indexOfLastPlusSign
+      switch (indexOfFirstPeriod, indexOfLastPlusSign) {
+      case (nil, nil):
+        return MIMEType.Subtype(_validatedString: wholeString)
+      case (nil, let plusIndex?):
+        return MIMEType.Subtype(_validatedString: wholeString[..<plusIndex])
+      case (let periodIndex?, nil):
+        return MIMEType.Subtype(_validatedString: wholeString[periodIndex<..])
+      case (let periodIndex?, let plusIndex?):
+        return MIMEType.Subtype(_validatedString: wholeString[periodIndex<..<plusIndex])
+      }
+    })()
+    let suffix: MIMEType.Suffix? = treeSubtypeSuffixStringResult.indexOfLastPlusSign.map {
+      let suffixString = MIMEType.SuffixString(
+        _validatedString: treeSubtypeSuffixStringResult.name[$0<..]
+      )
+      return MIMEType.Suffix(string: suffixString)
+    }
+    let core = MIMEType._Core(type: topLevelType, tree: tree, subtype: subtype, suffix: suffix)
+
+    func __parseNextParameter() -> (name: MIMEType.ParameterName, value: String)? {
+      var tmpCurrentIndex = currentIndex
+
+      guard let _ = _SemicolonSeparatorParser<Input.SubSequence>.parse(
+        input,
+        from: &tmpCurrentIndex
+      ) else {
+        return nil
+      }
+
+      guard let nameResult = _MIMETypeRestrictedNameParser<Input.SubSequence>.parse(
+        input,
+        from: &tmpCurrentIndex
+      ) else {
+        return nil
+      }
+      guard let _ = self.readCurrentCodeUnit(
+        at: &tmpCurrentIndex,
+        ifAllowedCodeUnit: \._isEqualSign
+      ) else {
+        return nil
+      }
+
+      var name: MIMEType.ParameterName { MIMEType.ParameterName(_validatedString: nameResult.name) }
+
+      guard tmpCurrentIndex < input.endIndex else {
+        currentIndex = tmpCurrentIndex
+        return (name: name, value: "")
+      }
+      if utf8[tmpCurrentIndex]._isDoubleQuotationMark {
+        guard let quotedString = QuotedStringParser<Input.SubSequence>.parse(
+          input,
+          from: &tmpCurrentIndex
+        ) else {
+          return nil
+        }
+        currentIndex = tmpCurrentIndex
+        return (name: name, value: quotedString.content)
+      } else {
+        guard let value = self.parseString(
+          from: &tmpCurrentIndex,
+          while: \._isAvailableInMIMETypeToken
+        ) else {
+          currentIndex = tmpCurrentIndex
+          return (name: name, value: "")
+        }
+        currentIndex = tmpCurrentIndex
+        return (name: name, value: value._string)
+      }
+    } // func __parseNextParameter
+
+    guard let firstParameter = __parseNextParameter() else {
+      return (
+        output: MIMEType(core: core, parameters: nil),
+        endIndex: currentIndex
+      )
+    }
+
+    var parameters: MIMEType.Parameters = [firstParameter.name: firstParameter.value]
+    while let parameter = __parseNextParameter() {
+      parameters[parameter.name] = parameter.value
+    }
+    return (
+      output: MIMEType(core: core, parameters: parameters),
+      endIndex: currentIndex
+    )
+  }
+}
+
+extension MIMEType: _InitializableWithParser {
   /// Initialize with `string` such as "application/xhtml+xml; charset=UTF-8"
   ///
   /// - parameter string: must be `type "/" [tree "."] subtype ["+" suffix] *[";" parameter]`
   public init?<S>(_ string: S) where S: StringProtocol {
-    let (type_s, tree_subtype_suffix_parameters_s_nilable) = string.splitOnce(separator:"/")
-    
-    guard let type = TopLevelType(rawValue:type_s.lowercased()) else { return nil }
-    
-    guard let tree_subtype_suffix_parameters_s = tree_subtype_suffix_parameters_s_nilable else {
-      return nil
-    }
-    
-    let (tree, subtype_suffix_parameters_s): (Tree?, S.SubSequence) = ({
-      if let indexOfFirstDot = $0.firstIndex(of:".") {
-        let tree_s = $0[$0.startIndex..<indexOfFirstDot]
-        if let tree = Tree(rawValue:String(tree_s)) {
-          return (tree, $0[$0.index(after:indexOfFirstDot)..<$0.endIndex])
-        }
-      }
-      return (nil, $0)
-    })(tree_subtype_suffix_parameters_s)
-    
-    let (subtype_suffix_s, parameters_s) = subtype_suffix_parameters_s.splitOnce(separator:";")
-    
-    let (subtype, suffix): (S.SubSequence, Suffix?) = ({
-      if let indexOfLastPlus = $0.lastIndex(of:"+") {
-        let suffix_s = $0[$0.index(after:indexOfLastPlus)..<$0.endIndex]
-        if let suffix = Suffix(rawValue:String(suffix_s)) {
-          return ($0[$0.startIndex..<indexOfLastPlus], suffix)
-        }
-      }
-      return ($0, nil)
-    })(subtype_suffix_s)
-    
-    let parameters:[String:String]? = parameters_s != nil ? Dictionary<String,String>(parsing:String(parameters_s!)) : nil
-    
-    self.init(type:type,
-              tree:tree,
-              subtype:String(subtype),
-              suffix:suffix,
-              parameters:parameters)
+    self.init(string, parser: MIMETypeParser<S>.self)
   }
 }
 
