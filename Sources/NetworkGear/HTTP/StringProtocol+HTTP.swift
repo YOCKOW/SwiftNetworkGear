@@ -395,6 +395,16 @@ extension Unicode.UTF8.CodeUnit {
   internal var _isAvailableInMIMETypeRestrictedName: Bool {
     return Self._mimeTypeRestrictedName.contains(self)
   }
+
+  private static let _multipartFormDataBoundarySymbols = _U8CodeSet("'()+_,-./:=?")
+  internal var _isAvailableInMultipartFormDataBoundary: Bool {
+    return (
+      self._isSpace ||
+      self._isDigit ||
+      self._isAlphabet ||
+      Self._multipartFormDataBoundarySymbols.contains(self)
+    )
+  }
 }
 
 // MARK: - StringProtocol APIs
@@ -414,6 +424,49 @@ extension StringProtocol {
 }
 
 extension StringProtocol where Self.UTF8View: BidirectionalCollection {
+  @inlinable
+  internal func _dropTrailingHTTPNewlines(maxCount: Int) -> SubSequence {
+    let utf8 = self.utf8
+    var currentIndex = utf8.endIndex
+
+    var count = 0
+    while count < maxCount && currentIndex > utf8.startIndex {
+      var tmpIndex = utf8.index(before: currentIndex)
+      guard utf8[tmpIndex]._isLineFeed else {
+        break
+      }
+      guard tmpIndex > utf8.startIndex else {
+        break
+      }
+
+      utf8.formIndex(before: &tmpIndex)
+      guard utf8[tmpIndex]._isCarriageReturn else {
+        break
+      }
+
+      currentIndex = tmpIndex
+      count += 1
+    }
+    return self[..<currentIndex]
+  }
+
+  @inlinable
+  internal func _dropTrailingHTTPWhitespaces(maxCount: Int) -> SubSequence {
+    let utf8 = self.utf8
+    var currentIndex = utf8.endIndex
+
+    var count = 0
+    while count < maxCount, currentIndex > utf8.startIndex {
+      let tmpIndex = utf8.index(before: currentIndex)
+      guard utf8[tmpIndex]._isHTTPWhitespace else {
+        break
+      }
+      currentIndex = tmpIndex
+      count += 1
+    }
+    return self[..<currentIndex]
+  }
+
   @inlinable
   internal var _trimmed: SubSequence {
     let myUTF8 = self.utf8
@@ -454,6 +507,59 @@ extension StringProtocol {
       myUTF8.formIndex(after: &currentIndex)
     }
     return self[firstIndexOfNonWhitespace...lastIndexOfNonWhitespace]
+  }
+
+  /// Returns a substring with dropping trailing `CRLF`s.
+  @inlinable
+  public func dropTrailingHTTPNewlines(maxCount: Int = .max) -> SubSequence {
+    if case let string as String = self,
+      case let dropped as SubSequence = string._dropTrailingHTTPNewlines(maxCount: maxCount) {
+      return dropped
+    } else if case let substring as Substring = self,
+              case let dropped as SubSequence = substring._dropTrailingHTTPNewlines(maxCount: maxCount) {
+      return dropped
+    }
+
+    // Never reach?
+    var endIndex = self.endIndex
+    var expectCR = false
+    for index in self.utf8.indices.lazy.reversed() {
+      if expectCR {
+        guard self.utf8[index]._isCarriageReturn else {
+          break
+        }
+        endIndex = index
+        expectCR = false
+      } else {
+        guard self.utf8[index]._isLineFeed else {
+          break
+        }
+        expectCR = true
+      }
+    }
+    return self[..<endIndex]
+  }
+
+  /// Returns a substring with dropping trailing `SP`s and `HTAB`s.
+  @inlinable
+  public func dropTrailingHTTPWhitespaces(maxCount: Int = .max) -> SubSequence {
+    if case let string as String = self,
+      case let dropped as SubSequence = string._dropTrailingHTTPWhitespaces(maxCount: maxCount) {
+      return dropped
+    } else if case let substring as Substring = self,
+              case let dropped as SubSequence = substring._dropTrailingHTTPWhitespaces(maxCount: maxCount) {
+      return dropped
+    }
+
+    // Never reach?
+    var endIndex = self.endIndex
+    for index in self.utf8.indices.lazy.reversed() {
+      guard self.utf8[index]._isHTTPWhitespace else {
+        break
+      }
+      endIndex = index
+    }
+    return self[..<endIndex]
   }
 }
 

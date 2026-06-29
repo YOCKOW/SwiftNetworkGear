@@ -391,8 +391,6 @@ public struct MIMEType: Sendable {
       }
       self = instance
     }
-
-    public static let octetStream: Subtype = Subtype(_validatedString: "octet-stream")
   }
 
   public struct SuffixString: Sendable,
@@ -697,13 +695,18 @@ public struct MIMEType: Sendable {
   public typealias Parameters = Dictionary<ParameterName, String>
 
   /// Holds properties of `MIMEType` except parameters.
+  @usableFromInline
   internal struct _Core: Hashable, Sendable {
+    @usableFromInline
     internal var _type: TopLevelType
 
+    @usableFromInline
     internal var _tree: Tree?
 
+    @usableFromInline
     internal var _subtype: Subtype
 
+    @usableFromInline
     internal var _suffix: Suffix?
 
     internal init(type:TopLevelType, tree:Tree?, subtype:Subtype, suffix:Suffix?) {
@@ -713,6 +716,7 @@ public struct MIMEType: Sendable {
       self._suffix = suffix
     }
 
+    @inlinable
     internal static func ==(lhs:_Core, rhs:_Core) -> Bool {
       return (
         lhs._type == rhs._type &&
@@ -730,19 +734,24 @@ public struct MIMEType: Sendable {
     }
   }
 
+  @usableFromInline
   internal var _core: _Core
+
   public var type: TopLevelType {
     get { return self._core._type }
     set { self._core._type = newValue }
   }
+
   public var tree: Tree? {
     get { return self._core._tree }
     set { self._core._tree = newValue }
   }
+
   public var subtype: Subtype {
     get { return self._core._subtype }
     set { self._core._subtype = newValue }
   }
+
   public var suffix: Suffix? {
     get { return self._core._suffix }
     set { self._core._suffix = newValue }
@@ -805,8 +814,40 @@ extension MIMEType {
 }
 
 extension MIMEType: Equatable, Hashable {
+  @inlinable
+  internal func _isEqual(to other: MIMEType, ignoreCaseOfParameterValues: Bool) -> Bool {
+    guard self._core == other._core else {
+      return false
+    }
+
+    switch (self.parameters, other.parameters) {
+    case (nil, nil):
+      return true
+    case (nil, let otherParameters?):
+      return otherParameters.isEmpty
+    case (let myParameters?, nil):
+      return myParameters.isEmpty
+    case (let myParameters?, let otherParameters?):
+      if !ignoreCaseOfParameterValues {
+        return myParameters == otherParameters
+      }
+
+      guard myParameters.count == otherParameters.count else {
+        return false
+      }
+      for (name, myValue) in myParameters {
+        guard let otherValue = otherParameters[name],
+              myValue.isASCIICaseInsensitivelyEqual(to: otherValue) else {
+          return false
+        }
+      }
+      return true
+    }
+  }
+
+  @inlinable
   public static func ==(lhs:MIMEType, rhs:MIMEType) -> Bool {
-    return lhs._core == rhs._core && lhs.parameters == rhs.parameters
+    return lhs._isEqual(to: rhs, ignoreCaseOfParameterValues: false)
   }
   
   public func hash(into hasher:inout Hasher) {
@@ -1022,6 +1063,305 @@ extension MIMEType: CustomStringConvertible {
   }
 }
 
+// MARK: - Related types
+
+/// A string that is available for the value of `boundary` of `multipart/*`.
+///
+/// - Reference: [RFC 2046 §5.1.1](https://datatracker.ietf.org/doc/html/rfc2046#section-5.1.1)
+public struct MultipartBoundary: Sendable,
+                                 Equatable,
+                                 Hashable,
+                                 RawRepresentable,
+                                 _InitializableWithParser {
+  private struct _Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+    typealias Output = Input.SubSequence
+
+    let input: Input
+    let utf8: Input.UTF8View
+
+    init(input: Input) {
+      self.input = input
+      self.utf8 = input.utf8
+    }
+
+    mutating func parse() -> (output: Input.SubSequence, endIndex: Input.Index)? {
+      var currentIndex = self.utf8.startIndex
+      var previousIndex = currentIndex
+      var count = 0
+      var indexOfLastNonSpace: Input.UTF8View.Index? = nil
+
+      while let byte = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: \._isAvailableInMultipartFormDataBoundary
+      ) {
+        guard count < 70 else {
+          break
+        }
+        if !byte._isSpace {
+          indexOfLastNonSpace = previousIndex
+        }
+        count += 1
+        previousIndex = currentIndex
+      }
+
+      guard let lastIndex = indexOfLastNonSpace else {
+        return nil
+      }
+      return (input[...lastIndex], utf8.index(after: lastIndex))
+    }
+  }
+
+  public typealias RawValue = String
+
+  public let rawValue: String
+
+  internal init<S>(_validatedString string: S) where S: StringProtocol {
+    self.rawValue = string._string
+  }
+
+  public init?<S>(rawValue: S) where S: StringProtocol {
+    // Handle `transport-padding CRLF`
+    let trimmed = rawValue.dropTrailingHTTPNewlines(maxCount: 1).dropTrailingHTTPWhitespaces()
+    guard let validated = _Parser<S.SubSequence.SubSequence>.parse(trimmed)?.output else {
+      return nil
+    }
+    self.init(_validatedString: validated)
+  }
+
+  /// Returns the string which is formed by concatenating "`--`", `rawValue`, and `CRLF`.
+  @inlinable
+  public var startBoundary: String {
+    return "--\(rawValue)\u{0D}\u{0A}"
+  }
+
+  /// Returns the string which is formed by concatenating `CRLF`, "`--`", `rawValue`, and "`--`".
+  @inlinable
+  public var endBoundary: String {
+    return "\u{0D}\u{0A}--\(rawValue)--"
+  }
+
+  /// Creates a new boundary.
+  public static func random() -> MultipartBoundary {
+    enum __Constants {
+      static let alphanumerics: Array<Unicode.UTF8.CodeUnit> = [
+        0x30...0x39, 0x41...0x5A, 0x61...0x7A
+      ].flatMap(\.self)
+      static let suffix = "--SwiftNetworkGear".utf8
+    }
+
+    var rawValueData = Data(capacity: 70)
+    for _ in 0..<36 {
+      rawValueData.append(__Constants.alphanumerics.randomElement()!)
+    }
+    rawValueData.append(contentsOf: __Constants.suffix)
+
+    return MultipartBoundary(
+      _validatedString: String(decoding: rawValueData, as: UTF8.self)
+    )
+  }
+}
+
+// MARK: - Common Mediat Types
+
+extension MIMEType.Subtype {
+  public static let css: MIMEType.Subtype = .init(_validatedString: "css")
+  public static let html: MIMEType.Subtype = .init(_validatedString: "html")
+  public static let javascript: MIMEType.Subtype = .init(_validatedString: "javascript")
+  public static let json: MIMEType.Subtype = .init(_validatedString: "json")
+  public static let octetStream: MIMEType.Subtype = .init(_validatedString: "octet-stream")
+  public static let plain: MIMEType.Subtype = .init(_validatedString: "plain")
+  public static let wwwFormURLEncoded: MIMEType.Subtype = .init(_validatedString: "x-www-form-urlencoded")
+}
+
+extension MIMEType.ParameterName {
+  public static let boundary: MIMEType.ParameterName = .init(_validatedString: "boundary")
+  public static let charset: MIMEType.ParameterName = .init(_validatedString: "charset")
+}
+
 extension MIMEType {
-  public static let wwwFormURLEncoded: MIMEType = .init(type: .application, subtype: "x-www-form-urlencoded")
+  @inlinable @discardableResult
+  public mutating func removeParameter(forName name: ParameterName) -> String? {
+    return self.parameters?.removeValue(forKey: name)
+  }
+
+  @inlinable @discardableResult
+  public mutating func setParameter(_ value: String, forName name: ParameterName) -> String? {
+    if self.parameters.isNil {
+      self.parameters = [name: value]
+      return nil
+    } else {
+      return self.parameters!.updateValue(value, forKey: name)
+    }
+  }
+
+  @inlinable
+  public var boundary: MultipartBoundary? {
+    get {
+      return self.parameters?[.boundary].flatMap { MultipartBoundary(rawValue: $0) }
+    }
+    set {
+      guard let newBoundary = newValue else {
+        self.removeParameter(forName: .boundary)
+        return
+      }
+      self.setParameter(newBoundary.rawValue, forName: .boundary)
+    }
+  }
+
+  @inlinable
+  public var charset: String? {
+    get {
+      return self.parameters?[.charset]
+    }
+    set {
+      guard let newCharset = newValue else {
+        self.removeParameter(forName: .charset)
+        return
+      }
+      self.setParameter(newCharset, forName: .charset)
+    }
+  }
+}
+
+extension MIMEType {
+  private func _setting(charset: String) -> MIMEType {
+    var newType = self
+    newType.charset = charset
+    return newType
+  }
+
+  private func _setting(encoding: String.Encoding) -> MIMEType {
+    #if compiler(>=6.3)
+    if #available(macOS 26.4, *), let charset = encoding.ianaName {
+      return _setting(charset: charset)
+    }
+    #endif
+    guard let charset = encoding.ianaCharacterSetName else {
+      return self
+    }
+    return _setting(charset: charset)
+  }
+
+  private static func _image(
+    tree: Tree? = nil,
+    subtype: String,
+    suffix: Suffix? = nil
+  ) -> MIMEType {
+    return MIMEType(
+      type: .image,
+      tree: tree,
+      subtype: Subtype(_validatedString: subtype),
+      suffix: suffix
+    )
+  }
+
+  /// `image/apng`
+  public static let apng: MIMEType = ._image(subtype: "apng")
+
+  /// `image/avif`
+  public static let avif: MIMEType = ._image(subtype: "avif")
+
+  /// `text/css`
+  public static let css: MIMEType = .init(type: .text, subtype: .css)
+
+  /// `text/css; charset=...`
+  public static func css(charset: String) -> MIMEType {
+    return .css._setting(charset: charset)
+  }
+
+  /// `text/css; charset=...`
+  public static func css(encoding: String.Encoding) -> MIMEType {
+    return .css._setting(encoding: encoding)
+  }
+
+  /// `image/gif`
+  public static let gif: MIMEType = ._image(subtype: "gif")
+
+  /// `text/html`
+  public static let html: MIMEType = .init(type: .text, subtype: .html)
+
+  /// `text/html; charset=...`
+  public static func html(charset: String) -> MIMEType {
+    return .html._setting(charset: charset)
+  }
+
+  /// `text/html; charset=...`
+  public static func html(encoding: String.Encoding) -> MIMEType {
+    return .html._setting(encoding: encoding)
+  }
+
+  /// `text/javascript`
+  public static let javascript: MIMEType = .init(type: .text, subtype: .javascript)
+
+  /// `text/javascript; charset=...`
+  public static func javascript(charset: String) -> MIMEType {
+    return .javascript._setting(charset: charset)
+  }
+
+  /// `text/javascript; charset=...`
+  public static func javascript(encoding: String.Encoding) -> MIMEType {
+    return .javascript._setting(encoding: encoding)
+  }
+
+  /// `image/jpeg`
+  public static let jpeg: MIMEType = ._image(subtype: "jpeg")
+
+  /// `application/json`
+  public static let json: MIMEType = .init(type: .application, subtype: .json)
+
+  /// `application/json; charset=...`
+  public static func json(charset: String) -> MIMEType {
+    return .json._setting(charset: charset)
+  }
+
+  /// `application/json; charset=...`
+  public static func json(encoding: String.Encoding) -> MIMEType {
+    return .json._setting(encoding: encoding)
+  }
+
+  /// `multipart/byteranges; boundary=...`
+  public static func multipartByteRanges(boundary: MultipartBoundary) -> MIMEType {
+    return MIMEType(
+      type: .multipart,
+      subtype: Subtype(_validatedString: "byteranges"),
+      parameters: [.boundary: boundary.rawValue]
+    )
+  }
+
+  /// `multipart/form-data; boundary=...`
+  public static func multipartFormData(boundary: MultipartBoundary) -> MIMEType {
+    return MIMEType(
+      type: .multipart,
+      subtype: Subtype(_validatedString: "form-data"),
+      parameters: [.boundary: boundary.rawValue]
+    )
+  }
+
+  /// `application/octet-stream`
+  public static let octetStream: MIMEType = .init(type: .application, subtype: .octetStream)
+
+  /// `text/plain`
+  public static let plainText: MIMEType = .init(type: .text, subtype: .plain)
+
+  /// `text/plain; charset=...`
+  public static func plainText(charset: String) -> MIMEType {
+    return .plainText._setting(charset: charset)
+  }
+
+  /// `text/plain; charset=...`
+  public static func plainText(encoding: String.Encoding) -> MIMEType {
+    return .plainText._setting(encoding: encoding)
+  }
+
+  /// `image/png`
+  public static let png: MIMEType = ._image(subtype: "png")
+
+  /// `image/svg+xml`
+  public static let svg: MIMEType = ._image(subtype: "svg", suffix: .xml)
+
+  /// `image/webp`
+  public static let webp: MIMEType = ._image(subtype: "webp")
+
+  /// `application/x-www-form-urlencoded`
+  public static let wwwFormURLEncoded: MIMEType = .init(type: .application, subtype: .wwwFormURLEncoded)
 }
