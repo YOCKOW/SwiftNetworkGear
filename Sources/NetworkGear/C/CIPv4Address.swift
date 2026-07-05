@@ -59,8 +59,12 @@ extension CNetworkGear.CIPv4Address: NetworkGear.CIPAddress {
   
   /// Initialized with `string` such as "127.0.0.1".
   /// Returns `nil` if the string is not valid for IPv4 Address.
-  public init?(_ string: String) {
+  public init?<S>(_ string: S) where S: StringProtocol {
     self.init()
-    guard CNWGStringToIPAddress(cNWGIPv4AddressFamily, string, &self) == 1 else { return nil }
+    guard string.withCString({
+      CNWGStringToIPAddress(cNWGIPv4AddressFamily, $0, &self)
+    }) == 1 else {
+      return nil
+    }
   }
 }

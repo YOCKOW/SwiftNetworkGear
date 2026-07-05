@@ -93,6 +93,18 @@ extension _InputAccessibleParser {
   }
 }
 
+internal protocol _SubstringOutputParser: _InputAccessibleParser where Output == Input.SubSequence {
+  mutating func parse() -> Input.Index?
+}
+
+extension _SubstringOutputParser {
+  @inlinable
+  mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+    guard let index: Input.Index = self.parse() else { return nil }
+    return (self.input[..<index], index)
+  }
+}
+
 internal protocol _UTF8Parser: _InputAccessibleParser {
   var input: Input { get }
   var utf8: Input.UTF8View { get }
@@ -103,10 +115,20 @@ extension _UTF8Parser {
 }
 
 extension _UTF8Parser {
+  // Note: Avoid https://github.com/swiftlang/swift/issues/44143
+
+  @inlinable
+  func readCurrentCodeUnit(at currentIndex: inout Input.UTF8View.Index) -> Unicode.UTF8.CodeUnit? {
+    guard currentIndex < self.utf8.endIndex else { return nil }
+    let byte = self.utf8[currentIndex]
+    self.utf8.formIndex(after: &currentIndex)
+    return byte
+  }
+
   @inlinable
   func readCurrentCodeUnit(
     at currentIndex: inout Input.UTF8View.Index,
-    ifAllowedCodeUnit isAllowedCodeUnit: (Unicode.UTF8.CodeUnit) throws -> Bool = { _ in true }
+    ifAllowedCodeUnit isAllowedCodeUnit: (Unicode.UTF8.CodeUnit) throws -> Bool
   ) rethrows -> Unicode.UTF8.CodeUnit? {
     guard currentIndex < self.utf8.endIndex else { return nil }
 
@@ -175,33 +197,38 @@ extension _UTF8Parser {
   }
 
   @inlinable
-  func parseInt(
+  func parseInt<T>(
+    _ type: T.Type = Int.self,
     from  currentIndex: inout Input.UTF8View.Index,
     minNumberOfDigits: Int = 1,
     maxNumberOfDigits: Int = .max,
     radix: Int = 10
-  ) -> Int? {
+  ) -> T? where T: FixedWidthInteger {
     assert(1 < radix && radix <= 36)
+    let digitValidator: (Unicode.UTF8.CodeUnit) -> Bool = ({
+      if radix <= 10 {
+        return { unit in
+          return 0x30 <= unit && unit < 0x30 + radix
+        }
+      } else {
+        return { unit in
+          return (
+            unit._isDigit ||
+            (0x41 <= unit && unit < 0x41 + radix - 10) ||
+            (0x61 <= unit && unit < 0x61 + radix - 10)
+          )
+        }
+      }
+    })()
     guard let intDescription = self.parseString(
       from: &currentIndex,
       minCount: minNumberOfDigits,
       maxCount: maxNumberOfDigits,
-      while: { unit in
-        if radix <= 10 {
-          return 0x30 <= unit && unit < 0x30 + radix
-        }
-
-        // radix > 10
-        return (
-          unit._isDigit ||
-          (0x41 <= unit && unit < 0x41 + radix - 10) ||
-          (0x61 <= unit && unit < 0x61 + radix - 10)
-        )
-      }
+      while: digitValidator
     ) else {
       return nil
     }
-    return Int(intDescription, radix: radix)
+    return T(intDescription, radix: radix)
   }
 }
 
@@ -209,13 +236,19 @@ extension _UTF8Parser {
 internal protocol _InitializableWithParser {}
 extension _InitializableWithParser {
   @usableFromInline
-  init?<S, P>( _ string: S, parser: P.Type)
+  init?<S, P>( _ string: S, parser: P.Type, configuration: P.Configuration?)
   where S: StringProtocol, P: StringParser, P.Input == S, P.Output == Self {
-    guard let parsedResult = P.parse(string),
+    guard let parsedResult = P.parse(string, configuration: configuration),
           parsedResult.endIndex == string.endIndex else {
       return nil
     }
     self = parsedResult.output
+  }
+
+  @usableFromInline
+  init?<S, P>( _ string: S, parser: P.Type)
+  where S: StringProtocol, P: StringParser, P.Input == S, P.Output == Self {
+    self.init(string, parser: parser, configuration: nil)
   }
 }
 
@@ -526,9 +559,9 @@ where Input: StringProtocol, RepeatParser: StringParser, RepeatParser.Input == I
     public var eachConfiguration: Optional<([RepeatParser.Output]) -> RepeatParser.Configuration?>
 
     public init(
-      minCount: Int,
-      maxCount: Int,
-      eachConfiguration: Optional<([RepeatParser.Output]) -> RepeatParser.Configuration?>
+      minCount: Int = 1,
+      maxCount: Int = .max,
+      eachConfiguration: Optional<([RepeatParser.Output]) -> RepeatParser.Configuration?> = nil
     ) {
       self.minCount = minCount
       self.maxCount = maxCount
@@ -785,5 +818,37 @@ where Input: StringProtocol, ContentParser: StringParser, ContentParser.Input ==
     __consumeWhitespaces()
     _result = (content, currentIndex)
     return _result
+  }
+}
+
+/// Parser for ":" followed by a string that can be parsed by `FollowerParser`.
+internal struct ColonFollowedBy<FollowerParser, Input>: StringParser, _UTF8Parser
+where FollowerParser: StringParser,
+      FollowerParser.Input == Input.SubSequence,
+      Input: StringProtocol {
+  typealias Output = FollowerParser.Output
+  typealias Configuration = FollowerParser.Configuration
+
+  let input: Input
+  let utf8: Input.UTF8View
+  let configuration: Configuration?
+
+  init(input: Input, configuration: Configuration?) {
+    self.input = input
+    self.utf8 = input.utf8
+    self.configuration = configuration
+  }
+
+  init(input: Input) {
+    self.init(input: input, configuration: nil)
+  }
+
+  mutating func parse() -> (output: FollowerParser.Output, endIndex: Input.Index)? {
+    var currentIndex = self.utf8.startIndex
+    guard let _ = self.readCurrentCodeUnit(at: &currentIndex, ifAllowedCodeUnit: \._isColon) else {
+      return nil
+    }
+    var follower = FollowerParser(input: input[currentIndex...], configuration: configuration)
+    return follower.parse()
   }
 }

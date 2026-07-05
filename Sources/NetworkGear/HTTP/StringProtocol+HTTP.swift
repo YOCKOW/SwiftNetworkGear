@@ -151,6 +151,10 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isDoubleQuotationMark: Bool { self == 0x22 }
 
+  /// `#`
+  @inlinable
+  internal var _isNumberSign: Bool { self == 0x23 }
+
   /// `'`
   @inlinable
   internal var _isApostrophe: Bool { self == 0x27 }
@@ -191,8 +195,24 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isEqualSign: Bool { self == 0x3D }
 
+  /// `?`
+  @inlinable
+  internal var _isQuestionMark: Bool { self == 0x3F }
+
+  /// `@`
+  @inlinable
+  internal var _isAtSign: Bool { self == 0x40 }
+
+  /// `[`
+  @inlinable
+  internal var _isLeftSquareBracket: Bool { self == 0x5B }
+
   @inlinable
   internal var _isBackslash: Bool { self == 0x5C }
+
+  /// `]`
+  @inlinable
+  internal var _isRightSquareBracket: Bool { self == 0x5D }
 
   /// Control character
   @inlinable
@@ -213,6 +233,9 @@ extension Unicode.UTF8.CodeUnit {
   /// `DIGIT` or `ALPHA`
   @inlinable
   internal var _isAlphanumeric: Bool { _isDigit || _isAlphabet }
+
+  /// `DIGIT` or "A"..."F"/"a"..."f"
+  internal var _isHexDigit: Bool { return _HEXDIG.contains(self) }
 
   /// `obs-text` defined in [RFC 9110](https://datatracker.ietf.org/doc/html/rfc9110#section-5.5).
   @inlinable
@@ -326,6 +349,14 @@ extension Unicode.UTF8.CodeUnit {
 
   /// Returns the Boolean value whether or not the value is available in user name part of URL.
   ///
+  /// See: [RFC 3986 §3.1](https://datatracker.ietf.org/doc/html/rfc3986#section-3.1).
+  @inlinable
+  internal var _isAvailableInURLScheme: Bool {
+    return _isAlphabet || _isDigit || _isPlusSign || _isHyphen || _isPeriod
+  }
+
+  /// Returns the Boolean value whether or not the value is available in user name part of URL.
+  ///
   /// See: [RFC 3986 §3.2.1](https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.1).
   internal var _isAvailableInURLUserName: Bool {
     return _unreservedInURL.contains(self) || _percentEncodedInURL.contains(self) || _subDelimiterInURL.contains(self)
@@ -343,6 +374,10 @@ extension Unicode.UTF8.CodeUnit {
   /// See: [RFC 3986 §3.2.2](https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.2).
   internal var _isAvailableInURLHost: Bool {
     return _ipLiteral.contains(self) || _ipv4Address.contains(self) || _regName.contains(self)
+  }
+
+  internal var _isAvailableInIPvFutureStringRepresentation: Bool {
+    return _unreservedInURL.contains(self) || _subDelimiterInURL.contains(self) || _isColon
   }
 
   /// Returns the Boolean value whether or not the value is available in `port` part of URL.
