@@ -19,7 +19,7 @@ title: NetworkGear Dependencies
 flowchart TD
   swiftbootstring(["Bootstring<br>@1.2.0"])
   swiftnetworkgear["NetworkGear"]
-  swiftpublicsuffix(["PublicSuffix<br>@2.4.21"])
+  swiftpublicsuffix(["PublicSuffix<br>@2.4.27"])
   swiftranges(["Ranges<br>@4.0.2"])
   swifttemporaryfile(["TemporaryFile<br>@5.0.0"])
   swiftunicodesupplement(["UnicodeSupplement<br>@2.0.1"])
