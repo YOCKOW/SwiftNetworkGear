@@ -1,16 +1,16 @@
 /* *************************************************************************************************
  HTTPHeaderFieldValue.swift
-   © 2017-2019,2023-2024 YOCKOW.
+   © 2017-2019,2023-2024,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
 private func _valid_value(_ value:String) -> Bool {
-  let scalars = value.unicodeScalars
+  let utf8 = value.utf8
   return (
-    scalars.allSatisfy(\.isAllowedInHTTPHeaderFieldValue) &&
-    scalars.first?._isVisible == true &&
-    scalars.last?._isVisible == true
+    utf8.allSatisfy(\._isAvailableInHTTPHeaderFieldValue) &&
+    utf8.first?._isVisible == true &&
+    utf8.last?._isVisible == true
   )
 }
 

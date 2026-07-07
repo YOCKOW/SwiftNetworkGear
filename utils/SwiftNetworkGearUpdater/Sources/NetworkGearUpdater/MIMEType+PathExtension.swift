@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  MIMEType+PathExtension.swift
-   © 2020 YOCKOW.
+   © 2020,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -38,7 +38,7 @@ private extension MIMEType {
   }
 }
 
-public struct _TypeExt: Equatable {
+public struct _TypeExt: Equatable, Sendable {
   public let mimeType: MIMEType
   public let extensions: ArraySlice<Substring>
 }
@@ -62,38 +62,40 @@ public final class MIMETypePathExtension: CodeUpdaterDelegate {
     return _httpModuleDirectory.appendingPathComponent(self.identifier).appendingPathExtension("swift")
   }
   
-  public func prepare(sourceURL: URL) throws -> IntermediateDataContainer<IntermediateDataType> {
-    var pairs: [_TypeExt] = []
-    
-    let data = content(of: sourceURL)
-    
-    var buffer = Data()
-    
-    func _append() {
-      if buffer.isEmpty { return }
-      guard let string = String(data: buffer, encoding: .utf8) else { fatalError("Unexpected Data.") }
-      let splitted = string.split { $0.isWhitespace }
-      guard splitted.count >= 2, !splitted[0].hasPrefix("#") else { return }
-      guard let mimeType = MIMEType(splitted[0]) else {
-        view(message: "\"\(splitted[0])\" is not valid for MIMEType.")
-        return
+  public func prepare(sourceURL: URL) async throws -> IntermediateDataContainer<IntermediateDataType> {
+    return try await JobManager.default.do("Prepare MIME Types", jobID: identifier) { context in
+      var pairs: [_TypeExt] = []
+
+      let data = try await context.content(of: sourceURL)
+
+      var buffer = Data()
+
+      func _append() {
+        if buffer.isEmpty { return }
+        guard let string = String(data: buffer, encoding: .utf8) else { fatalError("Unexpected Data.") }
+        let splitted = string.split { $0.isWhitespace }
+        guard splitted.count >= 2, !splitted[0].hasPrefix("#") else { return }
+        guard let mimeType = MIMEType(splitted[0]) else {
+          context.view(message: "\"\(splitted[0])\" is not valid for MIMEType.")
+          return
+        }
+        pairs.append(.init(mimeType: mimeType, extensions: splitted[1...]))
       }
-      pairs.append(.init(mimeType: mimeType, extensions: splitted[1...]))
-    }
-    
-    for byte in data {
-      buffer.append(byte)
-      if byte == 0x0A || byte == 0x0D {
-        _append()
-        buffer = Data()
+
+      for byte in data {
+        buffer.append(byte)
+        if byte == 0x0A || byte == 0x0D {
+          _append()
+          buffer = Data()
+        }
       }
+      _append()
+
+      return .init(content: pairs)
     }
-    _append()
-    
-    return .init(content: pairs)
   }
   
-  public func convert<S>(_ intermediates: S) throws -> Data where S: Sequence, S.Element == IntermediateDataContainer<IntermediateDataType> {
+  public func convert<S>(_ intermediates: S) async throws -> Data where S: Sequence, S.Element == IntermediateDataContainer<IntermediateDataType> {
     var extensions: Set<String> = []
     var mimeTypeToExt: [MIMEType: [String]] = [:]
     var extToMIMEType: [String: MIMEType] = [:]
@@ -115,19 +117,19 @@ public final class MIMETypePathExtension: CodeUpdaterDelegate {
     
     var lines = StringLines()
     
-    func _extIdentifier(of pathExtension: String) -> String {
+    func _extIdentifier(of pathExtension: String) async throws -> String {
       let ext = pathExtension.lowerCamelCase
       if !pathExtension.first!.isLetter {
-        return "_\(ext)"
+        return "`\(ext)`"
       }
-      return ext.swiftIdentifier
+      return try await ext.swiftIdentifier
     }
     
     do { // enum
       lines.append("extension MIMEType {")
       lines.append(String.Line("public enum PathExtension: String, Sendable {", indentLevel: 1)!)
       for ext in sortedExtensions {
-        lines.append(String.Line(" case \(_extIdentifier(of: ext)) = \(ext.debugDescription)", indentLevel: 2)!)
+        lines.append(String.Line(" case \(try await _extIdentifier(of: ext)) = \(ext.debugDescription)", indentLevel: 2)!)
       }
       lines.append(String.Line("}", indentLevel: 1)!)
       lines.append("}")
@@ -149,7 +151,13 @@ public final class MIMETypePathExtension: CodeUpdaterDelegate {
       for mimeType in sortedMIMETypes {
         let extensions = mimeTypeToExt[mimeType]!
         let mimeTypeDesc = _mimeTypeCoreDescription(of: mimeType)
-        let extDesc = "[" + extensions.map({ "." + _extIdentifier(of: $0) }).joined(separator: ", ") + "]"
+
+        var extIdentifiers: Array<String> = []
+        for ext in extensions {
+          extIdentifiers.append(try await ".\(_extIdentifier(of: ext))")
+        }
+        let extDesc = "[" + extIdentifiers.joined(separator: ", ") +  "]"
+
         lines.append(String.Line("\(mimeTypeDesc): \(extDesc),", indentLevel: 1)!)
       }
       lines.append("]")
@@ -160,7 +168,7 @@ public final class MIMETypePathExtension: CodeUpdaterDelegate {
       for ext in sortedExtensions {
         let mimeType = extToMIMEType[ext]!
         let mimeTypeDesc = _mimeTypeCoreDescription(of: mimeType)
-        lines.append(String.Line(".\(_extIdentifier(of: ext)): \(mimeTypeDesc),", indentLevel: 1)!)
+        lines.append(String.Line(".\(try await _extIdentifier(of: ext)): \(mimeTypeDesc),", indentLevel: 1)!)
       }
       lines.append("]")
     }

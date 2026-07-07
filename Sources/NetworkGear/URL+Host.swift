@@ -12,35 +12,46 @@ extension URL {
   public struct Host: Sendable {
     fileprivate enum _Host: Sendable {
       case ipAddress(IPAddress)
+      case ipvFutureAddress(IPvFutureAddress)
       case domain(Domain)
       case string(String)
       
       /// First, check whether `string` can be parsed as an IP address or not.
       /// If it is not an IP address, check whether `string` can be parsed as a domain name or not.
       /// If it is not even a domain name, just hold it as a string.
-      fileprivate init(string:String) {
-        if string.hasPrefix("[") && string.hasSuffix("]") {
-          let si = string.index(after:string.startIndex)
-          let ei = string.index(before:string.endIndex)
-          if let ip = IPAddress(string:String(string[si..<ei])) {
-            self = .ipAddress(ip)
-          } else {
-            self = .string(string)
-          }
-        } else if let ip = IPAddress(string:string) {
+      fileprivate init<S>(string: S) where S: StringProtocol {
+        if let ip = IPAddress(string: string) {
           self = .ipAddress(ip)
+        } else if let ipvFuture = IPvFutureAddress(string: string) {
+          self = .ipvFutureAddress(ipvFuture)
         } else if let domain = Domain(string, options:.loose) {
           self = .domain(domain)
         } else {
-          self = .string(string)
+          self = .string(string._string)
         }
       }
     }
     
     private var _host:_Host
-    
+
+    internal init(_ipAddress ipAddress: IPAddress) {
+      self._host = .ipAddress(ipAddress)
+    }
+
+    internal init(_ipvFutureAddress ipvFutureAddress: IPvFutureAddress) {
+      self._host = .ipvFutureAddress(ipvFutureAddress)
+    }
+
+    internal init(_domain domain: Domain) {
+      self._host = .domain(domain)
+    }
+
+    internal init<S>(_rawString string: S) where S: StringProtocol {
+      self._host = .string(string._string)
+    }
+
     /// Initialize an instance with string
-    public init(string:String) {
+    public init<S>(string: S) where S: StringProtocol {
       self._host = _Host(string:string)
     }
     
@@ -83,6 +94,7 @@ extension URL.Host._Host: Hashable {
   fileprivate func hash(into hasher:inout Hasher) {
     switch self {
     case .ipAddress(let ip): hasher.combine(ip)
+    case .ipvFutureAddress(let ipvFuture): hasher.combine(ipvFuture)
     case .domain(let domain): hasher.combine(domain)
     case .string(let string): hasher.combine(string)
     }
@@ -107,6 +119,7 @@ extension URL.Host._Host: CustomStringConvertible {
       case .v4: return ip.description
       case .v6: return "[\(ip.description)]"
       }
+    case .ipvFutureAddress(let ipvFuture): return "[\(ipvFuture.description)]"
     case .domain(let domain): return domain.description
     case .string(let string): return string
     }

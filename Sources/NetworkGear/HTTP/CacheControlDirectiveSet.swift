@@ -8,41 +8,43 @@
 /// A set for `CacheControlDirective`
 public struct CacheControlDirectiveSet: Sendable {
   fileprivate enum _Key: Hashable, Sendable {
-    case `public`
-    case `private`
-    case noCache
-    case onlyIfCached
     case maxAge
-    case sMaxAge
-    case maxStale
-    case minFresh
-    case staleWhileRevalidate
-    case staleIfError
-    case mustRevalidate
-    case proxyRevalidate
-    case immutable
+    case noCache
     case noStore
     case noTransform
-    case `extension`(name:String)
-    
-    fileprivate init(_ directive:CacheControlDirective) {
+    case maxStale
+    case minFresh
+    case onlyIfCached
+    case mustRevalidate
+    case mustUnderstand
+    case `private`
+    case proxyRevalidate
+    case `public`
+    case sharedCacheMaxAge
+    case staleWhileRevalidate
+    case staleIfError
+    case immutable
+    case `extension`(name: ASCIICaseInsensitiveString)
+
+    fileprivate init(_ directive: CacheControlDirective) {
       switch directive {
-      case .public: self = .public
-      case .private: self = .private
+      case .maxAge: self = .maxAge
       case .noCache: self = .noCache
-      case .onlyIfCached: self = .onlyIfCached
-      case .maxAge(_): self = .maxAge
-      case .sMaxAge(_): self = .sMaxAge
-      case .maxStale(_): self = .maxStale
-      case .minFresh(_): self = .minFresh
-      case .staleWhileRevalidate(_): self = .staleWhileRevalidate
-      case .staleIfError(_): self = .staleIfError
-      case .mustRevalidate: self = .mustRevalidate
-      case .proxyRevalidate: self = .proxyRevalidate
-      case .immutable: self = .immutable
       case .noStore: self = .noStore
       case .noTransform: self = .noTransform
-      case .extension(let name, _): self = .extension(name:name)
+      case .maxStale: self = .maxStale
+      case .minFresh: self = .minFresh
+      case .onlyIfCached: self = .onlyIfCached
+      case .mustRevalidate: self = .mustRevalidate
+      case .mustUnderstand: self = .mustUnderstand
+      case .private: self = .private
+      case .proxyRevalidate: self = .proxyRevalidate
+      case .public: self = .public
+      case .sharedCacheMaxAge: self = .sharedCacheMaxAge
+      case .staleWhileRevalidate: self = .sharedCacheMaxAge
+      case .staleIfError: self = .staleIfError
+      case .immutable: self = .immutable
+      case .extension(let name, _): self = .extension(name: ASCIICaseInsensitiveString(name))
       }
     }
   }
@@ -84,25 +86,14 @@ extension CacheControlDirectiveSet: Hashable {}
 
 extension CacheControlDirectiveSet: HTTPHeaderFieldValueConvertible {
   public init?(_ value: HTTPHeaderFieldValue) {
-    guard let tokens = value.rawValue._tokens else { return nil }
-    guard let dictionary = Dictionary<String,String>(_tokens:tokens, pairsAreSeparatedBy:",") else {
+    var parser = ListParser<String, CacheControlDirective.Parser<Substring>>(input: value.rawValue)
+    guard let (directives, _) = parser.parse() else {
       return nil
     }
-    
+
     self.init()
-    for (key, value) in dictionary {
-      if value.isEmpty {
-        guard let directive = CacheControlDirective(rawValue:key) else { return nil }
-        self.insert(directive)
-      } else {
-        if let directive = CacheControlDirective(rawValue:"\(key)=\(value)") {
-          self.insert(directive)
-        } else if let directive = CacheControlDirective(rawValue:"\(key)=\"\(value)\"") {
-          self.insert(directive)
-        } else {
-          return nil
-        }
-      }
+    for directive in directives {
+      self.insert(directive)
     }
   }
   

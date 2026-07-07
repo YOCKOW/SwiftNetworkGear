@@ -1,28 +1,30 @@
 /* *************************************************************************************************
  IANARegisteredHTTPHeaderFieldName.swift
-   © 2020 YOCKOW.
+   © 2020,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
  
-import CSV
+@preconcurrency import CSV
 import Foundation
 import StringComposition
 import yCodeUpdater
 import yExtensions
 
 public final class IANARegisteredHTTPHeaderFieldName: HTTPUpdaterDelegate {
-  public override var identifier: String {
+  public init() {}
+
+  public var identifier: String {
     return "HTTPHeaderFieldName+IANARegistered"
   }
   
-  public override var sourceURLs: Array<URL> {
+  public var sourceURLs: Array<URL> {
     return [
       URL(string: "https://www.iana.org/assignments/http-fields/field-names.csv")!,
     ]
   }
   
-  public override func convert<S>(_ intermediates: S) throws -> Data where S: Sequence, S.Element == IntermediateDataContainer<CSVReader> {
+  public func convert<S>(_ intermediates: S) async throws -> Data where S: Sequence, S.Element == IntermediateDataContainer<CSVReader> {
     let names: [String] = intermediates.flatMap({ $0.content.rows() }).compactMap {
       let name = $0[0]!
       guard name.allSatisfy({ $0.isLetter || $0 == "-" }) else { return nil }
@@ -35,7 +37,9 @@ public final class IANARegisteredHTTPHeaderFieldName: HTTPUpdaterDelegate {
     let typeName = "HTTPHeaderFieldName"
     lines.append("extension \(typeName) {")
     for name in names {
-      lines.append(String.Line("public static let \(name.lowerCamelCase.swiftIdentifier) = \(typeName)(rawValue: \(name.debugDescription))!", indentLevel: 1)!)
+      lines.append(String.Line("/// An HTTP header field name whose raw value is `\(name)`.", indentLevel: 1)!)
+      lines.append(String.Line("public static let \(try await name.lowerCamelCase.swiftIdentifier) = \(typeName)(_validatedString: \(name.debugDescription))", indentLevel: 1)!)
+      lines.appendEmptyLine()
     }
     lines.append("}")
     

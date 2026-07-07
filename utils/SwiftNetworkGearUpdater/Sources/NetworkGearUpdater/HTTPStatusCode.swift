@@ -1,27 +1,29 @@
 /* *************************************************************************************************
  HTTPStatusCode.swift
-   © 2020,2024 YOCKOW.
+   © 2020,2024,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
  
-import CSV
+@preconcurrency import CSV
 import Foundation
 import StringComposition
 import yCodeUpdater
 
 public final class HTTPStatusCode: HTTPUpdaterDelegate {
-  public override var identifier: String {
+  public init() {}
+
+  public var identifier: String {
     return "HTTPStatusCode"
   }
 
-  public override var sourceURLs: Array<URL> {
+  public var sourceURLs: Array<URL> {
     return [
       URL(string: "https://www.iana.org/assignments/http-status-codes/http-status-codes-1.csv")!,
     ]
   }
 
-  public override func convert<S>(_ intermediates: S) throws -> Data where S: Sequence, S.Element == IntermediateDataContainer<CSVReader> {
+  public func convert<S>(_ intermediates: S) async throws -> Data where S: Sequence, S.Element == IntermediateDataContainer<CSVReader> {
     let codes: [(UInt16, String)] = intermediates.flatMap({ $0.content.rows() }).compactMap {
       guard let code = UInt16($0[0]!) else { return nil }
       guard $0[1] != "Unassigned" && $0[1] != "(Unused)" else { return nil }
@@ -34,7 +36,7 @@ public final class HTTPStatusCode: HTTPUpdaterDelegate {
     
     lines.append("public enum \(typeName): UInt16, Sendable {")
     for (value, desc) in codes {
-      lines.append(String.Line("case \(desc.lowerCamelCase.swiftIdentifier) = \(value)", indentLevel: 1)!)
+      lines.append(String.Line("case \(try await desc.lowerCamelCase.swiftIdentifier) = \(value)", indentLevel: 1)!)
     }
     lines.append("}")
     

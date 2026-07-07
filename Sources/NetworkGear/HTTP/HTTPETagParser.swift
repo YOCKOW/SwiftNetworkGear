@@ -101,6 +101,7 @@ extension String {
 extension HTTPETagList {
   /// Initialize from `string`.
   /// - parameter string: such as ` "A", "B", W/"C" `
+  @available(*, deprecated, renamed: "init(string:)")
   public init(_ string:String) throws {
     if string == "*" {
       self = .any

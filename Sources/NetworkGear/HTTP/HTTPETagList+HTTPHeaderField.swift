@@ -8,7 +8,7 @@
 
 extension HTTPETagList: HTTPHeaderFieldValueConvertible {
   public init?(_ value: HTTPHeaderFieldValue) {
-    try? self.init(value.rawValue)
+    self.init(string: value.rawValue)
   }
   
   public var httpHeaderFieldValue: HTTPHeaderFieldValue {

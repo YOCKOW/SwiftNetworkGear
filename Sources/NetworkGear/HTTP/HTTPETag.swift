@@ -1,91 +1,190 @@
 /* *************************************************************************************************
  ETag.swift
-   © 2017-2019,2024 YOCKOW.
+   © 2017-2019,2024,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
-// This `import` is required for Ubuntu 14.04?
-// https://travis-ci.org/YOCKOW/SwiftCGIResponder/builds/430854353
-import Foundation
+import yExtensions
 
-/// # ETag
-/// Reporesents a value of ETag
+/// A type that represents the content of `opaque-tag` defined in
+/// [RFC 9110](https://datatracker.ietf.org/doc/html/rfc9110#section-8.8.3).
+@dynamicMemberLookup
+public struct HTTPOpaqueTagContentString: Sendable, Equatable, Hashable {
+  private let _string: String
+
+  fileprivate init<S>(_alreadyValidatedString string: S) where S: StringProtocol {
+    self._string = string._string
+  }
+
+  public subscript<T>(dynamicMember dynamicMember: KeyPath<String, T>) -> T {
+    return self._string[keyPath: dynamicMember]
+  }
+}
+
+extension HTTPOpaqueTagContentString: Sequence {
+  public typealias Iterator = String.Iterator
+  public typealias Element = String.Element
+  public func makeIterator() -> String.Iterator { return self._string.makeIterator() }
+}
+
+extension HTTPOpaqueTagContentString: Collection, BidirectionalCollection {
+  public typealias Index = String.Index
+  public var startIndex: String.Index { self._string.startIndex }
+  public var endIndex: String.Index { self._string.endIndex }
+  public subscript(position: String.Index) -> String.Element { self._string[position] }
+  public func index(after ii: String.Index) -> String.Index { self._string.index(after: ii) }
+  public func index(before ii: String.Index) -> String.Index { self._string.index(before: ii) }
+}
+
+extension HTTPOpaqueTagContentString: CustomStringConvertible {
+  public var description: String { self._string }
+}
+
+public struct HTTPOpaqueTagContentParser<Input>: StringParser, _UTF8Parser
+where Input: StringProtocol {
+  public typealias Output = HTTPOpaqueTagContentString
+
+  let input: Input
+  let utf8: Input.UTF8View
+
+  public init(input: Input) {
+    self.input = input
+    self.utf8 = input.utf8
+  }
+
+  public mutating func parse() -> (output: HTTPOpaqueTagContentString, endIndex: Input.Index)? {
+    if utf8.isEmpty {
+      return (HTTPOpaqueTagContentString(_alreadyValidatedString: ""), input.startIndex)
+    }
+
+    let startsWithDoubleQuotationMark = utf8.first!._isDoubleQuotationMark
+    var currentIndex = (
+      startsWithDoubleQuotationMark ? utf8.index(after: utf8.startIndex)
+      : utf8.startIndex
+    )
+
+    let content = self.parseString(from: &currentIndex, while: \._isAvailableInHTTPOpaqueTagContent) ?? ""
+    if startsWithDoubleQuotationMark {
+      guard let _ = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: \._isDoubleQuotationMark
+      ) else {
+        return nil
+      }
+    }
+    return (HTTPOpaqueTagContentString(_alreadyValidatedString: content), currentIndex)
+  }
+}
+
+extension HTTPOpaqueTagContentString: _InitializableWithParser {
+  public init?<S>(validating string: S) where S: StringProtocol {
+    self.init(string, parser: HTTPOpaqueTagContentParser<S>.self)
+  }
+}
+
+extension HTTPOpaqueTagContentString: ExpressibleByStringLiteral {
+  public typealias StringLiteralType = String
+
+  public typealias ExtendedGraphemeClusterLiteralType = String.ExtendedGraphemeClusterLiteralType
+
+  public typealias UnicodeScalarLiteralType = String.UnicodeScalarLiteralType
+
+  public init(stringLiteral value: String) {
+    guard let content = HTTPOpaqueTagContentString(validating: value) else {
+      fatalError("Invalid value for `opaque-tag`!")
+    }
+    self = content
+  }
+}
+
+/// Represents a value of [ETag](https://datatracker.ietf.org/doc/html/rfc9110#section-8.8.3).
 public enum HTTPETag: Sendable {
-  case weak(String)
-  case strong(String)
+  /// Weak entity tag.
+  case weak(HTTPOpaqueTagContentString)
+
+  /// Strong entity tag.
+  case strong(HTTPOpaqueTagContentString)
+
+  /// Represents `*`, which is used in `If-Match` or `If-None-Match` header field.
   case any
 }
 
-extension HTTPETag {
-  /// Initialize from `string`
-  /// e.g.) "foo", W/"bar"
-  public init?(_ string:String) {
-    if string == "*" {
-      self = .any
-      return
+/// A parser to parser an entity tag.
+public struct HTTPETagParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = HTTPETag
+
+  let input: Input
+  let utf8:Input.UTF8View
+
+  public init(input: Input) {
+    self.input = input
+    self.utf8 = input.utf8
+  }
+
+  public mutating func parse() -> (output: HTTPETag, endIndex: Input.Index)? {
+    guard let firstByte = self.utf8.first else {
+      return nil
     }
-    
-    guard string.hasSuffix("\"") else { return nil }
-    var weak: Bool = false
-    var start: String.Index = string.startIndex
-    let end: String.Index = string.index(before:string.endIndex)
-    
-    if string.hasPrefix("W/\"") {
-      weak = true
-      start = string.index(start, offsetBy:3)
-    } else {
-      guard string.hasPrefix("\"") else { return nil }
-      start = string.index(after:start)
-    }
-    
-    guard start < end else { return nil }
-    
-    let tag: Substring = string[start..<end]
-    if tag.isEmpty { return nil }
-    
-    var actualTag: String = ""
-    var escaped = false
-    for character in tag {
-      if !escaped && character == "\\" {
-        escaped = true
-      } else {
-        escaped = false
-        actualTag.append(character)
+
+    if firstByte._isAsterisk {
+      return (.any, self.utf8.index(after: self.utf8.startIndex))
+    } else if firstByte._isDoubleQuotationMark { // STRONG TAG
+      guard let (content, endIndex) = HTTPOpaqueTagContentParser<Input>.parse(input) else {
+        return nil
       }
-    }
-    if escaped { return nil }
-    
-    if weak {
-      self = .weak(actualTag)
-    } else {
-      self = .strong(actualTag)
+      return (.strong(content), endIndex)
+    } else { // WEAK TAG
+      var currentIndex = self.utf8.startIndex
+      guard let _ = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: { $0 == 0x57 } // W
+      ) else {
+        return nil
+      }
+      guard let _ = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: \._isSlash
+      ) else {
+        return nil
+      }
+      guard currentIndex < self.utf8.endIndex, self.utf8[currentIndex]._isDoubleQuotationMark else {
+        return nil
+      }
+      guard let content = HTTPOpaqueTagContentParser<Input.SubSequence>.parse(
+        input,
+        from: &currentIndex
+      ) else {
+        return nil
+      }
+      return (.weak(content), currentIndex)
     }
   }
 }
 
 extension HTTPETag: CustomStringConvertible {
   public var description: String {
-    let escape: (String) -> String = { (tag:String) -> String in
-      var escaped = ""
-      for character in tag {
-        if character == "\\" { escaped += "\\\\" }
-        else if character == "\"" { escaped += "\\\"" }
-        else { escaped.append(character) }
-      }
-      return escaped
-    }
-    
+    // NOTE: ETag should be no longer escaped.
+    //       See https://datatracker.ietf.org/doc/html/rfc9110#section-8.8.3-3.1
     switch self {
     case .weak(let tag):
-      return "W/\"" + escape(tag) + "\""
+      return #"W/"\#(tag)""#
     case .strong(let tag):
-      return "\"" + escape(tag) + "\""
+      return #""\#(tag)""#
     case .any:
       return "*"
     }
   }
 }
+
+extension HTTPETag: _InitializableWithParser, LosslessStringConvertible {
+  /// Initialize from `string`
+  /// e.g.) "foo", W/"bar"
+  public init?<S>(_ string: S) where S: StringProtocol {
+    self.init(string, parser: HTTPETagParser<S>.self)
+  }
+}
+
 
 extension HTTPETag: Equatable {
   public static func ==(lhs:HTTPETag, rhs:HTTPETag) -> Bool {

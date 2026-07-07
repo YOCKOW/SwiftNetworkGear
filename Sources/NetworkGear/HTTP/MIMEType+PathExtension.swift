@@ -4,17 +4,17 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types
-// Last-Modified: 2024-09-12T08:38:39Z
-// ETag: "1920589//httpd/httpd/trunk/docs/conf/mime.types"
+// Last-Modified: 2025-11-26T11:30:42Z
+// ETag: "1930012//httpd/httpd/trunk/docs/conf/mime.types"
 
 extension MIMEType {
   public enum PathExtension: String, Sendable {
-     case _123 = "123"
-     case _3dml = "3dml"
-     case _3ds = "3ds"
-     case _3g2 = "3g2"
-     case _3gp = "3gp"
-     case _7z = "7z"
+     case `123` = "123"
+     case `3dml` = "3dml"
+     case `3ds` = "3ds"
+     case `3g2` = "3g2"
+     case `3gp` = "3gp"
+     case `7z` = "7z"
      case aab = "aab"
      case aac = "aac"
      case aam = "aam"
@@ -312,6 +312,10 @@ extension MIMEType {
      case hal = "hal"
      case hbci = "hbci"
      case hdf = "hdf"
+     case heic = "heic"
+     case heics = "heics"
+     case heif = "heif"
+     case heifs = "heifs"
      case hh = "hh"
      case hlp = "hlp"
      case hpgl = "hpgl"
@@ -751,6 +755,8 @@ extension MIMEType {
      case spq = "spq"
      case spx = "spx"
      case sql = "sql"
+     case sqlite = "sqlite"
+     case sqlite3 = "sqlite3"
      case src = "src"
      case srt = "srt"
      case sru = "sru"
@@ -1116,7 +1122,7 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .application, tree: nil, subtype: "winhlp", suffix: nil): [.hlp],
   MIMEType._Core(type: .application, tree: nil, subtype: "wsdl", suffix: .xml): [.wsdl],
   MIMEType._Core(type: .application, tree: nil, subtype: "wspolicy", suffix: .xml): [.wspolicy],
-  MIMEType._Core(type: .application, tree: nil, subtype: "x-7z-compressed", suffix: nil): [._7z],
+  MIMEType._Core(type: .application, tree: nil, subtype: "x-7z-compressed", suffix: nil): [.`7z`],
   MIMEType._Core(type: .application, tree: nil, subtype: "x-abiword", suffix: nil): [.abw],
   MIMEType._Core(type: .application, tree: nil, subtype: "x-ace-compressed", suffix: nil): [.ace],
   MIMEType._Core(type: .application, tree: nil, subtype: "x-apple-diskimage", suffix: nil): [.dmg],
@@ -1396,7 +1402,7 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .application, tree: .vnd, subtype: "las.las", suffix: .xml): [.lasxml],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "llamagraphics.life-balance.desktop", suffix: nil): [.lbd],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "llamagraphics.life-balance.exchange", suffix: .xml): [.lbe],
-  MIMEType._Core(type: .application, tree: .vnd, subtype: "lotus-1-2-3", suffix: nil): [._123],
+  MIMEType._Core(type: .application, tree: .vnd, subtype: "lotus-1-2-3", suffix: nil): [.`123`],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "lotus-approach", suffix: nil): [.apr],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "lotus-freelance", suffix: nil): [.pre],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "lotus-notes", suffix: nil): [.nsf],
@@ -1531,6 +1537,7 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .application, tree: .vnd, subtype: "solent.sdkm", suffix: .xml): [.sdkd, .sdkm],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "spotfire.dxp", suffix: nil): [.dxp],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "spotfire.sfs", suffix: nil): [.sfs],
+  MIMEType._Core(type: .application, tree: .vnd, subtype: "sqlite3", suffix: nil): [.sqlite, .sqlite3],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "stardivision.calc", suffix: nil): [.sdc],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "stardivision.draw", suffix: nil): [.sda],
   MIMEType._Core(type: .application, tree: .vnd, subtype: "stardivision.impress", suffix: nil): [.sdd],
@@ -1638,6 +1645,10 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .image, tree: nil, subtype: "cgm", suffix: nil): [.cgm],
   MIMEType._Core(type: .image, tree: nil, subtype: "g3fax", suffix: nil): [.g3],
   MIMEType._Core(type: .image, tree: nil, subtype: "gif", suffix: nil): [.gif],
+  MIMEType._Core(type: .image, tree: nil, subtype: "heic", suffix: nil): [.heic],
+  MIMEType._Core(type: .image, tree: nil, subtype: "heic-sequence", suffix: nil): [.heics],
+  MIMEType._Core(type: .image, tree: nil, subtype: "heif", suffix: nil): [.heif],
+  MIMEType._Core(type: .image, tree: nil, subtype: "heif-sequence", suffix: nil): [.heifs],
   MIMEType._Core(type: .image, tree: nil, subtype: "ief", suffix: nil): [.ief],
   MIMEType._Core(type: .image, tree: nil, subtype: "jpeg", suffix: nil): [.jpe, .jpeg, .jpg],
   MIMEType._Core(type: .image, tree: nil, subtype: "jxl", suffix: nil): [.jxl],
@@ -1647,7 +1658,7 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .image, tree: nil, subtype: "svg", suffix: .xml): [.svg, .svgz],
   MIMEType._Core(type: .image, tree: nil, subtype: "tiff", suffix: nil): [.tif, .tiff],
   MIMEType._Core(type: .image, tree: nil, subtype: "webp", suffix: nil): [.webp],
-  MIMEType._Core(type: .image, tree: nil, subtype: "x-3ds", suffix: nil): [._3ds],
+  MIMEType._Core(type: .image, tree: nil, subtype: "x-3ds", suffix: nil): [.`3ds`],
   MIMEType._Core(type: .image, tree: nil, subtype: "x-cmu-raster", suffix: nil): [.ras],
   MIMEType._Core(type: .image, tree: nil, subtype: "x-cmx", suffix: nil): [.cmx],
   MIMEType._Core(type: .image, tree: nil, subtype: "x-freehand", suffix: nil): [.fh, .fh4, .fh5, .fh7, .fhc],
@@ -1729,13 +1740,13 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .text, tree: .vnd, subtype: "fly", suffix: nil): [.fly],
   MIMEType._Core(type: .text, tree: .vnd, subtype: "fmi.flexstor", suffix: nil): [.flx],
   MIMEType._Core(type: .text, tree: .vnd, subtype: "graphviz", suffix: nil): [.gv],
-  MIMEType._Core(type: .text, tree: .vnd, subtype: "in3d.3dml", suffix: nil): [._3dml],
+  MIMEType._Core(type: .text, tree: .vnd, subtype: "in3d.3dml", suffix: nil): [.`3dml`],
   MIMEType._Core(type: .text, tree: .vnd, subtype: "in3d.spot", suffix: nil): [.spot],
   MIMEType._Core(type: .text, tree: .vnd, subtype: "sun.j2me.app-descriptor", suffix: nil): [.jad],
   MIMEType._Core(type: .text, tree: .vnd, subtype: "wap.wml", suffix: nil): [.wml],
   MIMEType._Core(type: .text, tree: .vnd, subtype: "wap.wmlscript", suffix: nil): [.wmls],
-  MIMEType._Core(type: .video, tree: nil, subtype: "3gpp", suffix: nil): [._3gp],
-  MIMEType._Core(type: .video, tree: nil, subtype: "3gpp2", suffix: nil): [._3g2],
+  MIMEType._Core(type: .video, tree: nil, subtype: "3gpp", suffix: nil): [.`3gp`],
+  MIMEType._Core(type: .video, tree: nil, subtype: "3gpp2", suffix: nil): [.`3g2`],
   MIMEType._Core(type: .video, tree: nil, subtype: "h261", suffix: nil): [.h261],
   MIMEType._Core(type: .video, tree: nil, subtype: "h263", suffix: nil): [.h263],
   MIMEType._Core(type: .video, tree: nil, subtype: "h264", suffix: nil): [.h264],
@@ -1776,12 +1787,12 @@ internal let _mimeType_to_ext: [MIMEType._Core: Set<MIMEType.PathExtension>] = [
   MIMEType._Core(type: .video, tree: .vnd, subtype: "vivo", suffix: nil): [.viv],
 ]
 internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
-  ._123: MIMEType._Core(type: .application, tree: .vnd, subtype: "lotus-1-2-3", suffix: nil),
-  ._3dml: MIMEType._Core(type: .text, tree: .vnd, subtype: "in3d.3dml", suffix: nil),
-  ._3ds: MIMEType._Core(type: .image, tree: nil, subtype: "x-3ds", suffix: nil),
-  ._3g2: MIMEType._Core(type: .video, tree: nil, subtype: "3gpp2", suffix: nil),
-  ._3gp: MIMEType._Core(type: .video, tree: nil, subtype: "3gpp", suffix: nil),
-  ._7z: MIMEType._Core(type: .application, tree: nil, subtype: "x-7z-compressed", suffix: nil),
+  .`123`: MIMEType._Core(type: .application, tree: .vnd, subtype: "lotus-1-2-3", suffix: nil),
+  .`3dml`: MIMEType._Core(type: .text, tree: .vnd, subtype: "in3d.3dml", suffix: nil),
+  .`3ds`: MIMEType._Core(type: .image, tree: nil, subtype: "x-3ds", suffix: nil),
+  .`3g2`: MIMEType._Core(type: .video, tree: nil, subtype: "3gpp2", suffix: nil),
+  .`3gp`: MIMEType._Core(type: .video, tree: nil, subtype: "3gpp", suffix: nil),
+  .`7z`: MIMEType._Core(type: .application, tree: nil, subtype: "x-7z-compressed", suffix: nil),
   .aab: MIMEType._Core(type: .application, tree: nil, subtype: "x-authorware-bin", suffix: nil),
   .aac: MIMEType._Core(type: .audio, tree: nil, subtype: "x-aac", suffix: nil),
   .aam: MIMEType._Core(type: .application, tree: nil, subtype: "x-authorware-map", suffix: nil),
@@ -2079,6 +2090,10 @@ internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
   .hal: MIMEType._Core(type: .application, tree: .vnd, subtype: "hal", suffix: .xml),
   .hbci: MIMEType._Core(type: .application, tree: .vnd, subtype: "hbci", suffix: nil),
   .hdf: MIMEType._Core(type: .application, tree: nil, subtype: "x-hdf", suffix: nil),
+  .heic: MIMEType._Core(type: .image, tree: nil, subtype: "heic", suffix: nil),
+  .heics: MIMEType._Core(type: .image, tree: nil, subtype: "heic-sequence", suffix: nil),
+  .heif: MIMEType._Core(type: .image, tree: nil, subtype: "heif", suffix: nil),
+  .heifs: MIMEType._Core(type: .image, tree: nil, subtype: "heif-sequence", suffix: nil),
   .hh: MIMEType._Core(type: .text, tree: nil, subtype: "x-c", suffix: nil),
   .hlp: MIMEType._Core(type: .application, tree: nil, subtype: "winhlp", suffix: nil),
   .hpgl: MIMEType._Core(type: .application, tree: .vnd, subtype: "hp-hpgl", suffix: nil),
@@ -2518,6 +2533,8 @@ internal let _ext_to_mimeType: [MIMEType.PathExtension: MIMEType._Core] = [
   .spq: MIMEType._Core(type: .application, tree: nil, subtype: "scvp-vp-request", suffix: nil),
   .spx: MIMEType._Core(type: .audio, tree: nil, subtype: "ogg", suffix: nil),
   .sql: MIMEType._Core(type: .application, tree: nil, subtype: "x-sql", suffix: nil),
+  .sqlite: MIMEType._Core(type: .application, tree: .vnd, subtype: "sqlite3", suffix: nil),
+  .sqlite3: MIMEType._Core(type: .application, tree: .vnd, subtype: "sqlite3", suffix: nil),
   .src: MIMEType._Core(type: .application, tree: nil, subtype: "x-wais-source", suffix: nil),
   .srt: MIMEType._Core(type: .application, tree: nil, subtype: "x-subrip", suffix: nil),
   .sru: MIMEType._Core(type: .application, tree: nil, subtype: "sru", suffix: .xml),

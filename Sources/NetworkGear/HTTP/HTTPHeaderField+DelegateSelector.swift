@@ -129,8 +129,8 @@ extension HTTPHeaderField {
   
   public init?(string: String, userInfo: [AnyHashable: Any]? = nil) {
     guard case let (nameString, valueString?) = string.splitOnce(separator:":") else { return nil }
-    guard let name = HTTPHeaderFieldName(rawValue: _trim(nameString)),
-          let value = HTTPHeaderFieldValue(rawValue: _trim(valueString))
+    guard let name = HTTPHeaderFieldName(rawValue: String(nameString._trimmed)),
+          let value = HTTPHeaderFieldValue(rawValue: String(valueString._trimmed))
     else {
       return nil
     }

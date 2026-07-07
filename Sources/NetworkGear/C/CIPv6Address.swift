@@ -57,11 +57,11 @@ extension CNetworkGear.CIPv6Address: NetworkGear.CIPAddress {
   
   /// Initialized with `string` such as "1234::ABCD".
   /// Returns `nil` if the string is not valid for IPv6 Address.
-  public init?(_ string: String) {
+  public init?<S>(_ string: S) where S: StringProtocol {
     self.init()
 
     // https://github.com/swiftlang/swift-foundation/issues/957
-    let bareIPv6String: Substring = (string.hasPrefix("[") && string.hasSuffix("]")) ? string.dropFirst().dropLast() : string[...]
+    let bareIPv6String: any StringProtocol = (string.hasPrefix("[") && string.hasSuffix("]")) ? string.dropFirst().dropLast() : string
     guard bareIPv6String.withCString({
       CNWGStringToIPAddress(cNWGIPv6AddressFamily, $0, &self)
     }) == 1 else {

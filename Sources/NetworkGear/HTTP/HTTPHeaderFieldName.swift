@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  HTTPHeaderFieldName.swift
-   © 2017-2020,2023-2024 YOCKOW.
+   © 2017-2020,2023-2024,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
@@ -9,26 +9,46 @@
 /// Represents HTTP Header Field Name
 public struct HTTPHeaderFieldName: Equatable, Hashable, RawRepresentable, Sendable {
   public typealias RawValue = String
-  public private(set) var rawValue: String
-  private var _lowercasedName: String
-  
+
+  @usableFromInline
+  internal private(set) var _string: ASCIICaseInsensitiveString
+
+  public private(set) var rawValue: String {
+    get {
+      _string.description
+    }
+    set {
+      assert(newValue.utf8.allSatisfy(\._isAvailableInHTTPHeaderFieldName))
+      _string = ASCIICaseInsensitiveString(newValue)
+    }
+  }
+
   public static func ==(lhs: HTTPHeaderFieldName, rhs: HTTPHeaderFieldName) -> Bool {
-    return lhs._lowercasedName == rhs._lowercasedName
+    return lhs._string == rhs._string
   }
-  
-  public init?(rawValue: String) {
+
+  @inlinable
+  internal init<S>(_validatedString string: S) where S: StringProtocol {
+    self._string = ASCIICaseInsensitiveString(string)
+  }
+
+  @inlinable
+  public init?<S>(rawValue: S) where S: StringProtocol {
     if rawValue.isEmpty { return nil }
-    guard rawValue.unicodeScalars.allSatisfy(\.isAllowedInHTTPHeaderFieldName) else { return nil }
-    self.rawValue = rawValue
-    self._lowercasedName = rawValue.lowercased()
+    guard rawValue.utf8.allSatisfy(\._isAvailableInHTTPHeaderFieldName) else { return nil }
+    self.init(_validatedString: rawValue)
   }
-  
+
+  public init(_ token: HTTPTokenString) {
+    self._string = ASCIICaseInsensitiveString(token._string)
+  }
+
   public func hash(into hasher: inout Hasher) {
-    hasher.combine(self._lowercasedName)
+    hasher.combine(self._string)
   }
   
   // Workaround for https://bugs.swift.org/browse/SR-10734
-  #if compiler(>=5.0)
+  #if compiler(>=5.0) && compiler(<5.1)
   public var hashValue: Int {
     return self._lowercasedName.hashValue
   }
@@ -79,5 +99,22 @@ extension HTTPHeaderFieldName: CodingKey {
 
   public init?(intValue: Int) {
     return nil
+  }
+}
+
+public struct HTTPHeaderFieldNameParser<Input>: StringParser where Input: StringProtocol {
+  public typealias Output = HTTPHeaderFieldName
+
+  private var _parser: HTTPTokenParser<Input>
+
+  public init(input: Input) {
+    self._parser = HTTPTokenParser<Input>(input: input)
+  }
+
+  public mutating func parse() -> (output: HTTPHeaderFieldName, endIndex: Input.Index)? {
+    guard let tokenResult = _parser.parse() else {
+      return nil
+    }
+    return (output: HTTPHeaderFieldName(tokenResult.output), endIndex: tokenResult.endIndex)
   }
 }
