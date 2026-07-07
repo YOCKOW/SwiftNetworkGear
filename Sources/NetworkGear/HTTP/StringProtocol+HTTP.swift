@@ -252,6 +252,7 @@ extension Unicode.UTF8.CodeUnit {
   /// Returns the Boolean value whether or not the value is available in HTTP header field name.
   ///
   /// See: [RFC 9110 §5.1](https://datatracker.ietf.org/doc/html/rfc9110#section-5.1).
+  @usableFromInline
   internal var _isAvailableInHTTPHeaderFieldName: Bool { _isAvailableInHTTPToken }
 
 

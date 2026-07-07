@@ -37,7 +37,9 @@ public final class IANARegisteredHTTPHeaderFieldName: HTTPUpdaterDelegate {
     let typeName = "HTTPHeaderFieldName"
     lines.append("extension \(typeName) {")
     for name in names {
-      lines.append(String.Line("public static let \(try await name.lowerCamelCase.swiftIdentifier) = \(typeName)(rawValue: \(name.debugDescription))!", indentLevel: 1)!)
+      lines.append(String.Line("/// An HTTP header field name whose raw value is `\(name)`.", indentLevel: 1)!)
+      lines.append(String.Line("public static let \(try await name.lowerCamelCase.swiftIdentifier) = \(typeName)(_validatedString: \(name.debugDescription))", indentLevel: 1)!)
+      lines.appendEmptyLine()
     }
     lines.append("}")
     

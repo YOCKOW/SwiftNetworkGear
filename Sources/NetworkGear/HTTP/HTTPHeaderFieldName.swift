@@ -10,7 +10,8 @@
 public struct HTTPHeaderFieldName: Equatable, Hashable, RawRepresentable, Sendable {
   public typealias RawValue = String
 
-  private var _string: ASCIICaseInsensitiveString
+  @usableFromInline
+  internal private(set) var _string: ASCIICaseInsensitiveString
 
   public private(set) var rawValue: String {
     get {
@@ -25,11 +26,17 @@ public struct HTTPHeaderFieldName: Equatable, Hashable, RawRepresentable, Sendab
   public static func ==(lhs: HTTPHeaderFieldName, rhs: HTTPHeaderFieldName) -> Bool {
     return lhs._string == rhs._string
   }
-  
-  public init?(rawValue: String) {
+
+  @inlinable
+  internal init<S>(_validatedString string: S) where S: StringProtocol {
+    self._string = ASCIICaseInsensitiveString(string)
+  }
+
+  @inlinable
+  public init?<S>(rawValue: S) where S: StringProtocol {
     if rawValue.isEmpty { return nil }
     guard rawValue.utf8.allSatisfy(\._isAvailableInHTTPHeaderFieldName) else { return nil }
-    self._string = ASCIICaseInsensitiveString(rawValue)
+    self.init(_validatedString: rawValue)
   }
 
   public init(_ token: HTTPTokenString) {

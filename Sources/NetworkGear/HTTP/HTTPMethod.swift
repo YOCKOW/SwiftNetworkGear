@@ -4,7 +4,7 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/http-methods/methods.csv
-// Last-Modified: 2025-11-21T20:46:23Z
+// Last-Modified: 2026-06-18T04:06:22Z
 
 import yExtensions
 
