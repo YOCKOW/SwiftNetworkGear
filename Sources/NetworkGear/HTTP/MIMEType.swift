@@ -355,6 +355,7 @@ public struct MIMEType: Sendable {
   public struct Subtype: Sendable,
                          Equatable,
                          Hashable,
+                         Comparable, // For backwards compatibility...
                          CustomStringConvertible,
                          ExpressibleByStringLiteral {
     public typealias StringLiteralType = String
@@ -362,6 +363,10 @@ public struct MIMEType: Sendable {
     public typealias UnicodeScalarLiteralType = String.UnicodeScalarLiteralType
 
     @usableFromInline let _string: ASCIICaseInsensitiveString
+
+    public static func <(lhs: Subtype, rhs: Subtype) -> Bool {
+      return lhs._string._compare(with: rhs._string) == .orderedAscending
+    }
 
     @inlinable
     public subscript<T>(dynamicMember dynamicMember: KeyPath<String, T>) -> T {
