@@ -165,6 +165,16 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     public init(quotedString: QuotedString) {
       self.init(_value: .quotedString(quotedString))
     }
+
+    /// Create a new value by adding leading/trailing double quotation marks to the given `value`.
+    ///
+    /// - Returns: `nil` if `value` contains any byte which cannot be used in quoted string.
+    public init?<S>(quoting value: S) where S: StringProtocol {
+      guard let quoted = value._quotedString else {
+        return  nil
+      }
+      self.init(quotedString: QuotedString(quotedString: quoted))
+    }
   }
 
   public struct ExtendedValue: Sendable, Equatable, Hashable, CustomStringConvertible {
@@ -212,6 +222,35 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
       self.stringEncodingDescription = _validated.stringEncodingDescription
       self.languageTagDescription = _validated.languageTagDescription
       self.percentEncodedValue = _validated.percentEncodedValue
+    }
+
+    public init?<S>(
+      addingPercentEncodingToValue value: S,
+      usingStringEncoding stringEncoding: String.Encoding,
+      locale: Locale? = nil
+    ) where S: StringProtocol {
+      guard let stringEncodingDescription = stringEncoding.ianaCharacterSetName else {
+        return nil
+      }
+      let languageTagDescription = locale.flatMap({ LanguageTagString($0.identifier(.bcp47)) })
+      guard let percentEncodedValue = value.addingPercentEncoding(
+        usingStringEncoding: stringEncoding,
+        whereAllowedASCIICharacters: { $0._isAvailableInHTTPHeaderFieldValue && !$0._isHTTPWhitespace }
+      ).map({ PercentEncodedString(encodedString: $0) }) else {
+        return nil
+      }
+      self.init(
+        _validated: (
+          stringEncodingDescription,
+          languageTagDescription,
+          percentEncodedValue
+        )
+      )
+    }
+
+    /// Create a new "extended value" by adding percent encoding to the given `value`.
+    public init<S>(addingPercentEncodingToValue value: S) where S: StringProtocol {
+      self.init(addingPercentEncodingToValue: value, usingStringEncoding: .utf8)!
     }
   }
 
@@ -616,6 +655,45 @@ where Input: StringProtocol {
         endIndex: endIndex
       )
     }
+  }
+}
+
+extension HTTPHeaderFieldParameter.Name {
+  @inlinable
+  public init?<S>(
+    attribute: S,
+    sectionIndex: Int? = nil,
+    validationMode: HTTPHeaderFieldParameterParser<S>.Configuration.Mode = .default
+  ) {
+    switch validationMode {
+    case .default:
+      guard attribute.utf8.allSatisfy(\._isAvailableInHTTPToken) else {
+        return nil
+      }
+    case .mimeCompatible:
+      guard attribute.utf8.allSatisfy(\._isAvailableInParameterNameForMIME) else {
+        return nil
+      }
+    }
+    self.init(_validatedAttribute: ASCIICaseInsensitiveString(attribute), sectionIndex: sectionIndex)
+  }
+}
+
+extension HTTPHeaderFieldParameter.ExtendedName {
+  @inlinable
+  public init?<S>(
+    attribute: S,
+    sectionIndex: Int? = nil,
+    validationMode: HTTPHeaderFieldParameterParser<S>.Configuration.Mode = .default
+  ) {
+    guard let baseName = HTTPHeaderFieldParameter.Name(
+      attribute: attribute,
+      sectionIndex: sectionIndex,
+      validationMode: validationMode
+    ) else {
+      return nil
+    }
+    self.init(_baseName: baseName)
   }
 }
 

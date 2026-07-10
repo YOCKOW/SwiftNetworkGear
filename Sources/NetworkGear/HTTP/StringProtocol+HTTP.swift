@@ -244,6 +244,7 @@ extension Unicode.UTF8.CodeUnit {
   }
 
   /// `token`
+  @usableFromInline
   internal var _isAvailableInHTTPToken: Bool { _tchar.contains(self) }
 
   /// `tspecials` defined in [RFC 2045](https://datatracker.ietf.org/doc/html/rfc2045).
@@ -407,6 +408,7 @@ extension Unicode.UTF8.CodeUnit {
     return self == 0x2F /* "/" */ || self == 0x3F /* "?" */ || _pchar.contains(self)
   }
 
+  @usableFromInline
   internal var _isAvailableInParameterNameForMIME: Bool {
     return _attributeChar.contains(self)
   }

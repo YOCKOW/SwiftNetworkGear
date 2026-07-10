@@ -7,14 +7,196 @@
 // Last-Modified: 2025-10-24T07:01:26Z
 
 extension HTTPHeaderFieldParameter.Name {
+  /// A regular name whose attribute is `filename` without section index.
   public static let filename = HTTPHeaderFieldParameter.Name(_validatedAttribute: "filename", sectionIndex: nil)
+
+  /// A regular name whose attribute is `filename` with the given section index.
+  @inlinable
+  public static func filename(sectionIndex: Int?) -> HTTPHeaderFieldParameter.Name {
+    return HTTPHeaderFieldParameter.Name(_validatedAttribute: "filename", sectionIndex: sectionIndex)
+  }
+
+  /// A regular name whose attribute is `creation-date` without section index.
   public static let creationDate = HTTPHeaderFieldParameter.Name(_validatedAttribute: "creation-date", sectionIndex: nil)
+
+  /// A regular name whose attribute is `creation-date` with the given section index.
+  @inlinable
+  public static func creationDate(sectionIndex: Int?) -> HTTPHeaderFieldParameter.Name {
+    return HTTPHeaderFieldParameter.Name(_validatedAttribute: "creation-date", sectionIndex: sectionIndex)
+  }
+
+  /// A regular name whose attribute is `modification-date` without section index.
   public static let modificationDate = HTTPHeaderFieldParameter.Name(_validatedAttribute: "modification-date", sectionIndex: nil)
+
+  /// A regular name whose attribute is `modification-date` with the given section index.
+  @inlinable
+  public static func modificationDate(sectionIndex: Int?) -> HTTPHeaderFieldParameter.Name {
+    return HTTPHeaderFieldParameter.Name(_validatedAttribute: "modification-date", sectionIndex: sectionIndex)
+  }
+
+  /// A regular name whose attribute is `read-date` without section index.
   public static let readDate = HTTPHeaderFieldParameter.Name(_validatedAttribute: "read-date", sectionIndex: nil)
+
+  /// A regular name whose attribute is `read-date` with the given section index.
+  @inlinable
+  public static func readDate(sectionIndex: Int?) -> HTTPHeaderFieldParameter.Name {
+    return HTTPHeaderFieldParameter.Name(_validatedAttribute: "read-date", sectionIndex: sectionIndex)
+  }
+
+  /// A regular name whose attribute is `size` without section index.
   public static let size = HTTPHeaderFieldParameter.Name(_validatedAttribute: "size", sectionIndex: nil)
+
+  /// A regular name whose attribute is `size` with the given section index.
+  @inlinable
+  public static func size(sectionIndex: Int?) -> HTTPHeaderFieldParameter.Name {
+    return HTTPHeaderFieldParameter.Name(_validatedAttribute: "size", sectionIndex: sectionIndex)
+  }
+
+  /// A regular name whose attribute is `name` without section index.
   public static let name = HTTPHeaderFieldParameter.Name(_validatedAttribute: "name", sectionIndex: nil)
+
+  /// A regular name whose attribute is `name` with the given section index.
+  @inlinable
+  public static func name(sectionIndex: Int?) -> HTTPHeaderFieldParameter.Name {
+    return HTTPHeaderFieldParameter.Name(_validatedAttribute: "name", sectionIndex: sectionIndex)
+  }
+
+  /// A regular name whose attribute is `voice` without section index.
   public static let voice = HTTPHeaderFieldParameter.Name(_validatedAttribute: "voice", sectionIndex: nil)
+
+  /// A regular name whose attribute is `voice` with the given section index.
+  @inlinable
+  public static func voice(sectionIndex: Int?) -> HTTPHeaderFieldParameter.Name {
+    return HTTPHeaderFieldParameter.Name(_validatedAttribute: "voice", sectionIndex: sectionIndex)
+  }
+
+  /// A regular name whose attribute is `handling` without section index.
   public static let handling = HTTPHeaderFieldParameter.Name(_validatedAttribute: "handling", sectionIndex: nil)
+
+  /// A regular name whose attribute is `handling` with the given section index.
+  @inlinable
+  public static func handling(sectionIndex: Int?) -> HTTPHeaderFieldParameter.Name {
+    return HTTPHeaderFieldParameter.Name(_validatedAttribute: "handling", sectionIndex: sectionIndex)
+  }
+
+  /// A regular name whose attribute is `preview-type` without section index.
   public static let previewType = HTTPHeaderFieldParameter.Name(_validatedAttribute: "preview-type", sectionIndex: nil)
+
+  /// A regular name whose attribute is `preview-type` with the given section index.
+  @inlinable
+  public static func previewType(sectionIndex: Int?) -> HTTPHeaderFieldParameter.Name {
+    return HTTPHeaderFieldParameter.Name(_validatedAttribute: "preview-type", sectionIndex: sectionIndex)
+  }
+
+  /// A regular name whose attribute is `reaction` without section index.
   public static let reaction = HTTPHeaderFieldParameter.Name(_validatedAttribute: "reaction", sectionIndex: nil)
+
+  /// A regular name whose attribute is `reaction` with the given section index.
+  @inlinable
+  public static func reaction(sectionIndex: Int?) -> HTTPHeaderFieldParameter.Name {
+    return HTTPHeaderFieldParameter.Name(_validatedAttribute: "reaction", sectionIndex: sectionIndex)
+  }
+
+}
+extension HTTPHeaderFieldParameter.ExtendedName {
+  /// A extended name whose attribute is `filename` without section index.
+  public static let filename = HTTPHeaderFieldParameter.ExtendedName(_baseName: .filename)
+
+  /// A extended name whose attribute is `filename` with the given section index.
+  @inlinable
+  public static func filename(sectionIndex: Int?) -> HTTPHeaderFieldParameter.ExtendedName {
+    let baseName = HTTPHeaderFieldParameter.Name.filename(sectionIndex: sectionIndex)
+    return HTTPHeaderFieldParameter.ExtendedName(_baseName: baseName)
+  }
+
+  /// A extended name whose attribute is `creation-date` without section index.
+  public static let creationDate = HTTPHeaderFieldParameter.ExtendedName(_baseName: .creationDate)
+
+  /// A extended name whose attribute is `creation-date` with the given section index.
+  @inlinable
+  public static func creationDate(sectionIndex: Int?) -> HTTPHeaderFieldParameter.ExtendedName {
+    let baseName = HTTPHeaderFieldParameter.Name.creationDate(sectionIndex: sectionIndex)
+    return HTTPHeaderFieldParameter.ExtendedName(_baseName: baseName)
+  }
+
+  /// A extended name whose attribute is `modification-date` without section index.
+  public static let modificationDate = HTTPHeaderFieldParameter.ExtendedName(_baseName: .modificationDate)
+
+  /// A extended name whose attribute is `modification-date` with the given section index.
+  @inlinable
+  public static func modificationDate(sectionIndex: Int?) -> HTTPHeaderFieldParameter.ExtendedName {
+    let baseName = HTTPHeaderFieldParameter.Name.modificationDate(sectionIndex: sectionIndex)
+    return HTTPHeaderFieldParameter.ExtendedName(_baseName: baseName)
+  }
+
+  /// A extended name whose attribute is `read-date` without section index.
+  public static let readDate = HTTPHeaderFieldParameter.ExtendedName(_baseName: .readDate)
+
+  /// A extended name whose attribute is `read-date` with the given section index.
+  @inlinable
+  public static func readDate(sectionIndex: Int?) -> HTTPHeaderFieldParameter.ExtendedName {
+    let baseName = HTTPHeaderFieldParameter.Name.readDate(sectionIndex: sectionIndex)
+    return HTTPHeaderFieldParameter.ExtendedName(_baseName: baseName)
+  }
+
+  /// A extended name whose attribute is `size` without section index.
+  public static let size = HTTPHeaderFieldParameter.ExtendedName(_baseName: .size)
+
+  /// A extended name whose attribute is `size` with the given section index.
+  @inlinable
+  public static func size(sectionIndex: Int?) -> HTTPHeaderFieldParameter.ExtendedName {
+    let baseName = HTTPHeaderFieldParameter.Name.size(sectionIndex: sectionIndex)
+    return HTTPHeaderFieldParameter.ExtendedName(_baseName: baseName)
+  }
+
+  /// A extended name whose attribute is `name` without section index.
+  public static let name = HTTPHeaderFieldParameter.ExtendedName(_baseName: .name)
+
+  /// A extended name whose attribute is `name` with the given section index.
+  @inlinable
+  public static func name(sectionIndex: Int?) -> HTTPHeaderFieldParameter.ExtendedName {
+    let baseName = HTTPHeaderFieldParameter.Name.name(sectionIndex: sectionIndex)
+    return HTTPHeaderFieldParameter.ExtendedName(_baseName: baseName)
+  }
+
+  /// A extended name whose attribute is `voice` without section index.
+  public static let voice = HTTPHeaderFieldParameter.ExtendedName(_baseName: .voice)
+
+  /// A extended name whose attribute is `voice` with the given section index.
+  @inlinable
+  public static func voice(sectionIndex: Int?) -> HTTPHeaderFieldParameter.ExtendedName {
+    let baseName = HTTPHeaderFieldParameter.Name.voice(sectionIndex: sectionIndex)
+    return HTTPHeaderFieldParameter.ExtendedName(_baseName: baseName)
+  }
+
+  /// A extended name whose attribute is `handling` without section index.
+  public static let handling = HTTPHeaderFieldParameter.ExtendedName(_baseName: .handling)
+
+  /// A extended name whose attribute is `handling` with the given section index.
+  @inlinable
+  public static func handling(sectionIndex: Int?) -> HTTPHeaderFieldParameter.ExtendedName {
+    let baseName = HTTPHeaderFieldParameter.Name.handling(sectionIndex: sectionIndex)
+    return HTTPHeaderFieldParameter.ExtendedName(_baseName: baseName)
+  }
+
+  /// A extended name whose attribute is `preview-type` without section index.
+  public static let previewType = HTTPHeaderFieldParameter.ExtendedName(_baseName: .previewType)
+
+  /// A extended name whose attribute is `preview-type` with the given section index.
+  @inlinable
+  public static func previewType(sectionIndex: Int?) -> HTTPHeaderFieldParameter.ExtendedName {
+    let baseName = HTTPHeaderFieldParameter.Name.previewType(sectionIndex: sectionIndex)
+    return HTTPHeaderFieldParameter.ExtendedName(_baseName: baseName)
+  }
+
+  /// A extended name whose attribute is `reaction` without section index.
+  public static let reaction = HTTPHeaderFieldParameter.ExtendedName(_baseName: .reaction)
+
+  /// A extended name whose attribute is `reaction` with the given section index.
+  @inlinable
+  public static func reaction(sectionIndex: Int?) -> HTTPHeaderFieldParameter.ExtendedName {
+    let baseName = HTTPHeaderFieldParameter.Name.reaction(sectionIndex: sectionIndex)
+    return HTTPHeaderFieldParameter.ExtendedName(_baseName: baseName)
+  }
+
 }
