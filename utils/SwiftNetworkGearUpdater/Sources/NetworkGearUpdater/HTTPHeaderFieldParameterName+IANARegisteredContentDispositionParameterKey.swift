@@ -32,14 +32,44 @@ public final class IANARegisteredContentDispositionParameterKey: HTTPUpdaterDele
     }
     
     var lines = StringLines()
-    
-    let typeName = "HTTPHeaderFieldParameter.Name"
-    lines.append("extension \(typeName) {")
+
+    // Regular Name
+    let regularTypeName = "HTTPHeaderFieldParameter.Name"
+    lines.append("extension \(regularTypeName) {")
     for name in names {
-      lines.append(String.Line("public static let \(try await name.lowerCamelCase.swiftIdentifier) = \(typeName)(_validatedAttribute: \(name.debugDescription), sectionIndex: nil)", indentLevel: 1)!)
+      let swiftIdentifier = try await name.lowerCamelCase.swiftIdentifier
+      lines.append(String.Line("/// A regular name whose attribute is `\(name)` without section index.", indentLevel: 1)!)
+      lines.append(String.Line("public static let \(swiftIdentifier) = \(regularTypeName)(_validatedAttribute: \(name.debugDescription), sectionIndex: nil)", indentLevel: 1)!)
+      lines.appendEmptyLine()
+
+      lines.append(String.Line("/// A regular name whose attribute is `\(name)` with the given section index.", indentLevel: 1)!)
+      lines.append(String.Line("@inlinable", indentLevel: 1)!)
+      lines.append(String.Line("public static func \(swiftIdentifier)(sectionIndex: Int?) -> \(regularTypeName) {", indentLevel: 1)!)
+      lines.append(String.Line("return \(regularTypeName)(_validatedAttribute: \(name.debugDescription), sectionIndex: sectionIndex)", indentLevel: 2)!)
+      lines.append(String.Line("}", indentLevel: 1)!)
+      lines.appendEmptyLine()
     }
     lines.append("}")
-    
+
+
+    let extendedTypeName = "HTTPHeaderFieldParameter.ExtendedName"
+    lines.append("extension \(extendedTypeName) {")
+    for name in names {
+      let swiftIdentifier = try await name.lowerCamelCase.swiftIdentifier
+      lines.append(String.Line("/// A extended name whose attribute is `\(name)` without section index.", indentLevel: 1)!)
+      lines.append(String.Line("public static let \(swiftIdentifier) = \(extendedTypeName)(_baseName: .\(swiftIdentifier))", indentLevel: 1)!)
+      lines.appendEmptyLine()
+
+      lines.append(String.Line("/// A extended name whose attribute is `\(name)` with the given section index.", indentLevel: 1)!)
+      lines.append(String.Line("@inlinable", indentLevel: 1)!)
+      lines.append(String.Line("public static func \(swiftIdentifier)(sectionIndex: Int?) -> \(extendedTypeName) {", indentLevel: 1)!)
+      lines.append(String.Line("let baseName = \(regularTypeName).\(swiftIdentifier)(sectionIndex: sectionIndex)", indentLevel: 2)!)
+      lines.append(String.Line("return \(extendedTypeName)(_baseName: baseName)", indentLevel: 2)!)
+      lines.append(String.Line("}", indentLevel: 1)!)
+      lines.appendEmptyLine()
+    }
+    lines.append("}")
+
     return lines.data(using: .utf8)!
   }
 }

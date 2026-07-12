@@ -8,6 +8,7 @@
 import Foundation
 @testable import NetworkGear
 import Testing
+import yExtensions
 
 @Suite struct HTTPHeaderFieldParameterTests {
   typealias NameParserTestPair = (string: String, expect: @Sendable (_ParameterName) throws -> Void)
@@ -138,6 +139,25 @@ import Testing
     #expect(value2.stringEncoding == .utf8)
     #expect(value2.locale?.language.languageCode?.identifier == "en")
     #expect(value2.decodedValue == "£ rates")
+  }
+
+  @Test func test_name_value_initializers() {
+    #expect(
+      HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 0)?.description ==
+      "foo*0"
+    )
+    #expect(
+      HTTPHeaderFieldParameter.ExtendedName(attribute: "bar", sectionIndex: 1)?.description ==
+      "bar*1*"
+    )
+    #expect(HTTPHeaderFieldParameter.Value(quoting: "foo")?.description == #""foo""#)
+    #expect(
+      HTTPHeaderFieldParameter.ExtendedValue(
+        addingPercentEncodingToValue: "£ rates"
+      ).description.isASCIICaseInsensitivelyEqual(
+        to: #"utf-8''%C2%A3%20rates"#
+      )
+    )
   }
 
 
