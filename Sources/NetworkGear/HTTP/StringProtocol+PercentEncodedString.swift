@@ -5,10 +5,9 @@
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
+import Dispatch
 import Foundation
 import yExtensions
-
-private let _PERCENT: UInt8 = 0x25
 
 private extension UInt8 {
   func _addPercentEncodedBytes<C>(to collection: inout C)
@@ -20,7 +19,7 @@ private extension UInt8 {
       default: return uint8 - 10 + 0x41 // "A"..."F"
       }
     }
-    collection.append(_PERCENT)
+    collection.append(._percentSign)
     collection.append(__hex(of: self >> 4))
     collection.append(__hex(of: self & 0x0F))
   }
@@ -39,7 +38,7 @@ private extension Sequence where Self.Element == UInt8 {
   func _addingPercentEncoding(withAllowedBytes isAllowedByte: (UInt8) throws -> Bool) rethrows -> Data {
     var output = Data()
     for byte in self {
-      if try byte != _PERCENT && isAllowedByte(byte) {
+      if try !byte._isPercentSign && isAllowedByte(byte) {
         output.append(byte)
       } else {
         byte._addPercentEncodedBytes(to: &output)
@@ -52,7 +51,7 @@ private extension Sequence where Self.Element == UInt8 {
     var result = Data()
     var myIterator = self.makeIterator()
     while let byte = myIterator.next() {
-      if byte == _PERCENT {
+      if byte._isPercentSign {
         guard let h1 = myIterator.next(),
               let b1 = h1._hexValue,
               let h2 = myIterator.next(),
@@ -143,12 +142,41 @@ extension StringProtocol {
 public struct PercentEncodedString: Sendable, Equatable, Hashable {
   public let encodedString: String
 
+  public static func ==(lhs: PercentEncodedString, rhs: PercentEncodedString) -> Bool {
+    return lhs.encodedString == rhs.encodedString
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(self.encodedString)
+  }
+
+  private final class _DecodedData: @unchecked Sendable {
+    private let _queue: DispatchQueue = .init(
+      label: "jp.YOCKOW.NetworkGear.PercentEncodedString",
+      attributes: .concurrent
+    )
+    private var _decodedData: Data? = nil
+
+    func decode(_ string: String) -> Data {
+      return _queue.sync(flags: .barrier) {
+        guard let decodedData = self._decodedData else {
+          let decodedData = string.utf8._removingPercentEncoding!
+          self._decodedData = decodedData
+          return decodedData
+        }
+        return decodedData
+      }
+    }
+  }
+  private let _decodedData: _DecodedData = .init()
+
+  public var decodedData: Data {
+    return _decodedData.decode(self.encodedString)
+  }
+
   /// Decodes percent-encoded string and returns a string using the given string encoding.
   public func decodedString(usingStringEncoding stringEncoding: String.Encoding) -> String? {
-    guard let decodedData = encodedString.utf8._removingPercentEncoding else {
-      return nil
-    }
-    return String(data: decodedData, encoding: stringEncoding)
+    return String(data: self.decodedData, encoding: stringEncoding)
   }
 
   /// Decodes percent-encoded string.
@@ -157,7 +185,109 @@ public struct PercentEncodedString: Sendable, Equatable, Hashable {
     return self.decodedString(usingStringEncoding: .utf8)
   }
 
+  /// - parameters:
+  ///   - encodedString: A string that has been already **validated** as a percent-encoded string.
+  ///
+  /// - Note: This initializer should not be `public`.
   internal init(encodedString: String) {
     self.encodedString = encodedString
+  }
+}
+
+
+/// A parser to parse a percent-encoded string.
+public struct PercentEncodedStringParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = PercentEncodedString
+
+  public struct Configuration {
+    public let allowedNonEncodedUTF8CodeUnits: (Unicode.UTF8.CodeUnit) -> Bool
+
+    public init(allowedNonEncodedUTF8CodeUnits: @escaping (Unicode.UTF8.CodeUnit) -> Bool = { $0._isVisible } ) {
+      self.allowedNonEncodedUTF8CodeUnits = allowedNonEncodedUTF8CodeUnits
+    }
+  }
+
+  let input: Input
+  let utf8: Input.UTF8View
+  public let configuration: Configuration
+
+  public init(input: Input, configuration: Configuration?) {
+    self.input = input
+    self.utf8 = input.utf8
+    self.configuration = configuration ?? .init()
+  }
+
+  public init(input: Input, allowedNonEncodedUTF8CodeUnits: @escaping (Unicode.UTF8.CodeUnit) -> Bool) {
+    self.init(
+      input: input,
+      configuration: .init(allowedNonEncodedUTF8CodeUnits: allowedNonEncodedUTF8CodeUnits)
+    )
+  }
+
+  public mutating func parse() -> (output: PercentEncodedString, endIndex: Input.Index)? {
+    var currentIndex = self.utf8.startIndex
+
+    func __parsePercentEncoded() -> Bool {
+      var currentIndexForPercentEncoded = currentIndex
+      guard let _ = self.readCurrentCodeUnit(
+        at: &currentIndexForPercentEncoded,
+        ifAllowedCodeUnit: \._isPercentSign
+      ) else {
+        return false
+      }
+      guard let _ = self.parseString(
+        from: &currentIndexForPercentEncoded,
+        minCount: 2,
+        maxCount: 2,
+        while: \._isHexDigit
+      ) else {
+        return false
+      }
+      currentIndex = currentIndexForPercentEncoded
+      return true
+    }
+
+    while currentIndex < self.utf8.endIndex {
+      if __parsePercentEncoded() {
+        continue
+      }
+      guard let _ = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: {
+          !$0._isPercentSign && configuration.allowedNonEncodedUTF8CodeUnits($0)
+        }
+      ) else {
+        break
+      }
+    }
+    return (
+      PercentEncodedString(encodedString: input[..<currentIndex]._string),
+      currentIndex
+    )
+  }
+}
+
+extension PercentEncodedString: _InitializableWithParser {
+  /// Creates an instance from given `string`.
+  public init?<S>(
+    validating string: S,
+    configuration: PercentEncodedStringParser<S>.Configuration? = nil
+  ) where S: StringProtocol {
+    self.init(
+      string,
+      parser: PercentEncodedStringParser<S>.self,
+      configuration: configuration
+    )
+  }
+
+  /// Creates an instance from given `string`.
+  public init?<S>(
+    validating string: S,
+    whereAllowedNonEncodedUTF8CodeUnits allowedNonEncodedUTF8CodeUnits: @escaping (Unicode.UTF8.CodeUnit) -> Bool
+  ) where S: StringProtocol {
+    self.init(
+      validating: string,
+      configuration: .init(allowedNonEncodedUTF8CodeUnits: allowedNonEncodedUTF8CodeUnits)
+    )
   }
 }
