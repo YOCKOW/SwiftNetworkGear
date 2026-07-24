@@ -137,28 +137,70 @@ extension StringProtocol {
   }
 }
 
+private extension StringProtocol {
+  func _utf8CodeUnit(at index: String.Index) -> UTF8.CodeUnit {
+    return self.utf8[index]
+  }
+
+  func _utf8Index(after index: String.Index) -> String.Index {
+    return self.utf8.index(after: index)
+  }
+
+  func _formUTF8Index(after index: inout String.Index) {
+    self.utf8.formIndex(after: &index)
+  }
+
+  func _utf8Index(_ index: String.Index, offsetBy distance: Int) -> String.Index {
+    return self.utf8.index(index, offsetBy: distance)
+  }
+}
+
 
 /// A string that is encoded with [Percent-Encoding](https://datatracker.ietf.org/doc/html/rfc3986#section-2.1).
 public struct PercentEncodedString: Sendable, Equatable, Hashable {
-  public let encodedString: String
+  /// Valid percent-encoded string.
+  fileprivate let _encodedString: any StringProtocol & Sendable
 
   public static func ==(lhs: PercentEncodedString, rhs: PercentEncodedString) -> Bool {
-    return lhs.encodedString == rhs.encodedString
+    var lUTF8Iterator = lhs._encodedString.utf8.makeIterator()
+    var rUTF8Iterator = rhs._encodedString.utf8.makeIterator()
+    while let lByte = lUTF8Iterator.next() {
+      guard let rByte = rUTF8Iterator.next(), lByte == rByte else {
+        return false
+      }
+    }
+    return rUTF8Iterator.next().isNil
   }
 
   public func hash(into hasher: inout Hasher) {
-    hasher.combine(self.encodedString)
+    hasher.combine(self._encodedString)
   }
 
-  private final class _DecodedData: @unchecked Sendable {
-    private let _queue: DispatchQueue = .init(
-      label: "jp.YOCKOW.NetworkGear.PercentEncodedString",
+  private final class _Converted: @unchecked Sendable {
+    private let _stringQueue: DispatchQueue = .init(
+      label: "jp.YOCKOW.NetworkGear.PercentEncodedString.String",
       attributes: .concurrent
     )
+    private let _dataQueue: DispatchQueue = .init(
+      label: "jp.YOCKOW.NetworkGear.PercentEncodedString.Data",
+      attributes: .concurrent
+    )
+    private var _string: String? = nil
     private var _decodedData: Data? = nil
 
-    func decode(_ string: String) -> Data {
-      return _queue.sync(flags: .barrier) {
+    func getString<S>(from anyString: S) -> String where S: StringProtocol {
+      return _stringQueue.sync(flags: .barrier) {
+        guard let string = self._string else {
+          let string = anyString._string
+          self._string = string
+          return string
+        }
+        return string
+      }
+    }
+
+    func decode<S>(_ string: S) -> Data where S: StringProtocol {
+      return _dataQueue.sync(flags: .barrier) {
         guard let decodedData = self._decodedData else {
           let decodedData = string.utf8._removingPercentEncoding!
           self._decodedData = decodedData
@@ -168,10 +210,14 @@ public struct PercentEncodedString: Sendable, Equatable, Hashable {
       }
     }
   }
-  private let _decodedData: _DecodedData = .init()
+  private let _converted: _Converted = .init()
+
+  public var encodedString: String {
+    return _converted.getString(from: _encodedString)
+  }
 
   public var decodedData: Data {
-    return _decodedData.decode(self.encodedString)
+    return _converted.decode(_encodedString)
   }
 
   /// Decodes percent-encoded string and returns a string using the given string encoding.
@@ -189,8 +235,14 @@ public struct PercentEncodedString: Sendable, Equatable, Hashable {
   ///   - encodedString: A string that has been already **validated** as a percent-encoded string.
   ///
   /// - Note: This initializer should not be `public`.
-  internal init(encodedString: String) {
-    self.encodedString = encodedString
+  internal init<S>(encodedString: S) where S: StringProtocol {
+    if case let string as String = encodedString {
+      self._encodedString = string
+    } else if case let substring as Substring = encodedString {
+      self._encodedString = substring
+    } else {
+      self._encodedString = encodedString._string
+    }
   }
 }
 
@@ -261,7 +313,7 @@ public struct PercentEncodedStringParser<Input>: StringParser, _UTF8Parser where
       }
     }
     return (
-      PercentEncodedString(encodedString: input[..<currentIndex]._string),
+      PercentEncodedString(encodedString: input[..<currentIndex]),
       currentIndex
     )
   }
@@ -291,3 +343,110 @@ extension PercentEncodedString: _InitializableWithParser {
     )
   }
 }
+
+
+extension PercentEncodedString: Sequence, Collection {
+  public struct Index: Sendable, Equatable, Comparable {
+    fileprivate let _stringIndex: String.Index
+
+    fileprivate init(stringIndex: String.Index) {
+      self._stringIndex = stringIndex
+    }
+
+    public static func ==(lhs: Index, rhs: Index) -> Bool {
+      return lhs._stringIndex == rhs._stringIndex
+    }
+
+    public static func <(lhs: Index, rhs: Index) -> Bool {
+      return lhs._stringIndex < rhs._stringIndex
+    }
+  }
+
+  public enum Element: Sendable, Equatable {
+    case percentEncoded(upperHex: Unicode.UTF8.CodeUnit, lowerHex: Unicode.UTF8.CodeUnit)
+    case rawCodeUnit(Unicode.UTF8.CodeUnit)
+
+    public static func ==(lhs: Element, rhs: Element) -> Bool {
+      switch (lhs, rhs) {
+      case (.percentEncoded(let lUpper, let lLower), .percentEncoded(let rUpper, lowerHex: let rLower)):
+        return lUpper._hexValue == rUpper._hexValue && lLower._hexValue == rLower._hexValue
+      case (.rawCodeUnit(let lByte), .rawCodeUnit(let rByte)):
+        return lByte == rByte
+      default:
+        return false
+      }
+    }
+
+    public var decodedCodeUnit: Unicode.UTF8.CodeUnit {
+      switch self {
+      case .percentEncoded(let upperHex, let lowerHex):
+        return (upperHex._hexValue! << 4) | lowerHex._hexValue!
+      case .rawCodeUnit(let codeUnit):
+        return codeUnit
+      }
+    }
+  }
+
+  public var startIndex: Index {
+    return Index(stringIndex: self.encodedString.startIndex)
+  }
+
+  public var endIndex: Index {
+    return Index(stringIndex: self.encodedString.endIndex)
+  }
+
+  public subscript(_ index: Index) -> Element {
+    assert(index < self.endIndex)
+    let firstByte = self._encodedString._utf8CodeUnit(at: index._stringIndex)
+    if firstByte._isPercentSign {
+      var hexIndex = self._encodedString._utf8Index(after: index._stringIndex)
+      let upperHex = self._encodedString._utf8CodeUnit(at: hexIndex)
+      self._encodedString._formUTF8Index(after: &hexIndex)
+      let lowerHex = self._encodedString._utf8CodeUnit(at: hexIndex)
+      return .percentEncoded(upperHex: upperHex, lowerHex: lowerHex)
+    } else {
+      return .rawCodeUnit(firstByte)
+    }
+  }
+
+  public func index(after i: Index) -> Index {
+    let stringIndex = i._stringIndex
+    let byte = self._encodedString._utf8CodeUnit(at: stringIndex)
+    if byte._isPercentSign {
+      return Index(stringIndex: self._encodedString._utf8Index(stringIndex, offsetBy: 3))
+    } else {
+      return Index(stringIndex: self._encodedString._utf8Index(after: stringIndex))
+    }
+  }
+
+  @inlinable
+  public func formIndex(after i: inout Index) {
+    i = self.index(after: i)
+  }
+
+  public struct Iterator: IteratorProtocol {
+    public typealias Element = PercentEncodedString.Element
+
+    private var _currentIndex: PercentEncodedString.Index
+    private let _percentEncodedString: PercentEncodedString
+
+    fileprivate init(_ percentEncodedString: PercentEncodedString) {
+      self._currentIndex = percentEncodedString.startIndex
+      self._percentEncodedString = percentEncodedString
+    }
+
+    public mutating func next() -> Element? {
+      guard _currentIndex < _percentEncodedString.endIndex else {
+        return nil
+      }
+      let element = _percentEncodedString[_currentIndex]
+      _percentEncodedString.formIndex(after: &_currentIndex)
+      return element
+    }
+  }
+
+  public func makeIterator() -> Iterator {
+    return Iterator(self)
+  }
+}
+

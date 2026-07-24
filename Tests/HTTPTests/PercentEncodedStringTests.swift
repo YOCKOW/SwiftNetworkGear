@@ -37,4 +37,14 @@ import yExtensions
     #expect(result.output.decodedString == "あいうえお")
     #expect(result.endIndex < parser.input.endIndex && parser.input[result.endIndex] == ";")
   }
+
+  @Test func test_asCollection() {
+    let percentEncodedStringAsCollection = Array<PercentEncodedString.Element>(
+      PercentEncodedString(encodedString: "A%42C")
+    )
+    #expect(percentEncodedStringAsCollection.count == 3)
+    #expect(percentEncodedStringAsCollection.first == .rawCodeUnit(0x41))
+    #expect(percentEncodedStringAsCollection.dropFirst().first == .percentEncoded(upperHex: 0x34, lowerHex: 0x32))
+    #expect(percentEncodedStringAsCollection.last == .rawCodeUnit(0x43))
+  }
 }
