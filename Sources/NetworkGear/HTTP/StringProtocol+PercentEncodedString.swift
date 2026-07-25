@@ -236,10 +236,10 @@ public struct PercentEncodedString: Sendable, Equatable, Hashable {
   ///
   /// - Note: This initializer should not be `public`.
   internal init<S>(encodedString: S) where S: StringProtocol {
-    if case let string as String = encodedString {
-      self._encodedString = string
-    } else if case let substring as Substring = encodedString {
+    if case let substring as Substring = encodedString {
       self._encodedString = substring
+    } else if case let string as String = encodedString {
+      self._encodedString = string
     } else {
       self._encodedString = encodedString._string
     }
@@ -388,11 +388,11 @@ extension PercentEncodedString: Sequence, Collection {
   }
 
   public var startIndex: Index {
-    return Index(stringIndex: self.encodedString.startIndex)
+    return Index(stringIndex: self._encodedString.startIndex)
   }
 
   public var endIndex: Index {
-    return Index(stringIndex: self.encodedString.endIndex)
+    return Index(stringIndex: self._encodedString.endIndex)
   }
 
   public subscript(_ index: Index) -> Element {
@@ -447,6 +447,13 @@ extension PercentEncodedString: Sequence, Collection {
 
   public func makeIterator() -> Iterator {
     return Iterator(self)
+  }
+
+  public typealias SubSequence = PercentEncodedString
+
+  public subscript(_ bounds: Range<Index>) -> SubSequence {
+    let substring = self._encodedString[bounds.lowerBound._stringIndex..<bounds.upperBound._stringIndex]
+    return PercentEncodedString(encodedString: substring)
   }
 }
 

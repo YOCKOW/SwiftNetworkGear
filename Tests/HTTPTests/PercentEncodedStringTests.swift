@@ -39,12 +39,15 @@ import yExtensions
   }
 
   @Test func test_asCollection() {
-    let percentEncodedStringAsCollection = Array<PercentEncodedString.Element>(
-      PercentEncodedString(encodedString: "A%42C")
-    )
-    #expect(percentEncodedStringAsCollection.count == 3)
-    #expect(percentEncodedStringAsCollection.first == .rawCodeUnit(0x41))
-    #expect(percentEncodedStringAsCollection.dropFirst().first == .percentEncoded(upperHex: 0x34, lowerHex: 0x32))
-    #expect(percentEncodedStringAsCollection.last == .rawCodeUnit(0x43))
+    let percentEncodedString = PercentEncodedString(encodedString: "A%42C")
+    let percentEncodedStringAsArray = Array<PercentEncodedString.Element>(percentEncodedString)
+    #expect(percentEncodedString.count == 3)
+    #expect(percentEncodedString.count == percentEncodedStringAsArray.count)
+    #expect(percentEncodedString.first == .rawCodeUnit(0x41))
+    #expect(percentEncodedString.first == percentEncodedStringAsArray.first)
+    #expect(percentEncodedString.dropFirst().first == .percentEncoded(upperHex: 0x34, lowerHex: 0x32))
+    #expect(percentEncodedString.dropFirst().first == percentEncodedStringAsArray.dropFirst().first)
+    #expect(percentEncodedString.dropFirst(2).first == .rawCodeUnit(0x43))
+    #expect(percentEncodedString.dropFirst(2).first == percentEncodedStringAsArray.dropFirst(2).first)
   }
 }
