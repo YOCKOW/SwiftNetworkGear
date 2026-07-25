@@ -12,7 +12,7 @@ import yExtensions
 @Suite final class PercentEncodedStringTests {
   @Test func test_decoding() {
     #expect(PercentEncodedString(encodedString: "A").decodedString == "A")
-    #expect(PercentEncodedString(encodedString: "%Q").decodedString.isNil)
+    #expect(PercentEncodedString(validating: "%Q").isNil)
     #expect(PercentEncodedString(encodedString: "A%42C").decodedString == "ABC")
     #expect(
       PercentEncodedString(
@@ -26,5 +26,54 @@ import yExtensions
         usingStringEncoding: .shiftJIS
       ) == "あいうえお"
     )
+  }
+
+  @Test func test_utf8Count() throws {
+    let encoded = try #require(PercentEncodedString(validating: "%41B%43D"))
+    #expect(encoded.utf8Count == 8)
+    #expect(encoded.dropFirst().utf8Count == 5)
+    #expect(encoded.dropLast().utf8Count == 7)
+
+    #expect(encoded.endIndex(whereMaxUTF8Count: 0) == encoded.startIndex)
+    #expect(encoded.endIndex(whereMaxUTF8Count: 1) == encoded.startIndex)
+    #expect(encoded.endIndex(whereMaxUTF8Count: 2) == encoded.startIndex)
+    #expect(encoded.endIndex(whereMaxUTF8Count: 3) == encoded.index(encoded.startIndex, offsetBy: 1))
+    #expect(encoded.endIndex(whereMaxUTF8Count: 4) == encoded.index(encoded.startIndex, offsetBy: 2))
+    #expect(encoded.endIndex(whereMaxUTF8Count: 5) == encoded.index(encoded.startIndex, offsetBy: 2))
+    #expect(encoded.endIndex(whereMaxUTF8Count: 6) == encoded.index(encoded.startIndex, offsetBy: 2))
+    #expect(encoded.endIndex(whereMaxUTF8Count: 7) == encoded.index(encoded.startIndex, offsetBy: 3))
+    #expect(encoded.endIndex(whereMaxUTF8Count: 8) == encoded.endIndex)
+    #expect(encoded.endIndex(whereMaxUTF8Count: 9) == encoded.endIndex)
+    #expect(encoded.endIndex(whereMaxUTF8Count: 10) == encoded.endIndex)
+  }
+
+  @Test func test_parser() throws {
+    var parser = PercentEncodedStringParser(
+      input: "%E3%81%82%E3%81%84%E3%81%86%E3%81%88%E3%81%8A;",
+      allowedNonEncodedUTF8CodeUnits: \._isAvailableInExtendedValueWithoutPercentEncoding
+    )
+    let result = try #require(parser.parse() ?? nil)
+    #expect(result.output.decodedString == "あいうえお")
+    #expect(result.endIndex < parser.input.endIndex && parser.input[result.endIndex] == ";")
+  }
+
+  @Test func test_asBidirectionalCollection() {
+    let percentEncodedString = PercentEncodedString(encodedString: "A%42C")
+    let percentEncodedStringAsArray = Array<PercentEncodedString.Element>(percentEncodedString)
+    #expect(percentEncodedString.count == 3)
+    #expect(percentEncodedString.count == percentEncodedStringAsArray.count)
+    #expect(percentEncodedString.first == .rawCodeUnit(0x41))
+    #expect(percentEncodedString.first == percentEncodedStringAsArray.first)
+    #expect(percentEncodedString.dropFirst().first == .percentEncoded(upperHex: 0x34, lowerHex: 0x32))
+    #expect(percentEncodedString.dropFirst().first == percentEncodedStringAsArray.dropFirst().first)
+    #expect(percentEncodedString.last == .rawCodeUnit(0x43))
+    #expect(percentEncodedString.last == percentEncodedStringAsArray.last)
+
+    let cIndex = percentEncodedString.index(before: percentEncodedString.endIndex)
+    #expect(percentEncodedString[cIndex] == .rawCodeUnit(0x43))
+    let bIndex = percentEncodedString.index(before: cIndex)
+    #expect(percentEncodedString[bIndex] == .percentEncoded(upperHex: 0x34, lowerHex: 0x32))
+    let aIndex = percentEncodedString.index(before: bIndex)
+    #expect(percentEncodedString[aIndex] == .rawCodeUnit(0x41))
   }
 }

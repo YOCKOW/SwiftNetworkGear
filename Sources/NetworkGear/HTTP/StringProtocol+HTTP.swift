@@ -155,6 +155,14 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isNumberSign: Bool { self == 0x23 }
 
+  /// `%`
+  @usableFromInline
+  internal static let _percentSign: Unicode.UTF8.CodeUnit = 0x25
+
+  /// `%`
+  @inlinable
+  internal var _isPercentSign: Bool { self == ._percentSign }
+
   /// `'`
   @inlinable
   internal var _isApostrophe: Bool { self == 0x27 }
@@ -419,6 +427,10 @@ extension Unicode.UTF8.CodeUnit {
 
   internal var _isAvailableInMIMECharsetInExtendedValue: Bool {
     return _mimeCharsetCharsInExtendedValue.contains(self)
+  }
+
+  internal var _isAvailableInExtendedValueWithoutPercentEncoding: Bool {
+    return _attrChar.contains(self)
   }
 
   internal var _isAvailableInPercentEncodedContentInExtendedValue: Bool {
