@@ -155,11 +155,39 @@ private extension StringProtocol {
   }
 }
 
+/// A workaround for the feature(?) that `UTF8View` is not `BidirectionalCollection`.
+///
+/// See Also: [Can we require StringProtocol.UTF8View be a BidirectionalCollection?](https://forums.swift.org/t/can-we-require-stringprotocol-utf8view-be-a-bidirectionalcollection/44951)
+private protocol _BidirectionalUTF8View: BidirectionalCollection,
+                                         Sendable where Element == UTF8.CodeUnit,
+                                                        Index == String.Index {}
+extension String.UTF8View: _BidirectionalUTF8View {}
+extension Substring.UTF8View: _BidirectionalUTF8View {}
+
+private protocol _BidirectionalUTF8ViewAvailableStringProtocol: Sendable {
+  associatedtype BidirectionalUTF8View: _BidirectionalUTF8View
+  var utf8: BidirectionalUTF8View { get }
+}
+extension String: _BidirectionalUTF8ViewAvailableStringProtocol {}
+extension Substring: _BidirectionalUTF8ViewAvailableStringProtocol {}
+
+extension _BidirectionalUTF8ViewAvailableStringProtocol {
+  func _utf8Index(before index: String.Index) -> String.Index {
+    return self.utf8.index(before: index)
+  }
+
+  func _formUTF8Index(before index: inout String.Index) {
+    return self.utf8.formIndex(before: &index)
+  }
+}
+
 
 /// A string that is encoded with [Percent-Encoding](https://datatracker.ietf.org/doc/html/rfc3986#section-2.1).
 public struct PercentEncodedString: Sendable, Equatable, Hashable {
   /// Valid percent-encoded string.
-  fileprivate let _encodedString: any StringProtocol & Sendable
+  ///
+  /// The type of this property is either `String` or `Substring`.
+  fileprivate let _encodedString: any StringProtocol & _BidirectionalUTF8ViewAvailableStringProtocol
 
   public static func ==(lhs: PercentEncodedString, rhs: PercentEncodedString) -> Bool {
     var lUTF8Iterator = lhs._encodedString.utf8.makeIterator()
@@ -347,6 +375,7 @@ extension PercentEncodedString: _InitializableWithParser {
 
 extension PercentEncodedString: Sequence, Collection {
   public struct Index: Sendable, Equatable, Comparable {
+    /// Start index of `_encodedString`.
     fileprivate let _stringIndex: String.Index
 
     fileprivate init(stringIndex: String.Index) {
@@ -457,3 +486,34 @@ extension PercentEncodedString: Sequence, Collection {
   }
 }
 
+extension PercentEncodedString: BidirectionalCollection {
+  public func index(before i: Index) -> Index {
+    // Determine if the previous `Element` is percent encoded or not.
+
+    let prevStringIndex = self._encodedString._utf8Index(before: i._stringIndex)
+    if prevStringIndex == self._encodedString.startIndex {
+      return Index(stringIndex: prevStringIndex)
+    }
+
+    let prevByte = self._encodedString._utf8CodeUnit(at: prevStringIndex)
+    if !prevByte._isHexDigit {
+      return Index(stringIndex: prevStringIndex)
+    }
+
+    let prevPrevStringIndex = self._encodedString._utf8Index(before: prevStringIndex)
+    if prevPrevStringIndex == self._encodedString.startIndex {
+      return Index(stringIndex: prevStringIndex)
+    }
+
+    let prevPrevByte = self._encodedString._utf8CodeUnit(at: prevPrevStringIndex)
+    if !prevPrevByte._isHexDigit {
+      return Index(stringIndex: prevStringIndex)
+    }
+
+    let prevPrevPrevStringIndex = self._encodedString._utf8Index(before: prevPrevStringIndex)
+    guard self._encodedString._utf8CodeUnit(at: prevPrevPrevStringIndex)._isPercentSign else {
+      return Index(stringIndex: prevStringIndex)
+    }
+    return Index(stringIndex: prevPrevPrevStringIndex)
+  }
+}

@@ -38,7 +38,7 @@ import yExtensions
     #expect(result.endIndex < parser.input.endIndex && parser.input[result.endIndex] == ";")
   }
 
-  @Test func test_asCollection() {
+  @Test func test_asBidirectionalCollection() {
     let percentEncodedString = PercentEncodedString(encodedString: "A%42C")
     let percentEncodedStringAsArray = Array<PercentEncodedString.Element>(percentEncodedString)
     #expect(percentEncodedString.count == 3)
@@ -47,7 +47,14 @@ import yExtensions
     #expect(percentEncodedString.first == percentEncodedStringAsArray.first)
     #expect(percentEncodedString.dropFirst().first == .percentEncoded(upperHex: 0x34, lowerHex: 0x32))
     #expect(percentEncodedString.dropFirst().first == percentEncodedStringAsArray.dropFirst().first)
-    #expect(percentEncodedString.dropFirst(2).first == .rawCodeUnit(0x43))
-    #expect(percentEncodedString.dropFirst(2).first == percentEncodedStringAsArray.dropFirst(2).first)
+    #expect(percentEncodedString.last == .rawCodeUnit(0x43))
+    #expect(percentEncodedString.last == percentEncodedStringAsArray.last)
+
+    let cIndex = percentEncodedString.index(before: percentEncodedString.endIndex)
+    #expect(percentEncodedString[cIndex] == .rawCodeUnit(0x43))
+    let bIndex = percentEncodedString.index(before: cIndex)
+    #expect(percentEncodedString[bIndex] == .percentEncoded(upperHex: 0x34, lowerHex: 0x32))
+    let aIndex = percentEncodedString.index(before: bIndex)
+    #expect(percentEncodedString[aIndex] == .rawCodeUnit(0x41))
   }
 }
