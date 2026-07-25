@@ -28,6 +28,13 @@ import yExtensions
     )
   }
 
+  @Test func test_utf8Count() throws {
+    let encoded = try #require(PercentEncodedString(validating: "A%42C%44"))
+    #expect(encoded.utf8Count == 8)
+    #expect(encoded.dropFirst().utf8Count == 7)
+    #expect(encoded.dropLast().utf8Count == 5)
+  }
+
   @Test func test_parser() throws {
     var parser = PercentEncodedStringParser(
       input: "%E3%81%82%E3%81%84%E3%81%86%E3%81%88%E3%81%8A;",

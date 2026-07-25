@@ -189,6 +189,10 @@ public struct PercentEncodedString: Sendable, Equatable, Hashable {
   /// The type of this property is either `String` or `Substring`.
   fileprivate let _encodedString: any StringProtocol & _BidirectionalUTF8ViewAvailableStringProtocol
 
+  public var utf8Count: Int {
+    return _encodedString.utf8.count
+  }
+
   public static func ==(lhs: PercentEncodedString, rhs: PercentEncodedString) -> Bool {
     var lUTF8Iterator = lhs._encodedString.utf8.makeIterator()
     var rUTF8Iterator = rhs._encodedString.utf8.makeIterator()
