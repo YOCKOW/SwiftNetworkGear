@@ -442,19 +442,43 @@ extension PercentEncodedString: Sequence, Collection {
     }
   }
 
-  public func index(after i: Index) -> Index {
+  private func _index(after i: Index) -> (nextIndex: Index, currentElementIsPercentEncoded: Bool) {
     let stringIndex = i._stringIndex
     let byte = self._encodedString._utf8CodeUnit(at: stringIndex)
     if byte._isPercentSign {
-      return Index(stringIndex: self._encodedString._utf8Index(stringIndex, offsetBy: 3))
+      return (Index(stringIndex: self._encodedString._utf8Index(stringIndex, offsetBy: 3)), true)
     } else {
-      return Index(stringIndex: self._encodedString._utf8Index(after: stringIndex))
+      return (Index(stringIndex: self._encodedString._utf8Index(after: stringIndex)), false)
     }
+  }
+
+  public func index(after i: Index) -> Index {
+    return self._index(after: i).nextIndex
   }
 
   @inlinable
   public func formIndex(after i: inout Index) {
     i = self.index(after: i)
+  }
+
+  public var isEmpty: Bool {
+    return self._encodedString.isEmpty
+  }
+
+  /// The end index to which `utf8Count` of the subsequence from start is less than or equal to `maxUTF8Count`.
+  public func endIndex(whereMaxUTF8Count maxUTF8Count: Int) -> Index {
+    let endIndex = self.endIndex
+    var currentIndex = self.startIndex
+    var currentUTF8Count = 0
+    while currentIndex < endIndex {
+      let (nextIndex, currentElementIsPercentEncoded) = _index(after: currentIndex)
+      currentUTF8Count += currentElementIsPercentEncoded ? 3 : 1
+      if currentUTF8Count > maxUTF8Count {
+        return currentIndex
+      }
+      currentIndex = nextIndex
+    }
+    return currentIndex
   }
 
   public struct Iterator: IteratorProtocol {

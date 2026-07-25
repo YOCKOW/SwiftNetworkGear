@@ -29,10 +29,22 @@ import yExtensions
   }
 
   @Test func test_utf8Count() throws {
-    let encoded = try #require(PercentEncodedString(validating: "A%42C%44"))
+    let encoded = try #require(PercentEncodedString(validating: "%41B%43D"))
     #expect(encoded.utf8Count == 8)
-    #expect(encoded.dropFirst().utf8Count == 7)
-    #expect(encoded.dropLast().utf8Count == 5)
+    #expect(encoded.dropFirst().utf8Count == 5)
+    #expect(encoded.dropLast().utf8Count == 7)
+
+    #expect(encoded.endIndex(whereMaxUTF8Count: 0) == encoded.startIndex)
+    #expect(encoded.endIndex(whereMaxUTF8Count: 1) == encoded.startIndex)
+    #expect(encoded.endIndex(whereMaxUTF8Count: 2) == encoded.startIndex)
+    #expect(encoded.endIndex(whereMaxUTF8Count: 3) == encoded.index(encoded.startIndex, offsetBy: 1))
+    #expect(encoded.endIndex(whereMaxUTF8Count: 4) == encoded.index(encoded.startIndex, offsetBy: 2))
+    #expect(encoded.endIndex(whereMaxUTF8Count: 5) == encoded.index(encoded.startIndex, offsetBy: 2))
+    #expect(encoded.endIndex(whereMaxUTF8Count: 6) == encoded.index(encoded.startIndex, offsetBy: 2))
+    #expect(encoded.endIndex(whereMaxUTF8Count: 7) == encoded.index(encoded.startIndex, offsetBy: 3))
+    #expect(encoded.endIndex(whereMaxUTF8Count: 8) == encoded.endIndex)
+    #expect(encoded.endIndex(whereMaxUTF8Count: 9) == encoded.endIndex)
+    #expect(encoded.endIndex(whereMaxUTF8Count: 10) == encoded.endIndex)
   }
 
   @Test func test_parser() throws {
