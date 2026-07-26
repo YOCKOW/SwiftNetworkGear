@@ -10,6 +10,7 @@ import Ranges
 import yExtensions
 
 /// Key-value pairs for "HTTP Parameter Continuations".
+/// This type is designed to be compatible with "MIME Parameter Value and Encoded Word Extensions".
 ///
 /// - NOTE:
 ///     String validation may be done loosely for compatibility.
@@ -254,19 +255,44 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     }
   }
 
+  /// An extended value that contains only a percent-encoded string.
+  /// This value is supposed to exist at the second or subsequent one in MIME header.
+  public struct InformationlessExtendedValue: Sendable, Equatable, Hashable, CustomStringConvertible {
+    /// Percent-encoded value.
+    public let percentEncodedValue: PercentEncodedString
+
+    public var description: String { percentEncodedValue.encodedString }
+
+    public func decodedValue(usingStringEncoding stringEncoding: String.Encoding) -> String? {
+      return percentEncodedValue.decodedString(usingStringEncoding: stringEncoding)
+    }
+
+    public var decodedValueData: Data {
+      return percentEncodedValue.decodedData
+    }
+
+    @inlinable
+    internal init(percentEncodedValue: PercentEncodedString) {
+      self.percentEncodedValue = percentEncodedValue
+    }
+  }
+
   private enum _NameValuePair: Sendable, Equatable, Hashable {
     case regular(name: Name, value: Value)
     case extended(name: ExtendedName, value: ExtendedValue)
+    case nonInitialExtended(name: ExtendedName, value: InformationlessExtendedValue)
   }
 
   private let _nameValuePair: _NameValuePair
 
   /// A Boolean value indicating whether or not the value is an "extended value".
   public var isExtended: Bool {
-    if case .extended = _nameValuePair {
+    switch _nameValuePair {
+    case .extended, .nonInitialExtended:
       return true
+    default:
+      return false
     }
-    return false
   }
 
   /// A string that is a core part of the name.
@@ -275,6 +301,8 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     case .regular(let name, _):
       return name.attribute
     case .extended(let name, _):
+      return name.attribute
+    case .nonInitialExtended(name: let name, value: _):
       return name.attribute
     }
   }
@@ -286,6 +314,8 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
       return name.sectionIndex
     case .extended(let name, _):
       return name.sectionIndex
+    case .nonInitialExtended(name: let name, value: _):
+      return name.sectionIndex
     }
   }
 
@@ -294,6 +324,8 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     case .regular(let name, _):
       return name.description
     case .extended(let name, _):
+      return name.description
+    case .nonInitialExtended(name: let name, value: _):
       return name.description
     }
   }
@@ -315,8 +347,18 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     return value
   }
 
+  /// A non-initial extended value if available.
+  public var informationlessExtendedValue: InformationlessExtendedValue? {
+    guard case .nonInitialExtended(_, let value) = _nameValuePair else {
+      return nil
+    }
+    return value
+  }
+
   /// A string of the value.
   /// `nil` is returned only if the value is percent-encoded and decoding fails.
+  ///
+  /// - Note: If the value is `InformationlessExtendedValue`, UTF-8 is used to decode the value.
   public var value: String? {
     switch _nameValuePair {
     case .regular(_, let value):
@@ -328,6 +370,8 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
       }
     case .extended(_, let value):
       return value.decodedValue
+    case .nonInitialExtended(_, let value):
+      return value.decodedValue(usingStringEncoding: .utf8)
     }
   }
 
@@ -336,6 +380,8 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     case .regular(_, let value):
       return value.description
     case .extended(_, let value):
+      return value.description
+    case .nonInitialExtended(_, let value):
       return value.description
     }
   }
@@ -350,6 +396,11 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     self._nameValuePair = .extended(name: name, value: value)
   }
 
+  /// Creates a parameter pair of the extended name and the extended value.
+  public init(name: ExtendedName, value: InformationlessExtendedValue) {
+    self._nameValuePair = .nonInitialExtended(name: name, value: value)
+  }
+
   /// Returns a regular parameter.
   public static func regular(name: Name, value: Value) -> HTTPHeaderFieldParameter {
     return .init(name: name, value: value)
@@ -357,6 +408,11 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
 
   /// Returns an extended parameter.
   public static func extended(name: ExtendedName, value: ExtendedValue) -> HTTPHeaderFieldParameter {
+    return .init(name: name, value: value)
+  }
+
+  /// Returns an extended parameter.
+  public static func extended(name: ExtendedName, value: InformationlessExtendedValue) -> HTTPHeaderFieldParameter {
     return .init(name: name, value: value)
   }
 }
@@ -555,14 +611,16 @@ public struct ExtendedParameterValueParser<Input>: StringParser,
       return nil
     }
 
-    guard let percentEncodedString = self.parseString(
+    guard let percentEncodedValue = PercentEncodedStringParser<Input.SubSequence>.parse(
+      input,
       from: &index,
-      while: \._isAvailableInPercentEncodedContentInExtendedValue
+      configuration: .init(
+        allowedNonEncodedUTF8CodeUnits: \._isAvailableInExtendedValueWithoutPercentEncoding
+      )
     ) else {
       return nil
     }
-    let percentEncodedValue = PercentEncodedString(encodedString: percentEncodedString._string)
-
+    
     return (
       output: HTTPHeaderFieldParameter.ExtendedValue(_validated: (
         stringEncodingDescription: stringEncodingDescription._string,
@@ -578,6 +636,36 @@ extension HTTPHeaderFieldParameter.ExtendedValue: _InitializableWithParser, Loss
   /// Creates an instance from `string`.
   public init?<S>(_ description: S) where S: StringProtocol {
     self.init(description, parser: ExtendedParameterValueParser<S>.self)
+  }
+}
+
+public struct InformationlessExtendedParameterValueParser<Input>: StringParser where Input: StringProtocol {
+  public typealias Output = HTTPHeaderFieldParameter.InformationlessExtendedValue
+
+  let input: Input
+
+  public init(input: Input) {
+    self.input = input
+  }
+
+  public mutating func parse() -> (
+    output: HTTPHeaderFieldParameter.InformationlessExtendedValue,
+    endIndex: Input.Index
+  )? {
+    var parser = PercentEncodedStringParser<Input>(
+      input: input,
+      allowedNonEncodedUTF8CodeUnits: \._isAvailableInExtendedValueWithoutPercentEncoding
+    )
+    guard let result = parser.parse() else {
+      return nil
+    }
+    return (.init(percentEncodedValue: result.output), result.endIndex)
+  }
+}
+
+extension HTTPHeaderFieldParameter.InformationlessExtendedValue: _InitializableWithParser, LosslessStringConvertible {
+  public init?<S>(_ description: S) where S: StringProtocol {
+    self.init(description, parser: InformationlessExtendedParameterValueParser<S>.self)
   }
 }
 
@@ -633,10 +721,11 @@ where Input: StringProtocol {
       return nil
     }
 
+    let valueInput = self.input[index...]
     switch name {
     case .regular(let name):
       guard let (value, endIndex) = HTTPHeaderFieldParameterValueParser<Input.SubSequence>.parse(
-        self.input[index...]
+        valueInput
       ) else {
         return nil
       }
@@ -645,15 +734,23 @@ where Input: StringProtocol {
         endIndex: endIndex
       )
     case .extended(let extendedName):
-      guard let (extendedValue, endIndex) = ExtendedParameterValueParser<Input.SubSequence>.parse(
-        self.input[index...]
-      ) else {
-        return nil
+      if let (extendedValue, endIndex) = ExtendedParameterValueParser<Input.SubSequence>.parse(
+        valueInput
+      ) {
+        return (
+          output: HTTPHeaderFieldParameter(name: extendedName, value: extendedValue),
+          endIndex: endIndex
+        )
       }
-      return (
-        output: HTTPHeaderFieldParameter(name: extendedName, value: extendedValue),
-        endIndex: endIndex
-      )
+      if let (otherValue, endIndex) = InformationlessExtendedParameterValueParser<Input.SubSequence>.parse(
+        valueInput
+      ) {
+        return (
+          output: HTTPHeaderFieldParameter(name: extendedName, value: otherValue),
+          endIndex: endIndex
+        )
+      }
+      return nil
     }
   }
 }
@@ -703,6 +800,8 @@ extension HTTPHeaderFieldParameter: _InitializableWithParser, LosslessStringConv
     case .regular(name: let name, value: let value):
       return "\(name.description)=\(value.description)"
     case .extended(name: let name, value: let value):
+      return "\(name.description)=\(value.description)"
+    case .nonInitialExtended(name: let name, value: let value):
       return "\(name.description)=\(value.description)"
     }
   }
@@ -762,8 +861,17 @@ public struct HTTPHeaderFieldParameterList: Sendable {
     return _groupedParameters[name.attribute]?[name.sectionIndex]?[true]?.extendedValue
   }
 
+  public subscript(_ name: HTTPHeaderFieldParameter.ExtendedName) -> HTTPHeaderFieldParameter.InformationlessExtendedValue? {
+    return _groupedParameters[name.attribute]?[name.sectionIndex]?[true]?.informationlessExtendedValue
+  }
+
   @inlinable
   public subscript(extended name: HTTPHeaderFieldParameter.Name) -> HTTPHeaderFieldParameter.ExtendedValue? {
+    return self[HTTPHeaderFieldParameter.ExtendedName(_baseName: name)]
+  }
+
+  @inlinable
+  public subscript(extended name: HTTPHeaderFieldParameter.Name) -> HTTPHeaderFieldParameter.InformationlessExtendedValue? {
     return self[HTTPHeaderFieldParameter.ExtendedName(_baseName: name)]
   }
 
@@ -787,11 +895,28 @@ public struct HTTPHeaderFieldParameterList: Sendable {
     }
 
     var result = ""
+    var defaultStringEncodingForExtendedValue: String.Encoding? = nil
     for (_, groupedByExtended) in sections.sorted(by: { $0.key < $1.key }) {
-      guard let value = groupedByExtended[true]?.value ?? groupedByExtended[false]?.value else {
+      guard let parameter = groupedByExtended[true] ?? groupedByExtended[false] else {
         continue
       }
-      result += value
+
+      if let regularValue = parameter.regularValue {
+        result += regularValue.content
+      } else if let extendedValue = parameter.extendedValue {
+        if let valueString = extendedValue.decodedValue {
+          result += valueString
+        }
+        if defaultStringEncodingForExtendedValue.isNil {
+           defaultStringEncodingForExtendedValue = extendedValue.stringEncoding
+        }
+      } else if let informationlessExtendedValue = parameter.informationlessExtendedValue {
+        if let valueString = informationlessExtendedValue.decodedValue(
+          usingStringEncoding: defaultStringEncodingForExtendedValue ?? .utf8
+        ) {
+          result += valueString
+        }
+      }
     }
     return result
   }

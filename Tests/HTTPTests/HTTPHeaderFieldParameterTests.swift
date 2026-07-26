@@ -208,12 +208,35 @@ import yExtensions
   }
 
   @Test func test_listParser() throws {
-    let string = "filename=\"my-file.txt\"; \u{0D}\u{0A}  filename*=UTF-8''%E7%A7%81%E3%81%AE%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB.txt;\u{0D}\u{0A}  my-parameter*0=zero; my-parameter*1=\"-one\";"
-    let list = try #require(HTTPHeaderFieldParameterList(string))
+    let CRLF = "\u{0D}\u{0A}"
+    do {
+      let string = "filename=\"my-file.txt\"; \(CRLF)  filename*=UTF-8''%E7%A7%81%E3%81%AE%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB.txt;\(CRLF)  my-parameter*0=zero; my-parameter*1=\"-one\";"
+      let list = try #require(HTTPHeaderFieldParameterList(string))
 
-    #expect(list["filename"]?.value == "私のファイル.txt")
-    #expect(list["my-parameter", sectionIndex: 0]?.value == "zero")
-    #expect(list["my-parameter", sectionIndex: 1]?.value == "-one")
-    #expect(list.combinedValue(for: "my-parameter") == "zero-one")
+      #expect(list["filename"]?.value == "私のファイル.txt")
+      #expect(list["my-parameter", sectionIndex: 0]?.value == "zero")
+      #expect(list["my-parameter", sectionIndex: 1]?.value == "-one")
+      #expect(list.combinedValue(for: "my-parameter") == "zero-one")
+    }
+
+    do {
+      let string = "title*0*=us-ascii'en'This%20is%20even%20more%20;\(CRLF) title*1*=%2A%2A%2Afun%2A%2A%2A%20;\(CRLF) title*2=\"isn't it!\""
+      let list = try #require(HTTPHeaderFieldParameterList(string))
+
+      #expect(list["title"].isNil)
+      #expect(list["title", sectionIndex: 0]?.isExtended == true)
+      #expect(list["title", sectionIndex: 0]?.extendedValue.isNil == false)
+      #expect(list["title", sectionIndex: 0]?.value == "This is even more ")
+
+      #expect(list["title", sectionIndex: 1]?.isExtended == true)
+      #expect(list["title", sectionIndex: 1]?.informationlessExtendedValue.isNil == false)
+      #expect(list["title", sectionIndex: 1]?.value == "***fun*** ")
+
+      #expect(list["title", sectionIndex: 2]?.isExtended == false)
+      #expect(list["title", sectionIndex: 2]?.regularValue.isNil == false)
+      #expect(list["title", sectionIndex: 2]?.value == "isn't it!")
+
+      #expect(list.combinedValue(for: "title") == "This is even more ***fun*** isn't it!")
+    }
   }
 }
