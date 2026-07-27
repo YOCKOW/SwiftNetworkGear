@@ -95,13 +95,15 @@ extension ContentDisposition: Equatable, Hashable {
   public static func ==(lhs:ContentDisposition, rhs:ContentDisposition) -> Bool {
     return (
       lhs.type == rhs.type &&
-      lhs.parameterList?._groupedParameters == rhs.parameterList?._groupedParameters
+      lhs.parameterList?._groupedParameters.nonSectioned == rhs.parameterList?._groupedParameters.nonSectioned &&
+      lhs.parameterList?._groupedParameters.sectioned == rhs.parameterList?._groupedParameters.sectioned
     )
   }
   
   public func hash(into hasher:inout Hasher) {
     hasher.combine(self.type)
-    hasher.combine(self.parameterList?._groupedParameters)
+    hasher.combine(self.parameterList?._groupedParameters.nonSectioned)
+    hasher.combine(self.parameterList?._groupedParameters.sectioned)
   }
 }
 

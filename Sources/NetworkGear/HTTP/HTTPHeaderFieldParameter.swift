@@ -819,12 +819,35 @@ public struct HTTPHeaderFieldParameterList: Sendable {
   /// All parameters.
   public private(set) var allParameters: [HTTPHeaderFieldParameter]
 
-  /// A dicrionary: `attribute` -> `sectionIndex` -> `isExtended` -> parameter
-  internal private(set) var _groupedParameters: [
-    ASCIICaseInsensitiveString: [
-      Optional<Int>: [Bool: HTTPHeaderFieldParameter]
+  public enum FixMode: Sendable, Equatable {
+    /// Combine values to remove sectioned parameters.
+    case http
+
+    /// Split values to satisfy line limits of MIME headers and make section indices "strideable".
+    case mime
+  }
+
+  private var _fixed: FixMode? = nil
+
+  /// A dicrionary: `attribute` (-> `sectionIndex`) -> `isExtended` -> parameter
+  internal private(set) var _groupedParameters: (
+    nonSectioned: [
+      ASCIICaseInsensitiveString /* attribute */ : [
+        Bool /* isExtended */ : HTTPHeaderFieldParameter
+      ]
+    ],
+    sectioned: [
+      ASCIICaseInsensitiveString /* attribute */ : [
+        Int /* sectionIndex */ : [
+          Bool /* isExtended */ : HTTPHeaderFieldParameter
+        ]
+      ]
     ]
-  ]
+  ) {
+    didSet {
+      _fixed = nil
+    }
+  }
 
   @inlinable
   public var isEmpty: Bool {
@@ -832,12 +855,33 @@ public struct HTTPHeaderFieldParameterList: Sendable {
   }
 
   public mutating func append(_ parameter: HTTPHeaderFieldParameter) {
-    _groupedParameters[
-      parameter.attribute, default: [:]
-    ][
-      parameter.sectionIndex, default: [:]
-    ][parameter.isExtended] = parameter
+    if let sectionIndex = parameter.sectionIndex {
+      _groupedParameters.sectioned[
+        parameter.attribute, default: [:]
+      ][
+        sectionIndex, default: [:]
+      ][
+        parameter.isExtended
+      ] = parameter
+    } else {
+      _groupedParameters.nonSectioned[
+        parameter.attribute, default: [:]
+      ][
+        parameter.isExtended
+      ] = parameter
+    }
     allParameters.append(parameter)
+  }
+
+  private func _parametersGroupedByExtended(
+    forAttribute attribute: ASCIICaseInsensitiveString,
+    sectionIndex: Int?
+  ) -> [Bool: HTTPHeaderFieldParameter]? {
+    if let sectionIndex = sectionIndex {
+      return _groupedParameters.sectioned[attribute]?[sectionIndex]
+    } else {
+      return _groupedParameters.nonSectioned[attribute]
+    }
   }
 
   /// Returns the parameter whose attribute is `attribute`.
@@ -846,23 +890,31 @@ public struct HTTPHeaderFieldParameterList: Sendable {
     attribute: ASCIICaseInsensitiveString,
     sectionIndex sectionIndex: Int? = nil
   ) -> HTTPHeaderFieldParameter? {
-    guard let groupedBySection = self._groupedParameters[attribute],
-          let groupedByExtended = groupedBySection[sectionIndex] else {
+    guard let groupedByExtended = _parametersGroupedByExtended(
+      forAttribute: attribute,
+      sectionIndex: sectionIndex
+    ) else {
       return nil
     }
     return groupedByExtended[true] ?? groupedByExtended[false]
   }
 
   public subscript(_ name: HTTPHeaderFieldParameter.Name) -> HTTPHeaderFieldParameter.Value? {
-    return _groupedParameters[name.attribute]?[name.sectionIndex]?[false]?.regularValue
+    return _parametersGroupedByExtended(
+      forAttribute: name.attribute, sectionIndex: name.sectionIndex
+    )?[false]?.regularValue
   }
 
   public subscript(_ name: HTTPHeaderFieldParameter.ExtendedName) -> HTTPHeaderFieldParameter.ExtendedValue? {
-    return _groupedParameters[name.attribute]?[name.sectionIndex]?[true]?.extendedValue
+    return _parametersGroupedByExtended(
+      forAttribute: name.attribute, sectionIndex: name.sectionIndex
+    )?[true]?.extendedValue
   }
 
   public subscript(_ name: HTTPHeaderFieldParameter.ExtendedName) -> HTTPHeaderFieldParameter.InformationlessExtendedValue? {
-    return _groupedParameters[name.attribute]?[name.sectionIndex]?[true]?.informationlessExtendedValue
+    return _parametersGroupedByExtended(
+      forAttribute: name.attribute, sectionIndex: name.sectionIndex
+    )?[true]?.informationlessExtendedValue
   }
 
   @inlinable
@@ -881,14 +933,8 @@ public struct HTTPHeaderFieldParameterList: Sendable {
   /// - NOTE:
   ///     This function returns combined value as long as possible even if some values are missing.
   public func combinedValue(for attribute: ASCIICaseInsensitiveString) -> String? {
-    guard let groupedBySection = self._groupedParameters[attribute] else {
+    guard let sections = self._groupedParameters.sectioned[attribute] else {
       return nil
-    }
-    let sections: [Int: [Bool: HTTPHeaderFieldParameter]] = groupedBySection.reduce(into: [:]) {
-      guard let sectionIndex = $1.key else {
-        return
-      }
-      $0[sectionIndex] = $1.value
     }
     if sections.isEmpty {
       return nil
@@ -923,7 +969,7 @@ public struct HTTPHeaderFieldParameterList: Sendable {
 
   public init() {
     self.allParameters = []
-    self._groupedParameters = [:]
+    self._groupedParameters = ([:], [:])
   }
 
   public init<S>(_ parameters: S) where S: Sequence, S.Element == HTTPHeaderFieldParameter {
@@ -931,6 +977,32 @@ public struct HTTPHeaderFieldParameterList: Sendable {
     for parameter in parameters {
       self.append(parameter)
     }
+  }
+
+  private func _fixedForHTTP() -> HTTPHeaderFieldParameterList? {
+    fatalError("Unimplemented.")
+  }
+
+  private func _fixedForMIME() -> HTTPHeaderFieldParameterList? {
+    fatalError("Unimplemented.")
+  }
+
+  /// Creates a new list that would be available for the specification identified by `mode`.
+  ///
+  /// - Returns: A fixed list if possible.
+  public func fixed(for mode: FixMode) -> HTTPHeaderFieldParameterList? {
+    if _fixed == mode {
+      return self
+    }
+
+    guard var fixedList = switch mode {
+    case .http: _fixedForHTTP()
+    case .mime: _fixedForMIME()
+    } else {
+      return nil
+    }
+    fixedList._fixed = mode
+    return fixedList
   }
 }
 
