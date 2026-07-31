@@ -106,11 +106,11 @@ extension StringProtocol {
   }
 
   @inlinable
-  public func addingPercentEncoding(whereAllowedUnicodeScalars isAllowedUnicodeScalar: (Unicode.Scalar) throws -> Bool) rethrows -> String? {
+  public func addingPercentEncoding(whereAllowedUnicodeScalars isAllowedUnicodeScalar: (Unicode.Scalar) throws -> Bool) rethrows -> String {
     return try self.addingPercentEncoding(
       usingStringEncoding: .utf8,
       whereAllowedUnicodeScalars: isAllowedUnicodeScalar
-    )
+    )!
   }
 
   public func addingPercentEncoding(
@@ -129,55 +129,11 @@ extension StringProtocol {
   @inlinable
   public func addingPercentEncoding(
     whereAllowedASCIICharacters isAllowedASCIICharacter: (Unicode.UTF8.CodeUnit) throws -> Bool
-  ) rethrows -> String? {
+  ) rethrows -> String {
     return try self.addingPercentEncoding(
       usingStringEncoding: .utf8,
       whereAllowedASCIICharacters: isAllowedASCIICharacter
-    )
-  }
-}
-
-private extension StringProtocol {
-  func _utf8CodeUnit(at index: String.Index) -> UTF8.CodeUnit {
-    return self.utf8[index]
-  }
-
-  func _utf8Index(after index: String.Index) -> String.Index {
-    return self.utf8.index(after: index)
-  }
-
-  func _formUTF8Index(after index: inout String.Index) {
-    self.utf8.formIndex(after: &index)
-  }
-
-  func _utf8Index(_ index: String.Index, offsetBy distance: Int) -> String.Index {
-    return self.utf8.index(index, offsetBy: distance)
-  }
-}
-
-/// A workaround for the feature(?) that `UTF8View` is not `BidirectionalCollection`.
-///
-/// See Also: [Can we require StringProtocol.UTF8View be a BidirectionalCollection?](https://forums.swift.org/t/can-we-require-stringprotocol-utf8view-be-a-bidirectionalcollection/44951)
-private protocol _BidirectionalUTF8View: BidirectionalCollection,
-                                         Sendable where Element == UTF8.CodeUnit,
-                                                        Index == String.Index {}
-extension String.UTF8View: _BidirectionalUTF8View {}
-extension Substring.UTF8View: _BidirectionalUTF8View {}
-
-private protocol _BidirectionalUTF8ViewAvailableStringProtocol: Sendable {
-  associatedtype BidirectionalUTF8View: _BidirectionalUTF8View
-  var utf8: BidirectionalUTF8View { get }
-}
-extension String: _BidirectionalUTF8ViewAvailableStringProtocol {}
-extension Substring: _BidirectionalUTF8ViewAvailableStringProtocol {}
-
-extension _BidirectionalUTF8ViewAvailableStringProtocol {
-  func _utf8Index(before index: String.Index) -> String.Index {
-    return self.utf8.index(before: index)
-  }
-
-  func _formUTF8Index(before index: inout String.Index) {
-    return self.utf8.formIndex(before: &index)
+    )!
   }
 }
 
@@ -267,6 +223,7 @@ public struct PercentEncodedString: Sendable, Equatable, Hashable {
   ///   - encodedString: A string that has been already **validated** as a percent-encoded string.
   ///
   /// - Note: This initializer should not be `public`.
+  @usableFromInline
   internal init<S>(encodedString: S) where S: StringProtocol {
     if case let substring as Substring = encodedString {
       self._encodedString = substring
@@ -278,6 +235,32 @@ public struct PercentEncodedString: Sendable, Equatable, Hashable {
   }
 }
 
+extension StringProtocol {
+  @inlinable
+  public func percentEncodedString(
+    usingStringEncoding stringEncoding: String.Encoding,
+    whereAllowedASCIICharacters isAllowedASCIICharacter: (Unicode.UTF8.CodeUnit) throws -> Bool
+  ) rethrows -> PercentEncodedString? {
+    guard let encodedString = try self.addingPercentEncoding(
+      usingStringEncoding: stringEncoding,
+      whereAllowedASCIICharacters: isAllowedASCIICharacter
+    ) else {
+      return nil
+    }
+    return PercentEncodedString(encodedString: encodedString)
+  }
+
+  @inlinable
+  public func percentEncodedString(
+    whereAllowedASCIICharacters isAllowedASCIICharacter: (Unicode.UTF8.CodeUnit) throws -> Bool
+  ) rethrows -> PercentEncodedString {
+    return PercentEncodedString(
+      encodedString: try self.addingPercentEncoding(
+        whereAllowedASCIICharacters: isAllowedASCIICharacter
+      )
+    )
+  }
+}
 
 /// A parser to parse a percent-encoded string.
 public struct PercentEncodedStringParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {

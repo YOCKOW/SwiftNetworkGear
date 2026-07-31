@@ -176,9 +176,36 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
       }
       self.init(quotedString: QuotedString(quotedString: quoted))
     }
+
+    public func appending(_ other: Value) -> Value {
+      switch (self._value, other._value) {
+      case (.token(let myToken), .token(let otherToken)):
+        return Value(token: myToken.appending(otherToken))
+      case (.token(let myToken), .quotedString(let otherQuotedString)):
+        return Value(quotedString: QuotedString(token: myToken).appending(otherQuotedString))
+      case (.quotedString(let myQuotedString), .token(let otherToken)):
+        return Value(quotedString: myQuotedString.appending(token: otherToken))
+      case (.quotedString(let myQuotedString), .quotedString(let otherQuotedString)):
+        return Value(quotedString: myQuotedString.appending(otherQuotedString))
+      }
+    }
+
+    public mutating func append(_ other: Value) {
+      self = self.appending(other)
+    }
   }
 
-  public struct ExtendedValue: Sendable, Equatable, Hashable, CustomStringConvertible {
+  /// A type for an extended value.
+  ///
+  /// - Note: Conforming types are only `ExtendedValue` and `InformationlessExtendedValue`.
+  public protocol ExtendedValueProtocol: Sendable, Equatable, Hashable, CustomStringConvertible {
+    var percentEncodedValue: PercentEncodedString { get }
+    var decodedValueData: Data { get }
+    var decodedValue: String? { get }
+    var isInformationless: Bool { get }
+  }
+
+  public struct ExtendedValue: ExtendedValueProtocol {
     /// String representation of "MIME Charset".
     public let stringEncodingDescription: String
 
@@ -206,6 +233,11 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
       return languageTagDescription?.locale
     }
 
+    @inlinable
+    public var decodedValueData: Data {
+      return self.percentEncodedValue.decodedData
+    }
+
     public var decodedValue: String? {
       if let stringEncoding = self.stringEncoding {
         return percentEncodedValue.decodedString(usingStringEncoding: stringEncoding)
@@ -213,6 +245,8 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
         return percentEncodedValue.decodedString
       }
     }
+
+    public var isInformationless: Bool { false }
 
     @inlinable
     internal init(_validated: (
@@ -257,19 +291,25 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
 
   /// An extended value that contains only a percent-encoded string.
   /// This value is supposed to exist at the second or subsequent one in MIME header.
-  public struct InformationlessExtendedValue: Sendable, Equatable, Hashable, CustomStringConvertible {
+  public struct InformationlessExtendedValue: ExtendedValueProtocol {
     /// Percent-encoded value.
     public let percentEncodedValue: PercentEncodedString
 
     public var description: String { percentEncodedValue.encodedString }
 
+    public var decodedValueData: Data {
+      return percentEncodedValue.decodedData
+    }
+
     public func decodedValue(usingStringEncoding stringEncoding: String.Encoding) -> String? {
       return percentEncodedValue.decodedString(usingStringEncoding: stringEncoding)
     }
 
-    public var decodedValueData: Data {
-      return percentEncodedValue.decodedData
+    public var decodedValue: String? {
+      return self.decodedValue(usingStringEncoding: .utf8)
     }
+
+    public var isInformationless: Bool { true }
 
     @inlinable
     internal init(percentEncodedValue: PercentEncodedString) {
@@ -816,11 +856,79 @@ extension HTTPHeaderFieldParameter: _InitializableWithParser, LosslessStringConv
 
 /// A list of header field parameters.
 public struct HTTPHeaderFieldParameterList: Sendable {
+  public typealias Name = HTTPHeaderFieldParameter.Name
+  public typealias ExtendedName = HTTPHeaderFieldParameter.ExtendedName
+  public typealias Value = HTTPHeaderFieldParameter.Value
+  public typealias ExtendedValueProtocol = HTTPHeaderFieldParameter.ExtendedValueProtocol
+  public typealias ExtendedValue = HTTPHeaderFieldParameter.ExtendedValue
+  public typealias InformationlessExtendedValue = HTTPHeaderFieldParameter.InformationlessExtendedValue
+
+
   /// All parameters.
   public private(set) var allParameters: [HTTPHeaderFieldParameter]
 
   public enum FixMode: Sendable, Equatable {
-    /// Combine values to remove sectioned parameters.
+    /// Combine values to remove sectioned parameters as far as possible.
+    ///
+    ///
+    /// ## How to fix(compromise)
+    ///
+    /// **Principle:** Don't use sectioned parameters.
+    ///
+    /// ### Conditions
+    ///
+    /// For each attribute:
+    ///
+    /// - 1. Non-sectioned parameters exist?
+    ///   + 1-A. A regular parameter exists?
+    ///   + 1-B. An extended parameter exists?
+    /// - 2. Sectioned parameters exist?
+    ///   + 2-A. Only regular parameters? (Or they can be converted into one regular paramter?)
+    ///
+    ///  | 1.  | 1-A. | 1-B. | 2.  | 2-A. | Pattern |
+    ///  |-----|------|------|-----|------|---------|
+    ///  | Yes | Yes  | Yes  | No  | n/a  | ⅰ      |
+    ///  | Yes | Yes  | No   | No  | n/a  | ⅰ      |
+    ///  | Yes | No   | Yes  | No  | n/a  | ⅰ      |
+    ///  | Yes | Yes  | Yes  | Yes | Yes  | ⅱ      |
+    ///  | Yes | Yes  | Yes  | Yes | No   | ⅱ      |
+    ///  | Yes | Yes  | No   | Yes | Yes  | ⅲ      |
+    ///  | Yes | Yes  | No   | Yes | No   | ⅲ      |
+    ///  | Yes | No   | Yes  | Yes | Yes  | ⅳ      |
+    ///  | Yes | No   | Yes  | Yes | No   | ⅴ      |
+    ///  | No  | n/a  | n/a  | Yes | Yes  | ⅵ      |
+    ///  | No  | n/a  | n/a  | Yes | No   | ⅵ      |
+    ///  | No  | n/a  | n/a  | No  | n/a  | Never   |
+    ///
+    ///
+    /// ### Patterns
+    ///
+    /// #### Pattern ⅰ
+    ///
+    /// No fix is needed.
+    ///
+    /// #### Pattern ⅱ
+    ///
+    /// Sectioned parameters are dicarded.
+    ///
+    /// #### Pattern ⅲ
+    ///
+    /// Sectioned parameters are combined and remain as an extended parameter.
+    ///
+    /// #### Pattern ⅳ
+    ///
+    /// Sectioned parameters are combined into one regular parameter.
+    ///
+    /// #### Pattern ⅴ
+    ///
+    /// Either:
+    /// - Pattern ⅴ-a: The non-sectioned extended parameter is converted to a regular parameter if possible.
+    /// - Pattern ⅴ-b: The sectioned parameters are converted to one regular parameter if possible.
+    /// - Pattern ⅴ-c: The sectioned parameters are discarded.
+    ///
+    /// #### Pattern ⅵ
+    ///
+    /// Sectioned parameters are combined into one regular/extended parameter.
     case http
 
     /// Split values to satisfy line limits of MIME headers and make section indices "strideable".
@@ -873,6 +981,14 @@ public struct HTTPHeaderFieldParameterList: Sendable {
     allParameters.append(parameter)
   }
 
+  @inlinable
+  public mutating func append<S>(contentsOf parameters: S)
+  where S: Sequence, S.Element == HTTPHeaderFieldParameter {
+    for parameter in parameters {
+      self.append(parameter)
+    }
+  }
+
   private func _parametersGroupedByExtended(
     forAttribute attribute: ASCIICaseInsensitiveString,
     sectionIndex: Int?
@@ -905,26 +1021,64 @@ public struct HTTPHeaderFieldParameterList: Sendable {
     )?[false]?.regularValue
   }
 
-  public subscript(_ name: HTTPHeaderFieldParameter.ExtendedName) -> HTTPHeaderFieldParameter.ExtendedValue? {
-    return _parametersGroupedByExtended(
+  public subscript(_ name: HTTPHeaderFieldParameter.ExtendedName) -> (any ExtendedValueProtocol)? {
+    guard let parameter = _parametersGroupedByExtended(
       forAttribute: name.attribute, sectionIndex: name.sectionIndex
-    )?[true]?.extendedValue
-  }
-
-  public subscript(_ name: HTTPHeaderFieldParameter.ExtendedName) -> HTTPHeaderFieldParameter.InformationlessExtendedValue? {
-    return _parametersGroupedByExtended(
-      forAttribute: name.attribute, sectionIndex: name.sectionIndex
-    )?[true]?.informationlessExtendedValue
+    )?[true] else {
+      return nil
+    }
+    return parameter.extendedValue ?? parameter.informationlessExtendedValue
   }
 
   @inlinable
-  public subscript(extended name: HTTPHeaderFieldParameter.Name) -> HTTPHeaderFieldParameter.ExtendedValue? {
+  public subscript(extended name: HTTPHeaderFieldParameter.Name) -> (any ExtendedValueProtocol)? {
     return self[HTTPHeaderFieldParameter.ExtendedName(_baseName: name)]
   }
 
-  @inlinable
-  public subscript(extended name: HTTPHeaderFieldParameter.Name) -> HTTPHeaderFieldParameter.InformationlessExtendedValue? {
-    return self[HTTPHeaderFieldParameter.ExtendedName(_baseName: name)]
+  private func _createCombinedValue(from sections: [Int: [Bool: HTTPHeaderFieldParameter]]) -> String? {
+    if sections.isEmpty {
+      return nil
+    }
+
+    var result = ""
+
+    var defaultStringEncodingForExtendedValue: String.Encoding? = nil
+    var buffer: Data? = nil
+    func __flushBuffer() {
+      defer {
+        buffer = nil
+      }
+      guard let nonnilBuffer = buffer, let decodedString = String(
+        data: nonnilBuffer,
+        encoding: defaultStringEncodingForExtendedValue ?? .utf8
+      ) else {
+        return
+      }
+      result += decodedString
+    }
+
+    for (_, groupedByExtended) in sections.sorted(by: { $0.key < $1.key }) {
+      guard let parameter = groupedByExtended[true] ?? groupedByExtended[false] else {
+        continue
+      }
+
+      if let regularValue = parameter.regularValue {
+        __flushBuffer()
+        result += regularValue.content
+      } else if let extendedValue = parameter.extendedValue {
+        __flushBuffer()
+        buffer = extendedValue.decodedValueData // Initialize the buffer
+        defaultStringEncodingForExtendedValue = extendedValue.stringEncoding
+      } else if let informationlessExtendedValue = parameter.informationlessExtendedValue {
+        let nextData = informationlessExtendedValue.decodedValueData
+        if (buffer?.append(nextData)).isNil { // Actually `buffer` shouldn't `nil` here though.
+          buffer = nextData
+        }
+      }
+    }
+    __flushBuffer()
+
+    return result
   }
 
   /// A combined string value that is specified by `attribute`
@@ -936,35 +1090,7 @@ public struct HTTPHeaderFieldParameterList: Sendable {
     guard let sections = self._groupedParameters.sectioned[attribute] else {
       return nil
     }
-    if sections.isEmpty {
-      return nil
-    }
-
-    var result = ""
-    var defaultStringEncodingForExtendedValue: String.Encoding? = nil
-    for (_, groupedByExtended) in sections.sorted(by: { $0.key < $1.key }) {
-      guard let parameter = groupedByExtended[true] ?? groupedByExtended[false] else {
-        continue
-      }
-
-      if let regularValue = parameter.regularValue {
-        result += regularValue.content
-      } else if let extendedValue = parameter.extendedValue {
-        if let valueString = extendedValue.decodedValue {
-          result += valueString
-        }
-        if defaultStringEncodingForExtendedValue.isNil {
-           defaultStringEncodingForExtendedValue = extendedValue.stringEncoding
-        }
-      } else if let informationlessExtendedValue = parameter.informationlessExtendedValue {
-        if let valueString = informationlessExtendedValue.decodedValue(
-          usingStringEncoding: defaultStringEncodingForExtendedValue ?? .utf8
-        ) {
-          result += valueString
-        }
-      }
-    }
-    return result
+    return _createCombinedValue(from: sections)
   }
 
   public init() {
@@ -980,7 +1106,243 @@ public struct HTTPHeaderFieldParameterList: Sendable {
   }
 
   private func _fixedForHTTP() -> HTTPHeaderFieldParameterList? {
-    fatalError("Unimplemented.")
+    FAST_PATH: if _groupedParameters.sectioned.isEmpty {
+      return self
+    }
+
+    var combinedExtendedParameterCache: [ASCIICaseInsensitiveString: HTTPHeaderFieldParameter] = [:]
+    enum __CombinedType { case regular, extended }
+    func __combineSectionedParameters(
+      _ sectionedParameters: [Int: [Bool: HTTPHeaderFieldParameter]],
+      into type: __CombinedType,
+      for attribute: ASCIICaseInsensitiveString
+    ) -> HTTPHeaderFieldParameter? {
+      var sectionedParametersAreAllRegular = true
+      let sortedSectionedParameters = sectionedParameters.sorted(by: {
+        assert($0.value.keys.contains(true) || $0.value.keys.contains(false))
+        if sectionedParametersAreAllRegular {
+          if $0.value.keys.contains(true) || $1.value.keys.contains(true) {
+            sectionedParametersAreAllRegular = false
+          }
+        }
+        return $0.key < $1.key
+      })
+      let regularName = Name(_validatedAttribute: attribute, sectionIndex: nil)
+
+      func __intoExtended() -> HTTPHeaderFieldParameter? {
+        if let extended = combinedExtendedParameterCache[attribute] {
+          return extended
+        }
+
+        var combinedPercentEncodedUTF8String = ""
+        var currentStringEncoding: String.Encoding? = nil
+
+        func __append(addingPercentEncoding string: String) {
+          combinedPercentEncodedUTF8String += string.addingPercentEncoding(
+            whereAllowedASCIICharacters: \._isAvailableInMIMECharsetInExtendedValue
+          )
+        }
+
+        var nonUTF8DecodedValueBuffer: Data? = nil
+        func __flushBuffer() {
+          defer {
+            nonUTF8DecodedValueBuffer = nil
+          }
+          guard let buffer = nonUTF8DecodedValueBuffer,
+                let decodedString = String(data: buffer, encoding: currentStringEncoding ?? .utf8)
+          else {
+            return
+          }
+          __append(addingPercentEncoding: decodedString)
+        }
+
+        for (_, groupedByExtended) in sortedSectionedParameters {
+          guard let parameter = groupedByExtended[true] ?? groupedByExtended[false] else {
+            continue
+          }
+          if let regularValue = parameter.regularValue {
+            __flushBuffer()
+            __append(addingPercentEncoding: regularValue.content)
+          } else if let extendedValue = parameter.extendedValue {
+            __flushBuffer()
+            currentStringEncoding = extendedValue.stringEncoding
+            if currentStringEncoding == .utf8 {
+              combinedPercentEncodedUTF8String += extendedValue.percentEncodedValue.encodedString
+            } else {
+              nonUTF8DecodedValueBuffer = extendedValue.decodedValueData
+            }
+          } else if let informationlessExtendedValue = parameter.informationlessExtendedValue {
+            if currentStringEncoding == .utf8 {
+              combinedPercentEncodedUTF8String += informationlessExtendedValue.percentEncodedValue.encodedString
+            } else {
+              let nextData = informationlessExtendedValue.decodedValueData
+              if (nonUTF8DecodedValueBuffer?.append(nextData)).isNil {
+                nonUTF8DecodedValueBuffer = nextData
+              }
+            }
+          }
+        }
+        __flushBuffer()
+
+        if combinedPercentEncodedUTF8String.isEmpty {
+          return nil
+        }
+        let extendedName = ExtendedName(_baseName: regularName)
+        let extendedParameter = HTTPHeaderFieldParameter.extended(
+          name: extendedName,
+          value: ExtendedValue(
+            _validated: (
+              stringEncodingDescription: "UTF-8",
+              languageTagDescription: nil,
+              percentEncodedValue: PercentEncodedString(
+                encodedString: combinedPercentEncodedUTF8String
+              )
+            )
+          )
+        )
+        combinedExtendedParameterCache[attribute] = extendedParameter
+        return extendedParameter
+      } // __intoExtended
+
+      switch type {
+      case .regular:
+        if sectionedParametersAreAllRegular {
+          var combinedRegularValue = sortedSectionedParameters.first!.value[false]!.regularValue!
+          for (_ /* sectionIndex */, groupedByExtended) in sortedSectionedParameters.dropFirst() {
+            combinedRegularValue.append(groupedByExtended[false]!.regularValue!)
+          }
+          return .regular(name: regularName, value: combinedRegularValue)
+        } else if let combinedExtendedParameter = __intoExtended() {
+          guard let quotedString = combinedExtendedParameter.value.flatMap({
+            QuotedString(quoting: $0)
+          }) else {
+            return nil
+          }
+          return .regular(name: regularName, value: Value(quotedString: quotedString))
+        }
+        return nil
+      case .extended:
+        return __intoExtended()
+      }
+    } // __combineSectionedParameters(_:into:for:)
+
+    // "Patterns" are described in the doc of `FixMode.http`.
+
+    var newList = HTTPHeaderFieldParameterList()
+
+    // Pattern ⅰ〜ⅴ
+    ITERATE_NONSECTIONED_PARAMETERS: for (
+      attribute,
+      nonSectionedParametersGroupedByExtended
+    ) in _groupedParameters.nonSectioned {
+      guard let sectionedParameters = _groupedParameters.sectioned[attribute],
+            !sectionedParameters.isEmpty else {
+        `Pattern ⅰ`: do {
+          newList.append(contentsOf: nonSectionedParametersGroupedByExtended.values)
+          continue ITERATE_NONSECTIONED_PARAMETERS
+        }
+      }
+
+      // Pattern ⅱ〜ⅴ
+      switch (nonSectionedParametersGroupedByExtended[false], nonSectionedParametersGroupedByExtended[true]) {
+      case (let nonSectionedRegular?, let nonSectionedExtended?):
+        `Pattern ⅱ`: do {
+          newList.append(nonSectionedRegular)
+          newList.append(nonSectionedExtended)
+          continue ITERATE_NONSECTIONED_PARAMETERS
+        }
+      case (let nonSectionedRegular?, nil):
+        `Pattern ⅲ`: do {
+          newList.append(nonSectionedRegular)
+          
+          guard let combinedValue = _createCombinedValue(from: sectionedParameters) else {
+            continue ITERATE_NONSECTIONED_PARAMETERS
+          }
+          let extValue = ExtendedValue(_validated: (
+            stringEncodingDescription: "UTF-8",
+            languageTagDescription: nil,
+            percentEncodedValue: combinedValue.percentEncodedString(
+              whereAllowedASCIICharacters: \._isAvailableInExtendedValueWithoutPercentEncoding
+            )
+          ))
+          let extName = ExtendedName(
+            _baseName: Name(_validatedAttribute: attribute, sectionIndex: nil)
+          )
+          let extended = HTTPHeaderFieldParameter(name: extName, value: extValue)
+          newList.append(extended)
+          continue ITERATE_NONSECTIONED_PARAMETERS
+        }
+      case (nil, let nonSectionedExtended?):
+        `Pattern ⅳ`: if let combinedRegularParameter = __combineSectionedParameters(
+          sectionedParameters,
+          into: .regular,
+          for: attribute
+        ) {
+          newList.append(nonSectionedExtended)
+          newList.append(combinedRegularParameter)
+          continue ITERATE_NONSECTIONED_PARAMETERS
+        }
+
+        `Pattern ⅴ`: do {
+          `Pattern ⅴ-a`: if let nonSectionedValue = nonSectionedExtended.value,
+                             let quotedValue = QuotedString(quoting: nonSectionedValue) {
+            newList.append(
+              .regular(
+                name: Name(_validatedAttribute: attribute, sectionIndex: nil),
+                value: Value(quotedString: quotedValue)
+              )
+            )
+            if let combinedExtendedParameter = __combineSectionedParameters(
+              sectionedParameters,
+              into: .extended,
+              for: attribute
+            ) {
+              newList.append(combinedExtendedParameter)
+            }
+            continue ITERATE_NONSECTIONED_PARAMETERS
+          }
+
+          `Pattern ⅴ-b`: if let regularParameter = __combineSectionedParameters(
+            sectionedParameters,
+            into: .regular,
+            for: attribute
+          ) {
+            newList.append(regularParameter)
+            newList.append(nonSectionedExtended)
+            continue ITERATE_NONSECTIONED_PARAMETERS
+          }
+
+          `Pattern ⅴ-c`: do {
+            newList.append(nonSectionedExtended)
+            continue ITERATE_NONSECTIONED_PARAMETERS
+          }
+        }
+      case (nil, nil):
+        fatalError("Unexpected path.")
+      }
+    } // ITERATE_NONSECTIONED_PARAMETERS
+
+    `Pattern ⅵ`: for (attribute, sectionedParameters) in _groupedParameters.sectioned {
+      if _groupedParameters.nonSectioned.keys.contains(attribute) {
+        continue
+      }
+      if let regularParameter = __combineSectionedParameters(
+        sectionedParameters,
+        into: .regular,
+        for: attribute
+      ) {
+        newList.append(regularParameter)
+      }
+      if let extendedParameter = __combineSectionedParameters(
+        sectionedParameters,
+        into: .extended,
+        for: attribute
+      ) {
+        newList.append(extendedParameter)
+      }
+    } // Pattern ⅵ
+
+    return newList
   }
 
   private func _fixedForMIME() -> HTTPHeaderFieldParameterList? {

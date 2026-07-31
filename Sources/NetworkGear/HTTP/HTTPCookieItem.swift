@@ -37,10 +37,8 @@ public struct HTTPCookieItem: Sendable {
 extension HTTPCookieItem {
   internal func _nameAndValue(addingPercentEncoding:Bool = true) -> String? {
     if addingPercentEncoding {
-      guard let name = self.name.addingPercentEncoding(whereAllowedASCIICharacters: \._isAvailableInHTTPToken)
-        else { return nil }
-      guard let value = self.value.addingPercentEncoding(whereAllowedASCIICharacters: \._isAvailableInCookieValue)
-        else { return nil }
+      let name = self.name.addingPercentEncoding(whereAllowedASCIICharacters: \._isAvailableInHTTPToken)
+      let value = self.value.addingPercentEncoding(whereAllowedASCIICharacters: \._isAvailableInCookieValue)
       return "\(name)=\(value)"
     } else {
       return "\(self.name)=\(self.value)"

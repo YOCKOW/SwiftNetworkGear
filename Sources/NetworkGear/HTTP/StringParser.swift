@@ -259,6 +259,7 @@ public struct HTTPTokenString: Sendable, Equatable, Hashable {
   @usableFromInline
   internal let _string: String
 
+  @inlinable
   internal init<S>(_alreadyValidatedString string: S) where S: StringProtocol {
     self._string = String(string)
   }
@@ -277,6 +278,11 @@ public struct HTTPTokenString: Sendable, Equatable, Hashable {
   @inlinable
   public func isASCIICaseInsensitivelyEqual(to string: String) -> Bool {
     return _string.isASCIICaseInsensitivelyEqual(to: string)
+  }
+
+  @inlinable
+  public func appending(_ other: HTTPTokenString) -> HTTPTokenString {
+    return HTTPTokenString(_alreadyValidatedString: self._string + other._string)
   }
 }
 

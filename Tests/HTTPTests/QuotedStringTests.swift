@@ -18,4 +18,12 @@ import Testing
     #expect("\"ABC\\\\DEF\""._unquotedString == "ABC\\DEF")
     #expect("\"NOTCLOSED"._unquotedString == nil)
   }
+
+  @Test func test_appending() throws {
+    let q1 = try #require(QuotedString(quoting: ##"A"B"C"##))
+    let q2 = try #require(QuotedString(quoting: ##""D"E"F"##))
+    let appended = q1.appending(q2)
+    #expect(appended.quotedString == ##""A\"B\"C\"D\"E\"F""##)
+    #expect(appended.content == ##"A"B"C"D"E"F"##)
+  }
 }

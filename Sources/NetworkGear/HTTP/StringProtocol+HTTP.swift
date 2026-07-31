@@ -148,8 +148,12 @@ extension Unicode.UTF8.CodeUnit {
   internal var _isHTTPWhitespace: Bool { _isSpace || _isHorizontalTab }
 
   /// `"`
+  @usableFromInline
+  internal static let _doubleQuotationMark: Unicode.UTF8.CodeUnit = 0x22
+
+  /// `"`
   @inlinable
-  internal var _isDoubleQuotationMark: Bool { self == 0x22 }
+  internal var _isDoubleQuotationMark: Bool { self == ._doubleQuotationMark }
 
   /// `#`
   @inlinable
@@ -215,8 +219,13 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isLeftSquareBracket: Bool { self == 0x5B }
 
+  /// `\``
+  @usableFromInline
+  internal static let _backslash: Unicode.UTF8.CodeUnit = 0x5C
+
+  /// `\``
   @inlinable
-  internal var _isBackslash: Bool { self == 0x5C }
+  internal var _isBackslash: Bool { self == ._backslash }
 
   /// `]`
   @inlinable
@@ -471,9 +480,80 @@ extension StringProtocol {
     // Never reach here...
     return String(decoding: self.utf8, as: Unicode.UTF8.self)
   }
+
+  @inlinable
+  func _utf8CodeUnit(at index: String.Index) -> UTF8.CodeUnit {
+    return self.utf8[index]
+  }
+
+  @inlinable
+  func _utf8Index(after index: String.Index) -> String.Index {
+    return self.utf8.index(after: index)
+  }
+
+  @inlinable
+  func _formUTF8Index(after index: inout String.Index) {
+    self.utf8.formIndex(after: &index)
+  }
+
+  @inlinable
+  func _utf8Index(_ index: String.Index, offsetBy distance: Int) -> String.Index {
+    return self.utf8.index(index, offsetBy: distance)
+  }
+
+  @inlinable
+  internal func _dropFirstUTF8CodeUnit(_ k: Int = 1) -> SubSequence {
+    let myUTF8 = self.utf8
+    let startIndex = myUTF8.index(myUTF8.startIndex, offsetBy: k)
+    return self[startIndex...]
+  }
+
 }
 
-extension StringProtocol where Self.UTF8View: BidirectionalCollection {
+
+/// A workaround for the feature(?) that `UTF8View` is not `BidirectionalCollection`.
+///
+/// See Also: [Can we require StringProtocol.UTF8View be a BidirectionalCollection?](https://forums.swift.org/t/can-we-require-stringprotocol-utf8view-be-a-bidirectionalcollection/44951)
+@usableFromInline
+internal protocol _BidirectionalUTF8View: BidirectionalCollection,
+                                          Sendable where Element == UTF8.CodeUnit,
+                                                         Index == String.Index {}
+extension String.UTF8View: _BidirectionalUTF8View {}
+extension Substring.UTF8View: _BidirectionalUTF8View {}
+
+@usableFromInline
+internal protocol _BidirectionalUTF8ViewAvailableStringProtocol: Sendable,
+                                                                 Equatable,
+                                                                 Comparable,
+                                                                 Hashable,
+                                                                 BidirectionalCollection
+where Self.Index == String.Index, Self.SubSequence == Substring {
+  associatedtype BidirectionalUTF8View: _BidirectionalUTF8View
+  var utf8: BidirectionalUTF8View { get }
+}
+extension String: _BidirectionalUTF8ViewAvailableStringProtocol {}
+extension Substring: _BidirectionalUTF8ViewAvailableStringProtocol {}
+
+extension _BidirectionalUTF8ViewAvailableStringProtocol {
+  @inlinable
+  func _utf8Index(before index: String.Index) -> String.Index {
+    return self.utf8.index(before: index)
+  }
+
+  @inlinable
+  func _formUTF8Index(before index: inout String.Index) {
+    return self.utf8.formIndex(before: &index)
+  }
+
+  @inlinable
+  func _dropLastUTF8CodeUnit(_ k: Int = 1) -> SubSequence {
+    let myUTF8 = self.utf8
+    let endIndex = myUTF8.index(myUTF8.endIndex, offsetBy: -k)
+    return self[..<endIndex]
+  }
+}
+
+extension _BidirectionalUTF8ViewAvailableStringProtocol {
   @inlinable
   internal func _dropTrailingHTTPNewlines(maxCount: Int) -> SubSequence {
     let utf8 = self.utf8
@@ -531,12 +611,8 @@ extension StringProtocol where Self.UTF8View: BidirectionalCollection {
 extension StringProtocol {
   @inlinable
   internal var _trimmed: SubSequence {
-    if case let string as String = self,
-       case let trimmed as SubSequence = string._trimmed {
-      return trimmed
-    }
-    if case let substring as Substring = self,
-       case let trimmed as SubSequence = substring._trimmed {
+    if case let string as any _BidirectionalUTF8ViewAvailableStringProtocol = self,
+       case let trimmed as Self.SubSequence = string._trimmed {
       return trimmed
     }
 
@@ -562,11 +638,8 @@ extension StringProtocol {
   /// Returns a substring with dropping trailing `CRLF`s.
   @inlinable
   public func dropTrailingHTTPNewlines(maxCount: Int = .max) -> SubSequence {
-    if case let string as String = self,
-      case let dropped as SubSequence = string._dropTrailingHTTPNewlines(maxCount: maxCount) {
-      return dropped
-    } else if case let substring as Substring = self,
-              case let dropped as SubSequence = substring._dropTrailingHTTPNewlines(maxCount: maxCount) {
+    if case let string as any _BidirectionalUTF8ViewAvailableStringProtocol = self,
+       case let dropped as SubSequence = string._dropTrailingHTTPNewlines(maxCount: maxCount) {
       return dropped
     }
 
@@ -593,11 +666,8 @@ extension StringProtocol {
   /// Returns a substring with dropping trailing `SP`s and `HTAB`s.
   @inlinable
   public func dropTrailingHTTPWhitespaces(maxCount: Int = .max) -> SubSequence {
-    if case let string as String = self,
-      case let dropped as SubSequence = string._dropTrailingHTTPWhitespaces(maxCount: maxCount) {
-      return dropped
-    } else if case let substring as Substring = self,
-              case let dropped as SubSequence = substring._dropTrailingHTTPWhitespaces(maxCount: maxCount) {
+    if case let string as any _BidirectionalUTF8ViewAvailableStringProtocol = self,
+       case let dropped as SubSequence = string._dropTrailingHTTPWhitespaces(maxCount: maxCount) {
       return dropped
     }
 

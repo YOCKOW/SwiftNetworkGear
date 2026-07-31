@@ -5,29 +5,27 @@
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
+import Dispatch
 import Foundation
 import yExtensions
-
-private let _DQUOTE: Unicode.UTF8.CodeUnit = 0x22
-private let _BACKSLASH: Unicode.UTF8.CodeUnit = 0x5C
 
 extension StringProtocol {
   /// See https://tools.ietf.org/html/rfc7230#section-3.2.6
   internal var _quotedString: String? {
     var resultUTF8 = Data()
-    resultUTF8.append(_DQUOTE) // "
+    resultUTF8.append(._doubleQuotationMark) // "
 
     for byte in self.utf8 {
       guard byte._canBeEscapedInQuotedText else { return nil }
       if byte._isAvailableInHTTPHeaderFieldValueQuotedText {
         resultUTF8.append(byte)
       } else {
-        resultUTF8.append(_BACKSLASH) // \
+        resultUTF8.append(._backslash) // \
         resultUTF8.append(byte)
       }
     }
     
-    resultUTF8.append(_DQUOTE)
+    resultUTF8.append(._doubleQuotationMark)
     return String(data: resultUTF8, encoding: .utf8)
   }
   
@@ -45,20 +43,20 @@ extension StringProtocol {
       let nextIndex = myUTF8.index(after: index)
 
       if index == myUTF8.startIndex {
-        guard byte == _DQUOTE else {
+        guard byte._isDoubleQuotationMark else {
           return nil
         }
         index = nextIndex
         continue
       } else if nextIndex == myUTF8.endIndex {
-        guard !escaped && byte == _DQUOTE else {
+        guard !escaped && byte._isDoubleQuotationMark else {
           return nil
         }
         break ITERATE_UTF8
       }
 
 
-      if !escaped && byte == _BACKSLASH {
+      if !escaped && byte._isBackslash {
         escaped = true
       } else {
         guard byte._canBeEscapedInQuotedText else { return nil }
@@ -79,29 +77,37 @@ extension StringProtocol {
 /// A representation of `quoted-string`.
 public struct QuotedString: Sendable {
   private final class _LazyBidirectionalConverter: @unchecked Sendable {
+    private let _queue: DispatchQueue = .init(
+      label: "jp.YOCKOW.NetworkGear.QuotedString",
+      attributes: .concurrent
+    )
     private var _quotedString: String?
     private var _content: String?
 
     var quotedString: String {
-      guard let quotedString = self._quotedString else {
-        guard let quotedString = self._content?._quotedString else {
-          fatalError("`QuotedString`: Unexpected content?!")
+      return _queue.sync(flags: .barrier) {
+        guard let quotedString = self._quotedString else {
+          guard let quotedString = self._content?._quotedString else {
+            fatalError("`QuotedString`: Unexpected content?!")
+          }
+          _quotedString = quotedString
+          return quotedString
         }
-        _quotedString = quotedString
         return quotedString
       }
-      return quotedString
     }
 
     var content: String {
-      guard let content = self._content else {
-        guard let content = self._quotedString?._unquotedString else {
-          fatalError("`QuotedString`: Unexpected quoted string?!")
+      return _queue.sync(flags: .barrier) {
+        guard let content = self._content else {
+          guard let content = self._quotedString?._unquotedString else {
+            fatalError("`QuotedString`: Unexpected quoted string?!")
+          }
+          _content = content
+          return content
         }
-        _content = content
         return content
       }
-      return content
     }
 
     init(quotedString: String, content: String) {
@@ -118,6 +124,39 @@ public struct QuotedString: Sendable {
       self._quotedString = nil
       self._content = content
     }
+
+    func appending(_ other: _LazyBidirectionalConverter) -> _LazyBidirectionalConverter {
+      var newQuotedString: String? = nil
+      if let myQuotedString = self._quotedString,
+         let otherQuotedString = other._quotedString {
+        newQuotedString = myQuotedString._dropLastUTF8CodeUnit().appending(
+          otherQuotedString._dropFirstUTF8CodeUnit()
+        )
+      }
+
+      var newContent: String? = nil
+      if let myContent = self._content,
+         let otherContent = other._content {
+        newContent = myContent + otherContent
+      }
+
+      if newQuotedString.isNil && newContent.isNil {
+        newQuotedString = self.quotedString._dropLastUTF8CodeUnit().appending(
+          other.quotedString._dropFirstUTF8CodeUnit()
+        )
+      }
+
+      switch (newQuotedString, newContent) {
+      case (let quotedString?, let content?):
+        return _LazyBidirectionalConverter(quotedString: quotedString, content: content)
+      case (let quotedString?, nil):
+        return _LazyBidirectionalConverter(quotedString: quotedString)
+      case (nil, let content?):
+        return _LazyBidirectionalConverter(content: content)
+      case (nil, nil):
+        fatalError("Unexpected case?!")
+      }
+    }
   }
 
   private let _converter: _LazyBidirectionalConverter
@@ -128,17 +167,57 @@ public struct QuotedString: Sendable {
   /// Returns content of the quoted string.
   public var content: String { _converter.content }
 
+  private init(_converter converter: _LazyBidirectionalConverter) {
+    self._converter = converter
+  }
+
   internal init(quotedString: String, content: String) {
     assert(quotedString._unquotedString == content)
-    self._converter = .init(quotedString: quotedString, content: content)
+    self.init(_converter: .init(quotedString: quotedString, content: content))
   }
 
   internal init(quotedString: String) {
-    self._converter = .init(quotedString: quotedString)
+    assert(!quotedString._unquotedString.isNil)
+    self.init(_converter: .init(quotedString: quotedString))
   }
 
   internal init(content: String) {
-    self._converter = .init(content: content)
+    assert(
+      content.utf8.allSatisfy({
+        $0._isAvailableInHTTPHeaderFieldValueQuotedText || $0._canBeEscapedInQuotedText
+      })
+    )
+    self.init(_converter: .init(content: content))
+  }
+
+  public init(token: HTTPTokenString) {
+    assert(token._string.utf8.allSatisfy(\._isAvailableInHTTPHeaderFieldValueQuotedText))
+    self.init(content: token._string)
+  }
+
+  public init?<S>(quoting content: S) where S: StringProtocol {
+    guard let quotedString = content._quotedString else {
+      return nil
+    }
+    self.init(quotedString: quotedString, content: content._string)
+  }
+
+  public func appending(_ other: QuotedString) -> QuotedString {
+    return QuotedString(_converter: self._converter.appending(other._converter))
+  }
+
+  public func appending<S>(content: S) -> QuotedString? where S: StringProtocol {
+    guard content.utf8.allSatisfy({
+      $0._isAvailableInHTTPHeaderFieldValueQuotedText || $0._canBeEscapedInQuotedText
+    }) else {
+      return nil
+    }
+    return QuotedString(_converter: self._converter.appending(.init(content: content._string)))
+  }
+
+  public func appending(token: HTTPTokenString) -> QuotedString {
+    assert(token._string.utf8.allSatisfy(\._isAvailableInHTTPHeaderFieldValueQuotedText))
+    return QuotedString(_converter: self._converter.appending(.init(content: token._string)))
   }
 }
 

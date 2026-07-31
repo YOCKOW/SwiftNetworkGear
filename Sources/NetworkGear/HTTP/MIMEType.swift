@@ -1044,7 +1044,7 @@ extension MIMEType: CustomStringConvertible {
             desc += quotedString
           } else {
             // FIXME: This may not be the correct way...
-            desc += value.addingPercentEncoding(whereAllowedASCIICharacters: \._isAvailableInHTTPToken)!
+            desc += value.addingPercentEncoding(whereAllowedASCIICharacters: \._isAvailableInHTTPToken)
           }
         }
       }
