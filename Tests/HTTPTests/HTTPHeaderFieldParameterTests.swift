@@ -267,8 +267,6 @@ private func _extendedName<S>(
   }
 
   @Test func test_fixForHTTP() throws {
-
-
     Test_Fast_Path: do {
       let list = try #require(HTTPHeaderFieldParameterList("a=regular; a*=UTF-8''extended"))
       let fixed = try #require(list.fixed(for: .http))
@@ -292,8 +290,8 @@ private func _extendedName<S>(
       p3-2*0*=UTF-8''v3%2d2%2d0; p3-2*1*=%2dv3%2d2%2d1; p3-2*2="-v3-2-2";
     p4*=us-ascii''v4%2dextended;
       p4*0="v4-0"; p4*1="-v4-1";
-    p5-a*=euc-jp''v5%2da%2dextended%2dto%2dregular;
-      p5-a*0*=euc-jp''v5%2da%2d0%2d%B3%C8%C4%A5; p5-a*1*=%2dv5%2da%2d1%2d%B3%C8%C4%A5;
+    p5-a*=shift_jis''v5%2da%2dextended%2dto%2dregular;
+      p5-a*0*=shift_jis''v5%2da%2d0%2d%8Ag%92%A3; p5-a*1*=%2dv5%2da%2d1%2d%8Ag%92%A3;
     p5-b*=UTF-8''v5%2Db%2D%E6%8B%A1%E5%BC%B5;
       p5-b*0*=UTF-8''v5%2Db%2D0; p5-b*1*=%2Dv5%2Db%2D1;
     p5-c*=UTF-8''v5%2Dc%2Dnon%2Dsectioned%2D%E6%8B%A1%E5%BC%B5;
