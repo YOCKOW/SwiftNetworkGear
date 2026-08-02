@@ -1,5 +1,5 @@
 /* *************************************************************************************************
- StringProtocol+PercentEncodedString.swift
+ PercentEncodedString.swift
    © 2018,2023,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
