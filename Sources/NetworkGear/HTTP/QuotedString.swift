@@ -82,7 +82,7 @@ public struct QuotedString: Sendable {
       attributes: .concurrent
     )
     private var _quotedString: String?
-    private var _content: String?
+    private var _content: (any StringProtocol & _BidirectionalUTF8ViewAvailableStringProtocol)?
 
     var quotedString: String {
       return _queue.sync(flags: .barrier) {
@@ -106,7 +106,7 @@ public struct QuotedString: Sendable {
           _content = content
           return content
         }
-        return content
+        return content._string
       }
     }
 
@@ -120,7 +120,7 @@ public struct QuotedString: Sendable {
       self._content = nil
     }
 
-    init(content: String) {
+    init<S>(content: S) where S: StringProtocol, S: _BidirectionalUTF8ViewAvailableStringProtocol {
       self._quotedString = nil
       self._content = content
     }
@@ -137,7 +137,7 @@ public struct QuotedString: Sendable {
       var newContent: String? = nil
       if let myContent = self._content,
          let otherContent = other._content {
-        newContent = myContent + otherContent
+        newContent = myContent.appending(otherContent)
       }
 
       if newQuotedString.isNil && newContent.isNil {
@@ -156,6 +156,75 @@ public struct QuotedString: Sendable {
       case (nil, nil):
         fatalError("Unexpected case?!")
       }
+    }
+
+    func divide(whereFirstPartMaxUTF8Count maxCount: Int) -> (_LazyBidirectionalConverter, _LazyBidirectionalConverter?) {
+      precondition(maxCount > 3, "Too small value to divide.")
+
+      if let content = _content {
+        FAST_PATH: if content.utf8.withContiguousStorageIfAvailable({
+          $0.count <= (maxCount - 2) / 2
+        }) == true {
+          return (self, nil)
+        }
+
+        let contentUTF8 = content.utf8 as any _BidirectionalUTF8View
+        var currentCount = 2 // Two double quotation marks
+        var currentIndex = contentUTF8.startIndex
+        while currentIndex < contentUTF8.endIndex {
+          let byte = contentUTF8[currentIndex]
+          assert(byte._canBeEscapedInQuotedText)
+          let increment = byte._isAvailableInHTTPHeaderFieldValueQuotedText ? 1 : 2
+          guard currentCount + increment <= maxCount else {
+            break
+          }
+          currentCount += increment
+          contentUTF8.formIndex(after: &currentIndex)
+        }
+        if currentIndex == contentUTF8.endIndex {
+          return (self, nil)
+        }
+        return (
+          _LazyBidirectionalConverter(content: content[..<currentIndex]),
+          _LazyBidirectionalConverter(content: content[currentIndex...])
+        )
+      }
+
+      guard let quotedString = _quotedString  else  {
+        fatalError("Unexpected state?!")
+      }
+
+      FAST_PATH: if quotedString.utf8.withContiguousStorageIfAvailable({
+        $0.count <= maxCount
+      }) == true {
+        return (self, nil)
+      }
+
+      var currentCount = 2 // Two double quotation marks
+      let noDQs = quotedString._dropUTF8CodeUnit(first: 1, last: 1)
+      let noDQsUTF8 = noDQs.utf8
+      var currentIndex = noDQs.startIndex
+      while currentIndex < noDQs.endIndex {
+        let byte = noDQsUTF8[currentIndex]
+        let escaping = byte._isBackslash
+        let increment = escaping ? 2 : 1
+        guard currentCount + increment <= maxCount else {
+          break
+        }
+        currentCount += increment
+        noDQs.formIndex(after: &currentIndex)
+        if escaping {
+          assert(currentIndex < noDQs.endIndex)
+          noDQs.formIndex(after: &currentIndex)
+        }
+      }
+      if currentIndex == noDQs.endIndex {
+        return (self, nil)
+      }
+      return (
+        _LazyBidirectionalConverter(quotedString: #""\#(noDQs[..<currentIndex])""#),
+        _LazyBidirectionalConverter(quotedString: #""\#(noDQs[currentIndex...])""#)
+      )
     }
   }
 
@@ -181,13 +250,13 @@ public struct QuotedString: Sendable {
     self.init(_converter: .init(quotedString: quotedString))
   }
 
-  internal init(content: String) {
+  internal init<S>(content: S) where S: StringProtocol {
     assert(
       content.utf8.allSatisfy({
         $0._isAvailableInHTTPHeaderFieldValueQuotedText || $0._canBeEscapedInQuotedText
       })
     )
-    self.init(_converter: .init(content: content))
+    self.init(_converter: .init(content: content._bidiUTF8ViewString))
   }
 
   public init(token: HTTPTokenString) {
@@ -218,6 +287,19 @@ public struct QuotedString: Sendable {
   public func appending(token: HTTPTokenString) -> QuotedString {
     assert(token._string.utf8.allSatisfy(\._isAvailableInHTTPHeaderFieldValueQuotedText))
     return QuotedString(_converter: self._converter.appending(.init(content: token._string)))
+  }
+
+  /// This function divides the quoted string into two quoted strings,
+  /// where the count of first one's UTF-8 reporesentation is less than or equal to `maxCount`.
+  ///
+  /// - Parameters:
+  ///   * maxCount: The maximum count of the first part's UTF-8 representation which must be greater than 3.
+  ///
+  /// - Returns: Two quoted strings.
+  ///            The second one may be `nil` if the count of the whole quoted string is less than or equal to `maxCount`.
+  public func divide(whereFirstPartMaxUTF8Count maxCount: Int) -> (QuotedString, QuotedString?) {
+    let (converter1, conveter2) = self._converter.divide(whereFirstPartMaxUTF8Count: maxCount)
+    return (QuotedString(_converter: converter1), conveter2.map({ QuotedString(_converter: $0) }))
   }
 }
 

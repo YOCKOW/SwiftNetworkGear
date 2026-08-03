@@ -533,6 +533,15 @@ where Self.Index == String.Index, Self.SubSequence == Substring {
 }
 extension String: _BidirectionalUTF8ViewAvailableStringProtocol {}
 extension Substring: _BidirectionalUTF8ViewAvailableStringProtocol {}
+extension StringProtocol {
+  @inlinable
+  internal var _bidiUTF8ViewString: any StringProtocol & _BidirectionalUTF8ViewAvailableStringProtocol {
+    if case let string as any StringProtocol & _BidirectionalUTF8ViewAvailableStringProtocol = self {
+      return string
+    }
+    return self._string
+  }
+}
 
 extension _BidirectionalUTF8ViewAvailableStringProtocol {
   @inlinable
@@ -546,10 +555,16 @@ extension _BidirectionalUTF8ViewAvailableStringProtocol {
   }
 
   @inlinable
-  func _dropLastUTF8CodeUnit(_ k: Int = 1) -> SubSequence {
+  func _dropUTF8CodeUnit(first: Int, last: Int) -> SubSequence {
     let myUTF8 = self.utf8
-    let endIndex = myUTF8.index(myUTF8.endIndex, offsetBy: -k)
-    return self[..<endIndex]
+    let startIndex = myUTF8.index(myUTF8.startIndex, offsetBy: first)
+    let endIndex = myUTF8.index(myUTF8.endIndex, offsetBy: -last)
+    return self[startIndex..<endIndex]
+  }
+
+  @inlinable
+  func _dropLastUTF8CodeUnit(_ k: Int = 1) -> SubSequence {
+    return _dropUTF8CodeUnit(first: 0, last: 1)
   }
 }
 
