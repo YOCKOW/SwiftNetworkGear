@@ -1062,7 +1062,13 @@ public struct HTTPHeaderFieldParameterList: Sendable {
 
     /// Split values to satisfy line limits of MIME headers and make section indices "strideable".
     ///
-    /// With this mode, the count of `<name>=<value>` is less than or equal to 74.
+    /// With this mode, the count of `<name>=<value>` will be less than or equal to 74.
+    ///
+    /// ## For each attribute:
+    ///
+    /// A non-sectioned regular parameter can coexist with (non-)sectioned extended parameter(s).
+    /// When one regular parameter must be splitted to sectioned parameters,
+    /// (non-)sectioned extended parameter(s) will be discarded.
     case mime
   }
 
