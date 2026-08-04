@@ -250,6 +250,7 @@ public struct QuotedString: Sendable {
     self.init(_converter: .init(quotedString: quotedString))
   }
 
+  @usableFromInline
   internal init<S>(content: S) where S: StringProtocol {
     assert(
       content.utf8.allSatisfy({
@@ -259,9 +260,18 @@ public struct QuotedString: Sendable {
     self.init(_converter: .init(content: content._bidiUTF8ViewString))
   }
 
-  public init(token: HTTPTokenString) {
+  @inlinable
+  internal init<T>(_token token: T) where T: HTTPTokenStringProtocol {
     assert(token._string.utf8.allSatisfy(\._isAvailableInHTTPHeaderFieldValueQuotedText))
     self.init(content: token._string)
+  }
+
+  public init(token: HTTPTokenString) {
+    self.init(_token: token)
+  }
+
+  public init(token: HTTPTokenSubstring) {
+    self.init(_token: token)
   }
 
   public init?<S>(quoting content: S) where S: StringProtocol {
@@ -284,9 +294,20 @@ public struct QuotedString: Sendable {
     return QuotedString(_converter: self._converter.appending(.init(content: content._string)))
   }
 
-  public func appending(token: HTTPTokenString) -> QuotedString {
+  @usableFromInline
+  internal func appending<T>(_token token: T) -> QuotedString where T: HTTPTokenStringProtocol {
     assert(token._string.utf8.allSatisfy(\._isAvailableInHTTPHeaderFieldValueQuotedText))
     return QuotedString(_converter: self._converter.appending(.init(content: token._string)))
+  }
+
+  @inlinable
+  public func appending(token: HTTPTokenString) -> QuotedString {
+    self.appending(_token: token)
+  }
+
+  @inlinable
+  public func appending(token: HTTPTokenSubstring) -> QuotedString {
+    self.appending(_token: token)
   }
 
   /// This function divides the quoted string into two quoted strings,

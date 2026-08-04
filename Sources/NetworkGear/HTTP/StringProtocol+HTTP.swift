@@ -482,6 +482,17 @@ extension StringProtocol {
   }
 
   @inlinable
+  internal var _substring: Substring {
+    if case let substring as Substring = self {
+      return substring
+    } else if case let substring as Substring = self[...] {
+      return substring
+    }
+    // Never reach here...
+    return Substring(decoding: self.utf8, as: Unicode.UTF8.self)
+  }
+
+  @inlinable
   func _utf8CodeUnit(at index: String.Index) -> UTF8.CodeUnit {
     return self.utf8[index]
   }

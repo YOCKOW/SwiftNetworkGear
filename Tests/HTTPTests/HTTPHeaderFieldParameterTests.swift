@@ -144,8 +144,49 @@ private func _extendedName<S>(
   }
 
   @Test func test_value() throws {
-    #expect(try #require(HTTPHeaderFieldParameter.Value("token-value")).description == "token-value")
-    #expect(try #require(HTTPHeaderFieldParameter.Value(#""quoted value""#)).description == #""quoted value""#)
+    let tokenValue = try #require(HTTPHeaderFieldParameter.Value("token-value"))
+    let quotedValue = try #require(HTTPHeaderFieldParameter.Value(#""quoted value""#))
+
+    #expect(tokenValue.description == "token-value")
+    #expect(quotedValue.description == #""quoted value""#)
+
+    division_test: do {
+      func __assert(
+        value: HTTPHeaderFieldParameter.Value,
+        divisionCount count: Int,
+        expected: (firstPart: String, secondPart: String?),
+        _ comment: @autoclosure () -> Comment? = nil,
+        sourceLocation: SourceLocation = #_sourceLocation
+      ) {
+        let divided = value.divide(whereFirstPartMaxUTF8Count: count)
+        #expect(
+          divided.0.description.utf8.count <= count,
+          Comment(rawValue: "[Count] " + (comment()?.rawValue ?? "")),
+          sourceLocation: sourceLocation
+        )
+        #expect(
+          divided.0.description == expected.firstPart,
+          Comment(rawValue: "[First Part] " + (comment()?.rawValue ?? "")),
+          sourceLocation: sourceLocation
+        )
+        #expect(
+          divided.1?.description == expected.secondPart,
+          Comment(rawValue: "[Second Part] " + (comment()?.rawValue ?? "")),
+          sourceLocation: sourceLocation
+        )
+      }
+
+      __assert(value: tokenValue, divisionCount: 99, expected: ("token-value", nil))
+      __assert(value: tokenValue, divisionCount: 11, expected: ("token-value", nil))
+      __assert(value: tokenValue, divisionCount: 10, expected: ("token-valu", "e"))
+      __assert(value: tokenValue, divisionCount:  9, expected: ("token-val", "ue"))
+      __assert(value: tokenValue, divisionCount:  5, expected: ("token", "-value"))
+
+      __assert(value: quotedValue, divisionCount: 99, expected: (#""quoted value""#, nil))
+      __assert(value: quotedValue, divisionCount: 14, expected: (#""quoted value""#, nil))
+      __assert(value: quotedValue, divisionCount: 13, expected: (#""quoted valu""#, #""e""#))
+      __assert(value: quotedValue, divisionCount:  8, expected: (#""quoted""#, #"" value""#))
+    }
   }
 
   @Test func test_extendedValue() throws {

@@ -117,12 +117,12 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
   /// A regular value.
   public struct Value: Sendable, Equatable, Hashable, CustomStringConvertible {
     fileprivate enum _Value: Sendable, Equatable, Hashable {
-      case token(HTTPTokenString)
+      case token(any HTTPTokenStringProtocol)
       case quotedString(QuotedString)
 
       static func ==(lhs: _Value, rhs: _Value) -> Bool {
         switch (lhs, rhs) {
-        case (.token(let lToken), .token(let rToken)): return lToken == rToken
+        case (.token(let lToken), .token(let rToken)): return lToken._isEqual(to: rToken)
         case (.quotedString(let lQS), .quotedString(let rQS)): return lQS.content == rQS.content
         default: return false
         }
@@ -150,7 +150,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     /// A string of the value.
     public var content: String {
       switch self._value {
-      case .token(let token): return token._string
+      case .token(let token): return token._string._string
       case .quotedString(let quotedString): return quotedString.content
       }
     }
@@ -159,8 +159,19 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
       self._value = value
     }
 
-    public init(token: HTTPTokenString) {
+    @usableFromInline
+    internal init<T>(_token token: T) where T: HTTPTokenStringProtocol {
       self.init(_value: .token(token))
+    }
+
+    @inlinable
+    public init(token: HTTPTokenString) {
+      self.init(_token: token)
+    }
+
+    @inlinable
+    public init(token: HTTPTokenSubstring) {
+      self.init(_token: token)
     }
 
     public init(quotedString: QuotedString) {
@@ -180,11 +191,11 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     public func appending(_ other: Value) -> Value {
       switch (self._value, other._value) {
       case (.token(let myToken), .token(let otherToken)):
-        return Value(token: myToken.appending(otherToken))
+        return Value(token: myToken._appending(otherToken))
       case (.token(let myToken), .quotedString(let otherQuotedString)):
-        return Value(quotedString: QuotedString(token: myToken).appending(otherQuotedString))
+        return Value(quotedString: QuotedString(_token: myToken).appending(otherQuotedString))
       case (.quotedString(let myQuotedString), .token(let otherToken)):
-        return Value(quotedString: myQuotedString.appending(token: otherToken))
+        return Value(quotedString: myQuotedString.appending(_token: otherToken))
       case (.quotedString(let myQuotedString), .quotedString(let otherQuotedString)):
         return Value(quotedString: myQuotedString.appending(otherQuotedString))
       }
@@ -404,7 +415,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     case .regular(_, let value):
       switch value._value {
       case .token(let token):
-        return token._string
+        return token._string._string
       case .quotedString(let quotedString):
         return quotedString.content
       }
@@ -848,6 +859,52 @@ extension HTTPHeaderFieldParameter: _InitializableWithParser, LosslessStringConv
 
   public init?<S>(_ description: S) where S: StringProtocol {
     self.init(description, parser: HTTPHeaderFieldParameterParser<S>.self)
+  }
+}
+
+// MARK: - Value dividers
+
+extension HTTPHeaderFieldParameter.Value {
+  /// This function divides the value into two values,
+  /// where the count of first one's UTF-8 reporesentation is less than or equal to `maxCount`.
+  ///
+  /// - Parameters:
+  ///   * maxCount: The maximum count of the first part's UTF-8 representation which should be greater than 3.
+  ///
+  /// - Returns: Two values.
+  ///            The second one may be `nil` if the count of the whole value is less than or equal to `maxCount`.
+  public func divide(
+    whereFirstPartMaxUTF8Count maxCount: Int
+  ) -> (HTTPHeaderFieldParameter.Value, HTTPHeaderFieldParameter.Value?) {
+    switch self._value {
+    case .token(let token):
+      precondition(maxCount > 0, "`maxCount` must be a positive value.")
+
+      let tokenUTF8 = token._utf8
+      Fast_Path: if tokenUTF8.withContiguousStorageIfAvailable({
+        $0.count <= maxCount
+      }) == true {
+        return (self, nil)
+      }
+
+      if let divisionIndex = tokenUTF8.index(
+        tokenUTF8.startIndex,
+        offsetBy: maxCount,
+        limitedBy: tokenUTF8.endIndex
+      ) {
+        return (
+          HTTPHeaderFieldParameter.Value(_token: token._subsequence(in: ..<divisionIndex)),
+          HTTPHeaderFieldParameter.Value(_token: token._subsequence(in: divisionIndex...)),
+        )
+      }
+      return (self, nil)
+    case .quotedString(let quotedString):
+      let divided = quotedString.divide(whereFirstPartMaxUTF8Count: maxCount)
+      return (
+        HTTPHeaderFieldParameter.Value(quotedString: divided.0),
+        divided.1.map({ HTTPHeaderFieldParameter.Value(quotedString: $0) })
+      )
+    }
   }
 }
 
