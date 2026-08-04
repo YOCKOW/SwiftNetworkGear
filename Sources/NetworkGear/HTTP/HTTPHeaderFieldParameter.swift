@@ -218,7 +218,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
 
   public struct ExtendedValue: ExtendedValueProtocol {
     /// String representation of "MIME Charset".
-    public let stringEncodingDescription: String
+    public let stringEncodingDescription: ASCIICaseInsensitiveString
 
     /// String representation of "Language Tag"
     public let languageTagDescription: LanguageTagString?
@@ -233,11 +233,11 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     public var stringEncoding: String.Encoding? {
       #if compiler(>=6.3)
       if #available(macOS 26.4, iOS 26.4, *),
-         let encoding = String.Encoding(ianaName: stringEncodingDescription) {
+         let encoding = String.Encoding(ianaName: stringEncodingDescription._string) {
         return encoding
       }
       #endif
-      return String.Encoding(ianaCharacterSetName: stringEncodingDescription)
+      return String.Encoding(ianaCharacterSetName: stringEncodingDescription._string)
     }
 
     public var locale: Locale? {
@@ -261,7 +261,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
 
     @inlinable
     internal init(_validated: (
-        stringEncodingDescription: String,
+        stringEncodingDescription: ASCIICaseInsensitiveString,
         languageTagDescription: LanguageTagString?,
         percentEncodedValue: PercentEncodedString
     )) {
@@ -287,7 +287,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
       }
       self.init(
         _validated: (
-          stringEncodingDescription,
+          stringEncodingDescription._caseInsensitive,
           languageTagDescription,
           percentEncodedValue
         )
@@ -674,7 +674,7 @@ public struct ExtendedParameterValueParser<Input>: StringParser,
     
     return (
       output: HTTPHeaderFieldParameter.ExtendedValue(_validated: (
-        stringEncodingDescription: stringEncodingDescription._string,
+        stringEncodingDescription: stringEncodingDescription._string._caseInsensitive,
         languageTagDescription: languageTagDescription,
         percentEncodedValue: percentEncodedValue
       )),
@@ -905,6 +905,45 @@ extension HTTPHeaderFieldParameter.Value {
         divided.1.map({ HTTPHeaderFieldParameter.Value(quotedString: $0) })
       )
     }
+  }
+}
+
+extension HTTPHeaderFieldParameter.ExtendedValue {
+  /// This function divides the value into two values,
+  /// where the count of first one's UTF-8 reporesentation is less than or equal to `maxCount`.
+  ///
+  /// - Returns: Two values if possible.
+  ///            `nil` may be returned if `maxCount` is smaller than
+  ///            the length of "`<string encoding>'<language tag>'`" `+ 3`.
+  public func divide(
+    whereFirstPartMaxUTF8Count maxCount: Int
+  ) -> (
+    HTTPHeaderFieldParameter.ExtendedValue,
+    HTTPHeaderFieldParameter.InformationlessExtendedValue?
+  )? {
+    let stringEncodingUTF8Count = self.stringEncodingDescription.utf8.count
+    let languageTagUTF8Count = self.languageTagDescription?.description.utf8.count ?? 0
+    let infoCount = stringEncodingUTF8Count + languageTagUTF8Count + 2
+    let percentEncodedStringMaxCount = maxCount - infoCount
+    guard percentEncodedStringMaxCount >= 3 else {
+      return nil
+    }
+    let endIndex = self.percentEncodedValue.endIndex(whereMaxUTF8Count: percentEncodedStringMaxCount)
+    if self.percentEncodedValue.endIndex == endIndex {
+      return (self, nil)
+    }
+    let firstPercentEncodedString = self.percentEncodedValue[..<endIndex]
+    let secondPercentEncodedString = self.percentEncodedValue[endIndex...]
+    return (
+      HTTPHeaderFieldParameter.ExtendedValue(_validated: (
+        self.stringEncodingDescription,
+        self.languageTagDescription,
+        firstPercentEncodedString
+      )),
+      HTTPHeaderFieldParameter.InformationlessExtendedValue(
+        percentEncodedValue: secondPercentEncodedString
+      )
+    )
   }
 }
 

@@ -206,6 +206,105 @@ private func _extendedName<S>(
     #expect(value2.stringEncoding == .utf8)
     #expect(value2.locale?.language.languageCode?.identifier == "en")
     #expect(value2.decodedValue == "£ rates")
+
+    division_test: do {
+      func __assert(
+        value: HTTPHeaderFieldParameter.ExtendedValue,
+        divisionCount: Int,
+        expected: (firstPart: String, secondPart: String?)?,
+        sourceLocation: SourceLocation = #_sourceLocation
+      ) throws {
+        guard let divided = value.divide(whereFirstPartMaxUTF8Count: divisionCount) else {
+          #expect(expected.isNil, "Division must fail.", sourceLocation: sourceLocation)
+          return
+        }
+        guard let expected = expected else {
+          Issue.record("`expected` must not be nil.", sourceLocation: sourceLocation)
+          return
+        }
+        let expectedFirstPart = try #require(
+          HTTPHeaderFieldParameter.ExtendedValue(expected.firstPart),
+          "Create Expected First Part",
+          sourceLocation: sourceLocation
+        )
+        let expectedSecondPart = try expected.secondPart.map({
+          try #require(
+            HTTPHeaderFieldParameter.InformationlessExtendedValue($0),
+            "Create Expected Second Part",
+            sourceLocation: sourceLocation
+          )
+        })
+        #expect(divided.0 == expectedFirstPart, "First Part", sourceLocation: sourceLocation)
+        #expect(divided.1 == expectedSecondPart, "Second Part", sourceLocation: sourceLocation)
+      }
+
+      try __assert(
+        value: value1,
+        divisionCount: 99,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82%ac%20rates", nil)
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 39,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82%ac%20rates", nil)
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 38,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82%ac%20rate", "s")
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 34,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82%ac%20", "rates")
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 33,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82%ac", "%20rates")
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 31,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82%ac", "%20rates")
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 30,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82", "%ac%20rates")
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 9,
+        expected: nil
+      )
+
+      try __assert(
+        value: value2,
+        divisionCount: 99,
+        expected: ("utf-8'en'%C2%A3%20rates", nil)
+      )
+      try __assert(
+        value: value2,
+        divisionCount: 23,
+        expected: ("utf-8'en'%C2%A3%20rates", nil)
+      )
+      try __assert(
+        value: value2,
+        divisionCount: 18,
+        expected: ("utf-8'en'%C2%A3%20", "rates")
+      )
+      try __assert(
+        value: value2,
+        divisionCount: 17,
+        expected: ("utf-8'en'%C2%A3", "%20rates")
+      )
+      try __assert(
+        value: value2,
+        divisionCount: 11,
+        expected: nil
+      )
+    }
   }
 
   @Test func test_name_value_initializers() {
