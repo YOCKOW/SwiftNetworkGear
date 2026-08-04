@@ -1028,6 +1028,8 @@ public struct HTTPHeaderFieldParameterList: Sendable {
     case http
 
     /// Split values to satisfy line limits of MIME headers and make section indices "strideable".
+    ///
+    /// With this mode, the count of `<name>=<value>` is less than or equal to 74.
     case mime
   }
 
