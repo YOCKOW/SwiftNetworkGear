@@ -307,6 +307,40 @@ private func _extendedName<S>(
     }
   }
 
+  @Test func test_informationlessExtendedValue() throws {
+    let value = try #require(
+      HTTPHeaderFieldParameter.InformationlessExtendedValue("%c2%a3%20and%20%e2%82%ac%20rates")
+    )
+    func __assert(
+      divisionCount: Int,
+      expected: (firstPart: String, secondPart: String?),
+      sourceLocation: SourceLocation = #_sourceLocation
+    ) throws {
+      let divided = value.divide(whereFirstPartMaxUTF8Count: divisionCount)
+      let expectedFirstPart = try #require(
+        HTTPHeaderFieldParameter.InformationlessExtendedValue(expected.firstPart),
+        "Create Expected First Part",
+        sourceLocation: sourceLocation
+      )
+      let expectedSecondPart = try expected.secondPart.map({
+        try #require(
+          HTTPHeaderFieldParameter.InformationlessExtendedValue($0),
+          "Create Expected Second Part",
+          sourceLocation: sourceLocation
+        )
+      })
+      #expect(divided.0 == expectedFirstPart, "First Part", sourceLocation: sourceLocation)
+      #expect(divided.1 == expectedSecondPart, "Second Part", sourceLocation: sourceLocation)
+    }
+
+    try __assert(divisionCount: 99, expected: ("%c2%a3%20and%20%e2%82%ac%20rates", nil))
+    try __assert(divisionCount: 32, expected: ("%c2%a3%20and%20%e2%82%ac%20rates", nil))
+    try __assert(divisionCount: 31, expected: ("%c2%a3%20and%20%e2%82%ac%20rate", "s"))
+    try __assert(divisionCount: 27, expected: ("%c2%a3%20and%20%e2%82%ac%20", "rates"))
+    try __assert(divisionCount: 26, expected: ("%c2%a3%20and%20%e2%82%ac", "%20rates"))
+    try __assert(divisionCount: 24, expected: ("%c2%a3%20and%20%e2%82%ac", "%20rates"))
+  }
+
   @Test func test_name_value_initializers() {
     #expect(
       HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 0)?.description ==

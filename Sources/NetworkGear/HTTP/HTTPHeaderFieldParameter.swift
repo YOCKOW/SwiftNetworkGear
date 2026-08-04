@@ -947,6 +947,39 @@ extension HTTPHeaderFieldParameter.ExtendedValue {
   }
 }
 
+extension HTTPHeaderFieldParameter.InformationlessExtendedValue {
+  /// This function divides the value into two values,
+  /// where the count of first one's UTF-8 reporesentation is less than or equal to `maxCount`.
+  ///
+  /// - Parameters:
+  ///   * maxCount: The maximum count of the first part's UTF-8 representation which should be greater than 2.
+  ///
+  /// - Returns: Two values.
+  ///            The second one may be `nil` if the count of the whole value is less than or equal to `maxCount`.
+  public func divide(
+    whereFirstPartMaxUTF8Count maxCount: Int
+  ) -> (
+    HTTPHeaderFieldParameter.InformationlessExtendedValue,
+    HTTPHeaderFieldParameter.InformationlessExtendedValue?
+  ) {
+    precondition(maxCount > 2, "Too small value to divide.")
+    let endIndex = self.percentEncodedValue.endIndex(whereMaxUTF8Count: maxCount)
+    if endIndex == self.percentEncodedValue.endIndex {
+      return (self, nil)
+    }
+    let firstPercentEncodedString = self.percentEncodedValue[..<endIndex]
+    let secondPercentEncodedString = self.percentEncodedValue[endIndex...]
+    return (
+      HTTPHeaderFieldParameter.InformationlessExtendedValue(
+        percentEncodedValue: firstPercentEncodedString
+      ),
+      HTTPHeaderFieldParameter.InformationlessExtendedValue(
+        percentEncodedValue: secondPercentEncodedString
+      ),
+    )
+  }
+}
+
 
 // MARK: - The List
 
