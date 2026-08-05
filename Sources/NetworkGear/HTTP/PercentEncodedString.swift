@@ -425,7 +425,7 @@ extension PercentEncodedString: Sequence, Collection {
     }
   }
 
-  private func _index(after i: Index) -> (nextIndex: Index, currentElementIsPercentEncoded: Bool) {
+  fileprivate func _index(after i: Index) -> (nextIndex: Index, currentElementWasPercentEncoded: Bool) {
     let stringIndex = i._stringIndex
     let byte = self._encodedString._utf8CodeUnit(at: stringIndex)
     if byte._isPercentSign {
@@ -446,22 +446,6 @@ extension PercentEncodedString: Sequence, Collection {
 
   public var isEmpty: Bool {
     return self._encodedString.isEmpty
-  }
-
-  /// The end index to which `utf8Count` of the subsequence from start is less than or equal to `maxUTF8Count`.
-  public func endIndex(whereMaxUTF8Count maxUTF8Count: Int) -> Index {
-    let endIndex = self.endIndex
-    var currentIndex = self.startIndex
-    var currentUTF8Count = 0
-    while currentIndex < endIndex {
-      let (nextIndex, currentElementIsPercentEncoded) = _index(after: currentIndex)
-      currentUTF8Count += currentElementIsPercentEncoded ? 3 : 1
-      if currentUTF8Count > maxUTF8Count {
-        return currentIndex
-      }
-      currentIndex = nextIndex
-    }
-    return currentIndex
   }
 
   public struct Iterator: IteratorProtocol {
@@ -498,33 +482,90 @@ extension PercentEncodedString: Sequence, Collection {
 }
 
 extension PercentEncodedString: BidirectionalCollection {
-  public func index(before i: Index) -> Index {
+  fileprivate func _index(before i: Index) -> (previousIndex: Index, currentElementIsPercentEncoded: Bool) {
     // Determine if the previous `Element` is percent encoded or not.
+
+    FastPath: if let isPercentEncoded = self._encodedString[..<i._stringIndex].utf8.withContiguousStorageIfAvailable({ subUTF8 in
+      if subUTF8.count < 3 {
+        return false
+      }
+      return (
+        subUTF8[subUTF8.endIndex - 3]._isPercentSign &&
+        subUTF8[subUTF8.endIndex - 2]._isHexDigit &&
+        subUTF8[subUTF8.endIndex - 1]._isHexDigit
+      )
+    }) {
+      let stringEndIndex = self._encodedString._utf8Index(
+        i._stringIndex,
+        offsetBy: isPercentEncoded ? -3 : -1
+      )
+      return (Index(stringIndex: stringEndIndex), isPercentEncoded)
+    }
+
+    // --- Slow Path ---
 
     let prevStringIndex = self._encodedString._utf8Index(before: i._stringIndex)
     if prevStringIndex == self._encodedString.startIndex {
-      return Index(stringIndex: prevStringIndex)
+      return (Index(stringIndex: prevStringIndex), false)
     }
 
     let prevByte = self._encodedString._utf8CodeUnit(at: prevStringIndex)
     if !prevByte._isHexDigit {
-      return Index(stringIndex: prevStringIndex)
+      return (Index(stringIndex: prevStringIndex), false)
     }
 
     let prevPrevStringIndex = self._encodedString._utf8Index(before: prevStringIndex)
     if prevPrevStringIndex == self._encodedString.startIndex {
-      return Index(stringIndex: prevStringIndex)
+      return (Index(stringIndex: prevStringIndex), false)
     }
 
     let prevPrevByte = self._encodedString._utf8CodeUnit(at: prevPrevStringIndex)
     if !prevPrevByte._isHexDigit {
-      return Index(stringIndex: prevStringIndex)
+      return (Index(stringIndex: prevStringIndex), false)
     }
 
     let prevPrevPrevStringIndex = self._encodedString._utf8Index(before: prevPrevStringIndex)
     guard self._encodedString._utf8CodeUnit(at: prevPrevPrevStringIndex)._isPercentSign else {
-      return Index(stringIndex: prevStringIndex)
+      return (Index(stringIndex: prevStringIndex), false)
     }
-    return Index(stringIndex: prevPrevPrevStringIndex)
+    return (Index(stringIndex: prevPrevPrevStringIndex), true)
+  }
+
+  public func index(before i: Index) -> Index {
+    return self._index(before: i).previousIndex
+  }
+}
+
+extension PercentEncodedString {
+  /// The end index to which `utf8Count` of the subsequence from start is less than or equal to `maxUTF8Count`.
+  public func endIndex(whereMaxUTF8Count maxUTF8Count: Int) -> Index {
+    if self._encodedString.isContiguousUTF8 {
+      var currentCount = self._encodedString.utf8.count
+
+      // Backwards if desirable
+      if currentCount - maxUTF8Count < maxUTF8Count {
+        var endIndex = self.endIndex
+        while currentCount > maxUTF8Count {
+          let (prevIndex, isPercentEncoded) = _index(before: endIndex)
+          currentCount -= isPercentEncoded ? 3 : 1
+          endIndex = prevIndex
+        }
+        return endIndex
+      }
+    }
+
+    // Forwards
+    let endIndex = self.endIndex
+    var currentIndex = self.startIndex
+    var currentUTF8Count = 0
+    while currentIndex < endIndex {
+      let (nextIndex, currentElementWasPercentEncoded) = _index(after: currentIndex)
+      currentUTF8Count += currentElementWasPercentEncoded ? 3 : 1
+      if currentUTF8Count > maxUTF8Count {
+        return currentIndex
+      }
+      currentIndex = nextIndex
+    }
+    return currentIndex
   }
 }

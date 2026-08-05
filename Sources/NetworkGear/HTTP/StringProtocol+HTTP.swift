@@ -526,9 +526,10 @@ extension StringProtocol {
 ///
 /// See Also: [Can we require StringProtocol.UTF8View be a BidirectionalCollection?](https://forums.swift.org/t/can-we-require-stringprotocol-utf8view-be-a-bidirectionalcollection/44951)
 @usableFromInline
-internal protocol _BidirectionalUTF8View: BidirectionalCollection,
-                                          Sendable where Element == UTF8.CodeUnit,
-                                                         Index == String.Index {}
+internal protocol _BidirectionalUTF8View: Sendable, BidirectionalCollection
+where Self.Element == UTF8.CodeUnit, Self.Index == String.Index {
+  func withContiguousStorageIfAvailable<R>(_ body: (UnsafeBufferPointer<Self.Element>) throws -> R) rethrows -> R?
+}
 extension String.UTF8View: _BidirectionalUTF8View {}
 extension Substring.UTF8View: _BidirectionalUTF8View {}
 
@@ -541,6 +542,8 @@ internal protocol _BidirectionalUTF8ViewAvailableStringProtocol: Sendable,
 where Self.Index == String.Index, Self.SubSequence == Substring {
   associatedtype BidirectionalUTF8View: _BidirectionalUTF8View
   var utf8: BidirectionalUTF8View { get }
+  var isContiguousUTF8: Bool { get }
+  mutating func withUTF8<R>(_ body: (UnsafeBufferPointer<UInt8>) throws -> R) rethrows -> R
 }
 extension String: _BidirectionalUTF8ViewAvailableStringProtocol {}
 extension Substring: _BidirectionalUTF8ViewAvailableStringProtocol {}
