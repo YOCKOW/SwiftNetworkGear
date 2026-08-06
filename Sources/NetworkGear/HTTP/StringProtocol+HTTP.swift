@@ -219,11 +219,11 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isLeftSquareBracket: Bool { self == 0x5B }
 
-  /// `\``
+  /// `\`
   @usableFromInline
   internal static let _backslash: Unicode.UTF8.CodeUnit = 0x5C
 
-  /// `\``
+  /// `\`
   @inlinable
   internal var _isBackslash: Bool { self == ._backslash }
 
