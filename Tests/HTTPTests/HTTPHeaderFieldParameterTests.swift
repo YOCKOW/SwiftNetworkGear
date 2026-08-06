@@ -143,6 +143,22 @@ private func _extendedName<S>(
     #expect(name.sectionIndex == pair.expected.sectionIndex)
   }
 
+  @Test func test_nameUTF8Count() {
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo")?.utf8Count == 3)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 0)?.utf8Count == 5)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 10)?.utf8Count == 6)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 100)?.utf8Count == 7)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 1000)?.utf8Count == 8)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 10000)?.utf8Count == 9)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 99999)?.utf8Count == 9)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 100000)?.utf8Count == 10)
+
+    #expect(HTTPHeaderFieldParameter.ExtendedName(attribute: "foo")?.utf8Count == "foo*".utf8.count)
+    #expect(HTTPHeaderFieldParameter.ExtendedName(attribute: "foo", sectionIndex: 0)?.utf8Count == "foo*0*".utf8.count)
+    #expect(HTTPHeaderFieldParameter.ExtendedName(attribute: "foo", sectionIndex: 99999)?.utf8Count == "foo*99999*".utf8.count)
+    #expect(HTTPHeaderFieldParameter.ExtendedName(attribute: "foo", sectionIndex: 100000)?.utf8Count == "foo*100000*".utf8.count)
+  }
+
   @Test func test_value() throws {
     let tokenValue = try #require(HTTPHeaderFieldParameter.Value("token-value"))
     let quotedValue = try #require(HTTPHeaderFieldParameter.Value(#""quoted value""#))

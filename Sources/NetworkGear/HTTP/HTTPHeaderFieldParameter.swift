@@ -5,9 +5,27 @@
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
+import CNetworkGear
 import Foundation
 import Ranges
 import yExtensions
+
+private extension Int {
+  /// The number of bytes in UTF-8 when the value is converted to a string as a section index.
+  var _utf8Count: Int {
+    assert(self >= 0, "Unexpected section index?!")
+    if self < 10 {
+      return 1
+    }
+    if self < 100 {
+      return 2
+    }
+    if self < 1000 {
+      return 3
+    }
+    return Int(CNWGLog10i(Int64(self)) + 1)
+  }
+}
 
 /// Key-value pairs for "HTTP Parameter Continuations".
 /// This type is designed to be compatible with "MIME Parameter Value and Encoded Word Extensions".
@@ -40,6 +58,10 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
         return attribute.description
       }
       return "\(attribute.description)*\(String(sectionIndex, radix: 10))"
+    }
+
+    internal var utf8Count: Int {
+      return attribute.utf8.count + (sectionIndex.map({ $0._utf8Count + 1 }) ?? 0)
     }
 
     @inlinable
@@ -107,6 +129,10 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     }
 
     public var description: String { baseName.description + "*" }
+
+    internal var utf8Count: Int {
+      return baseName.utf8Count + 1
+    }
 
     @usableFromInline
     internal init(_baseName baseName: Name) {

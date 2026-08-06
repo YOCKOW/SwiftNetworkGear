@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include <arpa/inet.h>
+#include <math.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/un.h>
@@ -383,5 +384,10 @@ void CNWGUNIXSocketAddressGetPath(const CUNIXSocketAddress * _Nonnull address,
 bool CNWGUNIXSocketAddressSetPath(CUNIXSocketAddress * _Nonnull address,
                                   const char * _Nonnull path);
 
+
+/// Returns the base 10 logarithm of a number `x`.
+static inline double CNWGLog10i(const int64_t x) {
+  return log10((double)x);
+}
 
 #endif
