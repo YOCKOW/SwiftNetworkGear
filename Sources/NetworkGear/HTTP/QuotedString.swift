@@ -194,10 +194,39 @@ public struct QuotedString: Sendable {
         fatalError("Unexpected state?!")
       }
 
-      FAST_PATH: if quotedString.utf8.withContiguousStorageIfAvailable({
-        $0.count <= maxCount
-      }) == true {
-        return (self, nil)
+      FastPath: if quotedString.isContiguousUTF8 {
+        let quotedStringUTF8 = quotedString.utf8
+        var currentCount = quotedStringUTF8.count
+        if currentCount <= maxCount {
+          return (self, nil)
+        }
+
+        if currentCount - maxCount < maxCount {
+          // Start backwards from last byte of the content.
+          var contentEndIndex = quotedStringUTF8.index(before: quotedStringUTF8.endIndex)
+          while currentCount > maxCount {
+            let lastContentByteIndex = quotedStringUTF8.index(before: contentEndIndex)
+
+            // -- NOTE --
+            // "A\B"
+            //    ^ is escaped.
+            // "A\\B"
+            //     ^ is not escaped.
+
+            let prevByteIndex = quotedStringUTF8.index(before: lastContentByteIndex)
+            let isEscaped: Bool = (
+              quotedStringUTF8[prevByteIndex]._isBackslash &&
+              prevByteIndex > quotedStringUTF8.startIndex &&
+              !quotedStringUTF8[quotedStringUTF8.index(before: prevByteIndex)]._isBackslash
+            )
+            contentEndIndex = isEscaped ? prevByteIndex : lastContentByteIndex
+            currentCount -= isEscaped ? 2 : 1
+          }
+          return (
+            _LazyBidirectionalConverter(quotedString: quotedString[..<contentEndIndex] + "\""),
+            _LazyBidirectionalConverter(quotedString: "\"" + quotedString[contentEndIndex...])
+          )
+        }
       }
 
       var currentCount = 2 // Two double quotation marks
