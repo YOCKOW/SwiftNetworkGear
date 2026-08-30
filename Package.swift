@@ -72,7 +72,9 @@ let package = Package(
     .target(name: "sockaddr_tests", dependencies: [], path:"Tests/sockaddr-tests"),
     .target(
       name: "_NetworkGearTestSupport",
-      dependencies: [],
+      dependencies: [
+        "NetworkGear",
+      ],
       path: "Tests/NetworkGearTestSupport"
     ),
     .testTarget(
