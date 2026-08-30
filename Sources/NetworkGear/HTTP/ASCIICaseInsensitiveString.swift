@@ -154,6 +154,13 @@ public struct ASCIICaseInsensitiveString: ASCIICaseInsensitiveStringProtocol,
     return _string[keyPath: dynamicMember]
   }
 
+  /// If this string is not contiguous, make it so.
+  /// If this mutates the string, it will invalidate any pre-existing indices.
+  @inlinable
+  internal mutating func makeContiguousUTF8() {
+    self._string.makeContiguousUTF8()
+  }
+
   @inlinable
   public func hasPrefix<S>(_ prefix: S) -> Bool where S: StringProtocol {
     return !self._endIndex(ofPrefix: prefix).isNil

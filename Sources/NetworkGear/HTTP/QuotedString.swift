@@ -265,6 +265,8 @@ public struct QuotedString: Sendable {
   /// Returns content of the quoted string.
   public var content: String { _converter.content }
 
+  internal var utf8Count: Int { self.quotedString.utf8.count }
+
   private init(_converter converter: _LazyBidirectionalConverter) {
     self._converter = converter
   }

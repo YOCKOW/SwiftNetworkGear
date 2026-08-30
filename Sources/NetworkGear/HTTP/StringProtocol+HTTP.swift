@@ -5,7 +5,9 @@
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
 
+import Foundation
 import Ranges
+import yExtensions
 
 private typealias _U8CodeSet = Set<Unicode.UTF8.CodeUnit>
 private extension _U8CodeSet {
@@ -517,6 +519,23 @@ extension StringProtocol {
     let myUTF8 = self.utf8
     let startIndex = myUTF8.index(myUTF8.startIndex, offsetBy: k)
     return self[startIndex...]
+  }
+
+  @inlinable
+  internal func _compareUTF8Count(with count: Int) -> ComparisonResult {
+    let myUTF8 = self.utf8
+    if let result: ComparisonResult = myUTF8.withContiguousStorageIfAvailable({
+      let myUTF8Count = $0.count
+      if myUTF8Count < count {
+        return .orderedAscending
+      } else if myUTF8Count > count {
+        return .orderedDescending
+      }
+      return .orderedSame
+    }) {
+      return result
+    }
+    return myUTF8.compareCount(with: count)
   }
 
 }
