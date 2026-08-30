@@ -131,19 +131,31 @@ extension Unicode.UTF8.CodeUnit {
   internal var _isHorizontalTab: Bool { self == 0x09 }
 
   /// `LF`
+  @usableFromInline
+  internal static let _lineFeed: Unicode.UTF8.CodeUnit = 0x0A
+
+  /// `LF`
   @inlinable
-  internal var _isLineFeed: Bool { self == 0x0A }
+  internal var _isLineFeed: Bool { self == ._lineFeed }
+
+  /// `CR`
+  @usableFromInline
+  internal static let _carriageReturn: Unicode.UTF8.CodeUnit = 0x0D
 
   /// `CR`
   @inlinable
-  internal var _isCarriageReturn: Bool { self == 0x0D }
+  internal var _isCarriageReturn: Bool { self == ._carriageReturn }
 
   @inlinable
   internal var _isNewline: Bool { _isLineFeed || _isCarriageReturn }
 
   /// `Space`
+  @usableFromInline
+  internal static let _space: Unicode.UTF8.CodeUnit = 0x20
+
+  /// `Space`
   @inlinable
-  internal var _isSpace: Bool { self == 0x20 }
+  internal var _isSpace: Bool { self == ._space }
 
   /// Whitespace used for `OWS`(optional whitespace) or `RWS`(required whitespace).
   @inlinable
@@ -202,8 +214,12 @@ extension Unicode.UTF8.CodeUnit {
   internal var _isColon: Bool { self == 0x3A }
 
   /// `;`
+  @usableFromInline
+  internal static let _semicolon: Unicode.UTF8.CodeUnit = 0x3B
+
+  /// `;`
   @inlinable
-  internal var _isSemicolon: Bool { self == 0x3B }
+  internal var _isSemicolon: Bool { self == ._semicolon }
 
   /// `=`
   @inlinable

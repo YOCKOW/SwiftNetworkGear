@@ -30,4 +30,24 @@ import Testing
     #expect(formData.type == .formData)
     #expect(formData.parameterList?["name"]?.value == "field")
   }
+
+  @Test func test_mimeSafeDescription() throws {
+    let disposition = ContentDisposition("attachment; filename=\"my-file.txt\"; filename*=UTF-8''%E7%A7%81%E3%81%AE%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB.txt;")
+    let mimeSafeDescription = try disposition.mimeSafeDescription
+    let CRLF = "\u{0D}\u{0A}"
+
+    #expect(
+      mimeSafeDescription ==
+      """
+      attachment; filename="my-file.txt";\(CRLF)\
+       filename*0*=UTF-8''%E7%A7%81%E3%81%AE%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB.;\(CRLF)\
+       filename*1*=txt
+      """
+    )
+
+    let reparsed = ContentDisposition(mimeSafeDescription)
+    #expect(reparsed.type == .attachment)
+    #expect(reparsed.parameterList?[.filename]?.content == "my-file.txt")
+    #expect(reparsed.filename == "私のファイル.txt")
+  }
 }
