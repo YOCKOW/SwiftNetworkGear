@@ -863,7 +863,7 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
 
   private let _tag: _Tag
 
-  private var _description: ASCIICaseInsensitiveString {
+  internal var _description: ASCIICaseInsensitiveString {
     return self._tagDescription.getDescription(from: _tag)
   }
 
@@ -937,6 +937,10 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
 
   public var description: String {
     return _description._string
+  }
+
+  internal var utf8Count: Int {
+    return _description.utf8.count
   }
 
   fileprivate init(

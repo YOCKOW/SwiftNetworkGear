@@ -537,4 +537,97 @@ private func _extendedName<S>(
     try __test("p5-c", regular: nil, extended: "v5-c-non-sectioned-拡張")
     try __test("p6", regular: "v6-0-v6-1-v6-2", extended: "v6-0-v6-1-v6-2")
   }
+
+  @Test func test_fixForMIME() throws {
+    let listString = """
+    short-parameter=short-value;
+    short-parameter*=utf-8''short-value-ext;
+    long-parameter=too-looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong-value;
+    short-ext-section*0*=utf-8''short-ext-section-0;
+    short-ext-section*1*=%20short-ext-section-1;
+    long-ext*=utf-8''too-looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong-value;
+    long-ext-section*0*=utf-8''too-looooooooooooooooooooooooooooooooooooooooooooooooooooong-value-0;
+    long-ext-section*1*=%20too-looooooooooooooooooooooooooooooooooooooooooooooooooooooooong-value-1;
+    """.split(
+      omittingEmptySubsequences: true,
+      whereSeparator: { $0.isWhitespace || $0.isNewline }
+    ).joined(separator: " ")
+    let list = try #require(HTTPHeaderFieldParameterList(listString))
+    let fixed = try #require(list.fixed(for: .mime))
+
+    #expect(fixed.allSatisfy({ $0.description.utf8.count <= 74 }))
+
+    func __value(
+      for attribute: String,
+      sectionIndex: Int? = nil,
+      isExtended: Bool = false,
+      sourceLocation: SourceLocation = #_sourceLocation
+    ) throws -> String {
+      let name = try #require(
+        HTTPHeaderFieldParameter.Name(attribute: attribute, sectionIndex: sectionIndex),
+        "Failed to create a name?!",
+        sourceLocation: sourceLocation
+      )
+      if isExtended {
+        let extName = HTTPHeaderFieldParameter.ExtendedName(_baseName: name)
+        return try #require(
+          fixed[extName]?.decodedValue,
+          "Extended value can't decoded?!",
+          sourceLocation: sourceLocation
+        )
+      } else {
+        return try #require(
+          fixed[name]?.content,
+          "Failed to get a value?!",
+          sourceLocation: sourceLocation
+        )
+      }
+    }
+
+    #expect(try __value(for: "short-parameter") == "short-value")
+    #expect(try __value(for: "short-parameter", isExtended: true) == "short-value-ext")
+    #expect(try fixed["long-parameter"].isNil)
+    #expect(
+      try __value(for: "long-parameter", sectionIndex: 0, isExtended: true) ==
+      "too-loooooooooooooooooooooooooooooooooooooooooooo"
+      // Name is "long-parameter*0*", and
+      // leading prefix `UTF-8''` exists in the value description.
+    )
+    #expect(
+      try __value(for: "long-parameter", sectionIndex: 1, isExtended: true) ==
+      "ooooooooooooooooooooooong-value"
+    )
+    #expect(
+      try __value(for: "short-ext-section", sectionIndex: 0, isExtended: true) ==
+      "short-ext-section-0"
+    )
+    #expect(
+      try __value(for: "short-ext-section", sectionIndex: 1, isExtended: true) ==
+      " short-ext-section-1"
+    )
+    #expect(
+      try __value(for: "long-ext", sectionIndex: 0, isExtended: true) ==
+      "too-loooooooooooooooooooooooooooooooooooooooooooooooooo"
+    )
+    #expect(
+      try __value(for: "long-ext", sectionIndex: 1, isExtended: true) ==
+      "ooooooooooooooong-value"
+    )
+    #expect(
+      try __value(for: "long-ext-section", sectionIndex: 0, isExtended: true) ==
+      "too-loooooooooooooooooooooooooooooooooooooooooo"
+    )
+    #expect(
+      try __value(for: "long-ext-section", sectionIndex: 1, isExtended: true) ==
+      "ooooooooooong-value-0"
+    )
+    #expect(
+      try __value(for: "long-ext-section", sectionIndex: 2, isExtended: true) ==
+      " too-loooooooooooooooooooooooooooooooooooooooooooooo"
+    )
+    #expect(
+      try __value(for: "long-ext-section", sectionIndex: 3, isExtended: true) ==
+      "ooooooooooong-value-1"
+    )
+  }
 }

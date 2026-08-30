@@ -57,6 +57,11 @@ extension HTTPTokenStringProtocol {
   var _utf8: StringRepresentation.BidirectionalUTF8View {
     self._string.utf8
   }
+
+  @inlinable
+  var _utf8Count: Int {
+    return self._utf8.count
+  }
 }
 
 /// A type that represents `token` defined in
