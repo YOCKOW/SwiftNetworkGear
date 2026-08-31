@@ -197,6 +197,20 @@ extension _UTF8Parser {
   }
 
   @inlinable
+  func parseMIMEWhitespaces(
+    from currentIndex: inout Input.UTF8View.Index,
+    minCount: Int = 1,
+    maxCount: Int = .max
+  ) -> Input.SubSequence? {
+    return self.parseString(
+      from: &currentIndex,
+      minCount: minCount,
+      maxCount: maxCount,
+      while: \._isMIMEWhitespace
+    )
+  }
+
+  @inlinable
   func parseInt<T>(
     _ type: T.Type = Int.self,
     from  currentIndex: inout Input.UTF8View.Index,
@@ -340,7 +354,7 @@ public struct CRLFParser<Input>: StringParser, _UTF8Parser where Input: StringPr
   }
 }
 
-/// A parser to parse `LWSP`(Linear White-space).
+/// A parser to parse `LWSP`(Linear White-space), which is different from `FWS`.
 ///
 /// - Refrence:
 ///     * [RFC 5234 Appendix B](https://datatracker.ietf.org/doc/html/rfc5234#appendix-B.1)
@@ -392,6 +406,49 @@ public struct LinearWhitespaceParser<Input>: StringParser, _UTF8Parser where Inp
     return (input[..<index], index)
   }
 }
+
+/// A parser to parse `FWS`, which is different from `LWSP`.
+///
+/// - Refernce:
+///     * [RFC 5322 §3.2.2](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.2)
+public struct FoldingWhiteSpaceParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = Input.SubSequence
+
+  let input: Input
+  let utf8: Input.UTF8View
+
+  public init(input: Input) {
+    self.input = input
+    self.utf8 = input.utf8
+  }
+
+  public mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+    // Implementation Note:
+    //   FWS = ([*WSP CRLF] 1*WSP)
+
+    var currentIndex = utf8.startIndex
+
+    func `__parse[*WSP CRLF]`() -> Input.Index? {
+      var index = currentIndex
+      _ = self.parseMIMEWhitespaces(from: &index)
+      guard let _ = CRLFParser<Input.SubSequence>.parse(input, from: &index) else {
+        return nil
+      }
+      return index
+    }
+
+    if let wspCRLFIndex = `__parse[*WSP CRLF]`() {
+      currentIndex = wspCRLFIndex
+    }
+
+    guard let _ = self.parseMIMEWhitespaces(from: &currentIndex) else {
+      return nil
+    }
+
+    return (input[..<currentIndex], currentIndex)
+  }
+}
+
 
 /// A parser that succeeds in parsing only if both two parsers succeed in parsing.
 public struct CombinedParser<Input, FirstParser, SecondParser>: StringParser

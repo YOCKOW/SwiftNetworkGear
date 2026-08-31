@@ -123,6 +123,12 @@ private let _mimeCharsetChars = _ALPHA.union(_DIGIT).union("!#$%&'+-^_`{}~")
 /// `mime-charsetc` defined in [RFC 8187](https://datatracker.ietf.org/doc/html/rfc8187#section-3.2.1).
 private let _mimeCharsetCharsInExtendedValue = _mimeCharsetChars.subtracting("'")
 
+
+// MARK: - Internet Message Format (RFC 5322)
+
+
+
+
 // MARK: - UInt8 extension
 
 extension Unicode.UTF8.CodeUnit {
@@ -160,6 +166,10 @@ extension Unicode.UTF8.CodeUnit {
   /// Whitespace used for `OWS`(optional whitespace) or `RWS`(required whitespace).
   @inlinable
   internal var _isHTTPWhitespace: Bool { _isSpace || _isHorizontalTab }
+
+  /// `WSP`
+  @inlinable
+  internal var _isMIMEWhitespace: Bool { _isSpace || _isHorizontalTab }
 
   /// `"`
   @usableFromInline
