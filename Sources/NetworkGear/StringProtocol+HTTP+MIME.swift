@@ -1,5 +1,5 @@
 /***************************************************************************************************
- StringProtocol+HTTP.swift
+ StringProtocol+HTTP+MIME.swift
    © 2017-2018,2023,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
