@@ -20,5 +20,6 @@ extension URL {
 internal let _packageRoot = URL(fileURLWithPath: #filePath)._deletingLastPathComponent(5)
 internal let _sourcesDirectory = _packageRoot.appendingPathComponent("Sources", isDirectory: true)
 internal let _mainModuleDirectory = _sourcesDirectory.appendingPathComponent("NetworkGear", isDirectory: true)
+internal let _mimeModuleDirectory = _mainModuleDirectory.appending(component: "MIME", directoryHint: .isDirectory)
 internal let _httpModuleDirectory = _mainModuleDirectory.appendingPathComponent("HTTP", isDirectory: true)
 

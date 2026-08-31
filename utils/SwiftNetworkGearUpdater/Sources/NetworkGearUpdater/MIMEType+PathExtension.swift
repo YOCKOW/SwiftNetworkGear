@@ -59,7 +59,7 @@ public final class MIMETypePathExtension: CodeUpdaterDelegate {
   }
   
   public var destinationURL: URL {
-    return _httpModuleDirectory.appendingPathComponent(self.identifier).appendingPathExtension("swift")
+    return _mimeModuleDirectory.appending(component: self.identifier).appendingPathExtension("swift")
   }
   
   public func prepare(sourceURL: URL) async throws -> IntermediateDataContainer<IntermediateDataType> {
