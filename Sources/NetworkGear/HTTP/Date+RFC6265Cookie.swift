@@ -325,7 +325,7 @@ extension _UTF8Parser {
     guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isComma) else {
       return nil
     }
-    guard let _ = self.parseSpaces(from: &index) else {
+    guard let _ = self.parseHTTPWhitespaces(from: &index) else {
       return nil
     }
     currentIndex = index
@@ -334,7 +334,7 @@ extension _UTF8Parser {
 
   private func _parseSpaceGMT(from currentIndex: inout Input.Index) -> Input.SubSequence? {
     var index = currentIndex
-    guard let _ = self.parseSpaces(from: &index) else {
+    guard let _ = self.parseHTTPWhitespaces(from: &index) else {
       return nil
     }
     guard let gmt = self.parseASCIICaseInsensitivePrefix("GMT", from: &index) else {
@@ -362,7 +362,7 @@ extension _UTF8Parser {
       return nil
     }
 
-    guard let _ = self.parseSpaces(from: &index) else {
+    guard let _ = self.parseHTTPWhitespaces(from: &index) else {
       return nil
     }
 

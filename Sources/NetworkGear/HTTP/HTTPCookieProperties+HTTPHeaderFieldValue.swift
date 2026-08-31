@@ -177,14 +177,14 @@ where Input: StringProtocol {
     properties.lastAccessDate = now
 
     func __parseSeparator() -> Bool {
-      _ = self.parseSpaces(from: &currentIndex)
+      _ = self.parseHTTPWhitespaces(from: &currentIndex)
       guard let _ = self.readCurrentCodeUnit(
         at: &currentIndex,
         ifAllowedCodeUnit: \._isSemicolon
       ) else {
         return false
       }
-      _ = self.parseSpaces(from: &currentIndex)
+      _ = self.parseHTTPWhitespaces(from: &currentIndex)
       return true
     }
 

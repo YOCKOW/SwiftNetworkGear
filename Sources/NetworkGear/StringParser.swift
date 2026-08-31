@@ -183,7 +183,7 @@ extension _UTF8Parser {
   }
 
   @inlinable
-  func parseSpaces(
+  func parseHTTPWhitespaces(
     from currentIndex: inout Input.UTF8View.Index,
     minCount: Int = 1,
     maxCount: Int = .max
