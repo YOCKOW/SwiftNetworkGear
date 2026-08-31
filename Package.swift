@@ -31,7 +31,7 @@ let package = Package(
     .package(url: "https://github.com/YOCKOW/SwiftRanges.git", from: "4.0.1"),
     .package(url: "https://github.com/YOCKOW/SwiftTemporaryFile.git", from: "5.0.0"),
     .package(url: "https://github.com/YOCKOW/SwiftUnicodeSupplement.git", from: "2.0.0"),
-    .package(url: "https://github.com/YOCKOW/ySwiftExtensions.git", from: "2.2.1"),
+    .package(url: "https://github.com/YOCKOW/ySwiftExtensions.git", from: "2.3.0"),
   ],
   targets: [
     // Targets are the basic building blocks of a package. A target can define a module or a test suite.
@@ -72,7 +72,9 @@ let package = Package(
     .target(name: "sockaddr_tests", dependencies: [], path:"Tests/sockaddr-tests"),
     .target(
       name: "_NetworkGearTestSupport",
-      dependencies: [],
+      dependencies: [
+        "NetworkGear",
+      ],
       path: "Tests/NetworkGearTestSupport"
     ),
     .testTarget(

@@ -1,5 +1,5 @@
 /* *************************************************************************************************
- StringProtocol+PercentEncodedString.swift
+ PercentEncodedString.swift
    © 2018,2023,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
@@ -106,11 +106,11 @@ extension StringProtocol {
   }
 
   @inlinable
-  public func addingPercentEncoding(whereAllowedUnicodeScalars isAllowedUnicodeScalar: (Unicode.Scalar) throws -> Bool) rethrows -> String? {
+  public func addingPercentEncoding(whereAllowedUnicodeScalars isAllowedUnicodeScalar: (Unicode.Scalar) throws -> Bool) rethrows -> String {
     return try self.addingPercentEncoding(
       usingStringEncoding: .utf8,
       whereAllowedUnicodeScalars: isAllowedUnicodeScalar
-    )
+    )!
   }
 
   public func addingPercentEncoding(
@@ -129,55 +129,11 @@ extension StringProtocol {
   @inlinable
   public func addingPercentEncoding(
     whereAllowedASCIICharacters isAllowedASCIICharacter: (Unicode.UTF8.CodeUnit) throws -> Bool
-  ) rethrows -> String? {
+  ) rethrows -> String {
     return try self.addingPercentEncoding(
       usingStringEncoding: .utf8,
       whereAllowedASCIICharacters: isAllowedASCIICharacter
-    )
-  }
-}
-
-private extension StringProtocol {
-  func _utf8CodeUnit(at index: String.Index) -> UTF8.CodeUnit {
-    return self.utf8[index]
-  }
-
-  func _utf8Index(after index: String.Index) -> String.Index {
-    return self.utf8.index(after: index)
-  }
-
-  func _formUTF8Index(after index: inout String.Index) {
-    self.utf8.formIndex(after: &index)
-  }
-
-  func _utf8Index(_ index: String.Index, offsetBy distance: Int) -> String.Index {
-    return self.utf8.index(index, offsetBy: distance)
-  }
-}
-
-/// A workaround for the feature(?) that `UTF8View` is not `BidirectionalCollection`.
-///
-/// See Also: [Can we require StringProtocol.UTF8View be a BidirectionalCollection?](https://forums.swift.org/t/can-we-require-stringprotocol-utf8view-be-a-bidirectionalcollection/44951)
-private protocol _BidirectionalUTF8View: BidirectionalCollection,
-                                         Sendable where Element == UTF8.CodeUnit,
-                                                        Index == String.Index {}
-extension String.UTF8View: _BidirectionalUTF8View {}
-extension Substring.UTF8View: _BidirectionalUTF8View {}
-
-private protocol _BidirectionalUTF8ViewAvailableStringProtocol: Sendable {
-  associatedtype BidirectionalUTF8View: _BidirectionalUTF8View
-  var utf8: BidirectionalUTF8View { get }
-}
-extension String: _BidirectionalUTF8ViewAvailableStringProtocol {}
-extension Substring: _BidirectionalUTF8ViewAvailableStringProtocol {}
-
-extension _BidirectionalUTF8ViewAvailableStringProtocol {
-  func _utf8Index(before index: String.Index) -> String.Index {
-    return self.utf8.index(before: index)
-  }
-
-  func _formUTF8Index(before index: inout String.Index) {
-    return self.utf8.formIndex(before: &index)
+    )!
   }
 }
 
@@ -267,6 +223,7 @@ public struct PercentEncodedString: Sendable, Equatable, Hashable {
   ///   - encodedString: A string that has been already **validated** as a percent-encoded string.
   ///
   /// - Note: This initializer should not be `public`.
+  @usableFromInline
   internal init<S>(encodedString: S) where S: StringProtocol {
     if case let substring as Substring = encodedString {
       self._encodedString = substring
@@ -278,6 +235,32 @@ public struct PercentEncodedString: Sendable, Equatable, Hashable {
   }
 }
 
+extension StringProtocol {
+  @inlinable
+  public func percentEncodedString(
+    usingStringEncoding stringEncoding: String.Encoding,
+    whereAllowedASCIICharacters isAllowedASCIICharacter: (Unicode.UTF8.CodeUnit) throws -> Bool
+  ) rethrows -> PercentEncodedString? {
+    guard let encodedString = try self.addingPercentEncoding(
+      usingStringEncoding: stringEncoding,
+      whereAllowedASCIICharacters: isAllowedASCIICharacter
+    ) else {
+      return nil
+    }
+    return PercentEncodedString(encodedString: encodedString)
+  }
+
+  @inlinable
+  public func percentEncodedString(
+    whereAllowedASCIICharacters isAllowedASCIICharacter: (Unicode.UTF8.CodeUnit) throws -> Bool
+  ) rethrows -> PercentEncodedString {
+    return PercentEncodedString(
+      encodedString: try self.addingPercentEncoding(
+        whereAllowedASCIICharacters: isAllowedASCIICharacter
+      )
+    )
+  }
+}
 
 /// A parser to parse a percent-encoded string.
 public struct PercentEncodedStringParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
@@ -442,7 +425,7 @@ extension PercentEncodedString: Sequence, Collection {
     }
   }
 
-  private func _index(after i: Index) -> (nextIndex: Index, currentElementIsPercentEncoded: Bool) {
+  fileprivate func _index(after i: Index) -> (nextIndex: Index, currentElementWasPercentEncoded: Bool) {
     let stringIndex = i._stringIndex
     let byte = self._encodedString._utf8CodeUnit(at: stringIndex)
     if byte._isPercentSign {
@@ -463,22 +446,6 @@ extension PercentEncodedString: Sequence, Collection {
 
   public var isEmpty: Bool {
     return self._encodedString.isEmpty
-  }
-
-  /// The end index to which `utf8Count` of the subsequence from start is less than or equal to `maxUTF8Count`.
-  public func endIndex(whereMaxUTF8Count maxUTF8Count: Int) -> Index {
-    let endIndex = self.endIndex
-    var currentIndex = self.startIndex
-    var currentUTF8Count = 0
-    while currentIndex < endIndex {
-      let (nextIndex, currentElementIsPercentEncoded) = _index(after: currentIndex)
-      currentUTF8Count += currentElementIsPercentEncoded ? 3 : 1
-      if currentUTF8Count > maxUTF8Count {
-        return currentIndex
-      }
-      currentIndex = nextIndex
-    }
-    return currentIndex
   }
 
   public struct Iterator: IteratorProtocol {
@@ -515,33 +482,90 @@ extension PercentEncodedString: Sequence, Collection {
 }
 
 extension PercentEncodedString: BidirectionalCollection {
-  public func index(before i: Index) -> Index {
+  fileprivate func _index(before i: Index) -> (previousIndex: Index, currentElementIsPercentEncoded: Bool) {
     // Determine if the previous `Element` is percent encoded or not.
+
+    FastPath: if let isPercentEncoded = self._encodedString[..<i._stringIndex].utf8.withContiguousStorageIfAvailable({ subUTF8 in
+      if subUTF8.count < 3 {
+        return false
+      }
+      return (
+        subUTF8[subUTF8.endIndex - 3]._isPercentSign &&
+        subUTF8[subUTF8.endIndex - 2]._isHexDigit &&
+        subUTF8[subUTF8.endIndex - 1]._isHexDigit
+      )
+    }) {
+      let stringEndIndex = self._encodedString._utf8Index(
+        i._stringIndex,
+        offsetBy: isPercentEncoded ? -3 : -1
+      )
+      return (Index(stringIndex: stringEndIndex), isPercentEncoded)
+    }
+
+    // --- Slow Path ---
 
     let prevStringIndex = self._encodedString._utf8Index(before: i._stringIndex)
     if prevStringIndex == self._encodedString.startIndex {
-      return Index(stringIndex: prevStringIndex)
+      return (Index(stringIndex: prevStringIndex), false)
     }
 
     let prevByte = self._encodedString._utf8CodeUnit(at: prevStringIndex)
     if !prevByte._isHexDigit {
-      return Index(stringIndex: prevStringIndex)
+      return (Index(stringIndex: prevStringIndex), false)
     }
 
     let prevPrevStringIndex = self._encodedString._utf8Index(before: prevStringIndex)
     if prevPrevStringIndex == self._encodedString.startIndex {
-      return Index(stringIndex: prevStringIndex)
+      return (Index(stringIndex: prevStringIndex), false)
     }
 
     let prevPrevByte = self._encodedString._utf8CodeUnit(at: prevPrevStringIndex)
     if !prevPrevByte._isHexDigit {
-      return Index(stringIndex: prevStringIndex)
+      return (Index(stringIndex: prevStringIndex), false)
     }
 
     let prevPrevPrevStringIndex = self._encodedString._utf8Index(before: prevPrevStringIndex)
     guard self._encodedString._utf8CodeUnit(at: prevPrevPrevStringIndex)._isPercentSign else {
-      return Index(stringIndex: prevStringIndex)
+      return (Index(stringIndex: prevStringIndex), false)
     }
-    return Index(stringIndex: prevPrevPrevStringIndex)
+    return (Index(stringIndex: prevPrevPrevStringIndex), true)
+  }
+
+  public func index(before i: Index) -> Index {
+    return self._index(before: i).previousIndex
+  }
+}
+
+extension PercentEncodedString {
+  /// The end index to which `utf8Count` of the subsequence from start is less than or equal to `maxUTF8Count`.
+  public func endIndex(whereMaxUTF8Count maxUTF8Count: Int) -> Index {
+    if self._encodedString.isContiguousUTF8 {
+      var currentCount = self._encodedString.utf8.count
+
+      // Backwards if desirable
+      if currentCount - maxUTF8Count < maxUTF8Count {
+        var endIndex = self.endIndex
+        while currentCount > maxUTF8Count {
+          let (prevIndex, isPercentEncoded) = _index(before: endIndex)
+          currentCount -= isPercentEncoded ? 3 : 1
+          endIndex = prevIndex
+        }
+        return endIndex
+      }
+    }
+
+    // Forwards
+    let endIndex = self.endIndex
+    var currentIndex = self.startIndex
+    var currentUTF8Count = 0
+    while currentIndex < endIndex {
+      let (nextIndex, currentElementWasPercentEncoded) = _index(after: currentIndex)
+      currentUTF8Count += currentElementWasPercentEncoded ? 3 : 1
+      if currentUTF8Count > maxUTF8Count {
+        return currentIndex
+      }
+      currentIndex = nextIndex
+    }
+    return currentIndex
   }
 }

@@ -148,12 +148,12 @@ import Testing
     try await client.setURL(try #require(URL(string: "https://httpcan.org/post")))
     try await client.perform(delegate: delegate)
 
-    let response = try delegate.responseBody(as: Data.self).map {
+    let response = try #require(try delegate.responseBody(as: Data.self).map({
       return try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
-    }
-    #expect(response?.files?["file"] == "MY TEXT.")
-    #expect(response?.form?["name1"] == "VALUE1")
-    #expect(response?.form?["name2"] == "VALUE2")
+    }))
+    #expect(response.files?["file"]?.content == "MY TEXT.")
+    #expect(response.form?["name1"] == "VALUE1")
+    #expect(response.form?["name2"] == "VALUE2")
   }
 
   @Test func test_performPut() async throws {

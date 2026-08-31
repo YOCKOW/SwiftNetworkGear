@@ -95,13 +95,15 @@ extension ContentDisposition: Equatable, Hashable {
   public static func ==(lhs:ContentDisposition, rhs:ContentDisposition) -> Bool {
     return (
       lhs.type == rhs.type &&
-      lhs.parameterList?._groupedParameters == rhs.parameterList?._groupedParameters
+      lhs.parameterList?._groupedParameters.nonSectioned == rhs.parameterList?._groupedParameters.nonSectioned &&
+      lhs.parameterList?._groupedParameters.sectioned == rhs.parameterList?._groupedParameters.sectioned
     )
   }
   
   public func hash(into hasher:inout Hasher) {
     hasher.combine(self.type)
-    hasher.combine(self.parameterList?._groupedParameters)
+    hasher.combine(self.parameterList?._groupedParameters.nonSectioned)
+    hasher.combine(self.parameterList?._groupedParameters.sectioned)
   }
 }
 
@@ -116,6 +118,121 @@ extension ContentDisposition: CustomStringConvertible {
       }
     }
     return desc
+  }
+}
+
+extension ContentDisposition {
+  public enum MIMESafeDescriptionError: Error {
+    case dispositionTypeTooLong
+    case failedToConvertParameterListForMIME
+    case unexpectedParameterDescription(HTTPHeaderFieldParameter)
+  }
+
+  public var mimeSafeDescription: String {
+    get throws(MIMESafeDescriptionError) {
+      let nPerLine = 76
+      var remainingUTF8CountInCurrentLine = nPerLine
+
+      var descData = Data()
+
+      func __append(_ byte: UTF8.CodeUnit) {
+        assert(remainingUTF8CountInCurrentLine > 0)
+        descData.append(byte)
+        remainingUTF8CountInCurrentLine -= 1
+      }
+
+      func __appendCRLFSP() {
+        if descData.last == ._space {
+          descData = descData.dropLast()
+          assert(descData.last == ._semicolon)
+        }
+        descData.append(._carriageReturn)
+        descData.append(._lineFeed)
+        descData.append(._space)
+        remainingUTF8CountInCurrentLine = nPerLine - 1
+      }
+
+      func __appendSemicolonSP() {
+        if remainingUTF8CountInCurrentLine < 1 {
+          __appendCRLFSP()
+        }
+        __append(._semicolon)
+        if remainingUTF8CountInCurrentLine <= 1 {
+          __appendCRLFSP()
+        } else {
+          __append(._space)
+        }
+      }
+
+      func __append(_ string: String) -> Bool {
+        if string.isContiguousUTF8 {
+          let utf8 = string.utf8
+          let utf8Count = utf8.count
+
+          func __appendUTF8() {
+            descData.append(contentsOf: utf8)
+            remainingUTF8CountInCurrentLine -= utf8Count
+            assert(remainingUTF8CountInCurrentLine >= 0)
+          }
+
+          if utf8Count < remainingUTF8CountInCurrentLine {
+            __appendUTF8()
+            return true
+          } else if utf8Count == remainingUTF8CountInCurrentLine {
+            __appendUTF8()
+            __appendCRLFSP()
+            return true
+          } else {
+            guard utf8Count < nPerLine else {
+              return false
+            }
+            __appendCRLFSP()
+            __appendUTF8()
+            return true
+          }
+        } else {
+          switch string._compareUTF8Count(with: remainingUTF8CountInCurrentLine) {
+          case .orderedAscending:
+            string.utf8.forEach(__append)
+            return true
+          case .orderedSame:
+            string.utf8.forEach(__append)
+            __appendCRLFSP()
+            return true
+          case .orderedDescending:
+            if string._compareUTF8Count(with: nPerLine - 1) == .orderedDescending {
+              return false
+            }
+            __appendCRLFSP()
+            string.utf8.forEach(__append)
+            return true
+          }
+        }
+      }
+
+      // "Content-Disposition: "
+      remainingUTF8CountInCurrentLine -= HTTPHeaderFieldName.contentDisposition.rawValue.utf8.count + 2
+
+      let typeDesc = self.type.rawValue
+      guard __append(typeDesc) else {
+        throw .dispositionTypeTooLong
+      }
+
+      if let parameterList = self.parameterList {
+        guard let fixedList = parameterList.fixed(for: .mime, sortParameters: true) else {
+          throw .failedToConvertParameterListForMIME
+        }
+
+        for parameter in fixedList {
+          __appendSemicolonSP()
+          guard __append(parameter.description) else {
+            throw .unexpectedParameterDescription(parameter)
+          }
+        }
+      }
+
+      return String(decoding: descData, as: UTF8.self)
+    }
   }
 }
 

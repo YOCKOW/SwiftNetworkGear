@@ -5,6 +5,7 @@
      See "LICENSE.txt" for more information.
  ************************************************************************************************ */
 
+import Dispatch
 import Foundation
 import yExtensions
 
@@ -797,15 +798,80 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
     }
   }
 
-  private let _string: ASCIICaseInsensitiveString?
+  private final class _TagDescription: @unchecked Sendable {
+    private let _queue: DispatchQueue = .init(
+      label: "jp.YOCKOW.NetworkGear.LanguageTagString",
+      attributes: .concurrent
+    )
+
+    private var _string: ASCIICaseInsensitiveString? = nil
+
+    func getDescription(from tag: _Tag) -> ASCIICaseInsensitiveString {
+      return _queue.sync(flags: .barrier) {
+        if let string = _string {
+          return string
+        }
+
+        func __generate() -> ASCIICaseInsensitiveString {
+          switch tag {
+          case .languageTag(
+            let language,
+            let optScript,
+            let optRegion,
+            let optVariants,
+            let optExtensions,
+            let optPrivateUseTag
+          ):
+            var description = language.description
+
+            func __appendDescription<T>(of optSomething: T?) where T: CustomStringConvertible {
+              guard let something = optSomething else {
+                return
+              }
+              description += "-\(something.description)"
+            }
+
+            __appendDescription(of: optScript)
+            __appendDescription(of: optRegion)
+            optVariants.map({ $0.forEach(__appendDescription(of:)) })
+            optExtensions.map({ $0.forEach(__appendDescription(of:)) })
+            __appendDescription(of: optPrivateUseTag)
+
+            return description._caseInsensitive
+          case .privateUseTag(let privateUseTag):
+            return privateUseTag.description._caseInsensitive
+          case .grandfatheredTag(let grandfatheredTag):
+            return grandfatheredTag.description._caseInsensitive
+          }
+        } // __generate
+        let generated = __generate()
+        self._string = generated
+        return generated
+      }
+    }
+
+    var isNil: Bool {
+      return _queue.sync(flags: .barrier) { _string.isNil }
+    }
+
+    init(_ string: ASCIICaseInsensitiveString?) {
+      self._string = string
+    }
+  }
+
+  private let _tagDescription: _TagDescription
 
   private let _tag: _Tag
 
+  internal var _description: ASCIICaseInsensitiveString {
+    return self._tagDescription.getDescription(from: _tag)
+  }
+
   public static func ==(lhs: LanguageTagString, rhs: LanguageTagString) -> Bool {
-    guard let lString = lhs._string, let rString = rhs._string else {
+    if lhs._tagDescription.isNil || rhs._tagDescription.isNil {
       return lhs._tag == rhs._tag
     }
-    return lString == rString
+    return lhs._description == rhs._description
   }
 
   public func hash(into hasher: inout Hasher) {
@@ -870,39 +936,11 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
   }
 
   public var description: String {
-    if let string = self._string {
-      return string._string
-    }
+    return _description._string
+  }
 
-    switch self._tag {
-    case .languageTag(
-      let language,
-      let optScript,
-      let optRegion,
-      let optVariants,
-      let optExtensions,
-      let optPrivateUseTag
-    ):
-      var description = language.description
-
-      func __appendDescription<T>(of optSomething: T?) where T: CustomStringConvertible {
-        guard let something = optSomething else {
-          return
-        }
-        description += "-\(something.description)"
-      }
-
-      __appendDescription(of: optScript)
-      __appendDescription(of: optRegion)
-      optVariants.map({ $0.forEach(__appendDescription(of:)) })
-      optExtensions.map({ $0.forEach(__appendDescription(of:)) })
-      __appendDescription(of: optPrivateUseTag)
-      return description
-    case .privateUseTag(let privateUseTag):
-      return privateUseTag.description
-    case .grandfatheredTag(let grandfatheredTag):
-      return grandfatheredTag.description
-    }
+  internal var utf8Count: Int {
+    return _description.utf8.count
   }
 
   fileprivate init(
@@ -912,7 +950,7 @@ public struct LanguageTagString: Sendable, Equatable, Hashable, CustomStringConv
     var tag = parsedTag
     tag.emptyToNil()
 
-    self._string = string
+    self._tagDescription = .init(string)
     self._tag = tag
   }
 

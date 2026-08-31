@@ -1044,7 +1044,7 @@ extension MIMEType: CustomStringConvertible {
             desc += quotedString
           } else {
             // FIXME: This may not be the correct way...
-            desc += value.addingPercentEncoding(whereAllowedASCIICharacters: \._isAvailableInHTTPToken)!
+            desc += value.addingPercentEncoding(whereAllowedASCIICharacters: \._isAvailableInHTTPToken)
           }
         }
       }
@@ -1065,6 +1065,29 @@ extension MIMEType: CustomStringConvertible {
   @inlinable
   public var description: String {
     return _description(sortParameters: false)
+  }
+}
+
+extension CodingUserInfoKey {
+  public static let mimeTypeSortParameters: CodingUserInfoKey = .init(rawValue: "MIMEType: Sort parameters")!
+}
+extension MIMEType: Decodable, Encodable {
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    let string = try container.decode(String.self)
+    guard let mimeType = MIMEType(string) else {
+      throw DecodingError.dataCorrupted(.init(
+        codingPath: decoder.codingPath,
+        debugDescription: "Invalid MIME type"
+      ))
+    }
+    self = mimeType
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    let sortParameters = encoder.userInfo[.mimeTypeSortParameters] as? Bool == true
+    var container = encoder.singleValueContainer()
+    try container.encode(self._description(sortParameters: sortParameters))
   }
 }
 

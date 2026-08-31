@@ -10,6 +10,32 @@ import Foundation
 import Testing
 import yExtensions
 
+private func _regularName<S>(
+  _ string: S,
+  sectionIndex: Int? = nil,
+  _ comment: @autoclosure () -> Comment? = nil,
+  sourceLocation: SourceLocation = #_sourceLocation
+) throws -> HTTPHeaderFieldParameter.Name where S: StringProtocol {
+  return try #require(
+    HTTPHeaderFieldParameter.Name(attribute: string, sectionIndex: sectionIndex),
+    comment(),
+    sourceLocation: sourceLocation
+  )
+}
+
+private func _extendedName<S>(
+  _ string: S,
+  sectionIndex: Int? = nil,
+  _ comment: @autoclosure () -> Comment? = nil,
+  sourceLocation: SourceLocation = #_sourceLocation
+) throws -> HTTPHeaderFieldParameter.ExtendedName where S: StringProtocol {
+  return try #require(
+    HTTPHeaderFieldParameter.ExtendedName(attribute: string, sectionIndex: sectionIndex),
+    comment(),
+    sourceLocation: sourceLocation
+  )
+}
+
 @Suite struct HTTPHeaderFieldParameterTests {
   typealias NameParserTestPair = (string: String, expect: @Sendable (_ParameterName) throws -> Void)
 
@@ -117,9 +143,66 @@ import yExtensions
     #expect(name.sectionIndex == pair.expected.sectionIndex)
   }
 
+  @Test func test_nameUTF8Count() {
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo")?.utf8Count == 3)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 0)?.utf8Count == 5)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 10)?.utf8Count == 6)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 100)?.utf8Count == 7)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 1000)?.utf8Count == 8)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 10000)?.utf8Count == 9)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 99999)?.utf8Count == 9)
+    #expect(HTTPHeaderFieldParameter.Name(attribute: "foo", sectionIndex: 100000)?.utf8Count == 10)
+
+    #expect(HTTPHeaderFieldParameter.ExtendedName(attribute: "foo")?.utf8Count == "foo*".utf8.count)
+    #expect(HTTPHeaderFieldParameter.ExtendedName(attribute: "foo", sectionIndex: 0)?.utf8Count == "foo*0*".utf8.count)
+    #expect(HTTPHeaderFieldParameter.ExtendedName(attribute: "foo", sectionIndex: 99999)?.utf8Count == "foo*99999*".utf8.count)
+    #expect(HTTPHeaderFieldParameter.ExtendedName(attribute: "foo", sectionIndex: 100000)?.utf8Count == "foo*100000*".utf8.count)
+  }
+
   @Test func test_value() throws {
-    #expect(try #require(HTTPHeaderFieldParameter.Value("token-value")).description == "token-value")
-    #expect(try #require(HTTPHeaderFieldParameter.Value(#""quoted value""#)).description == #""quoted value""#)
+    let tokenValue = try #require(HTTPHeaderFieldParameter.Value("token-value"))
+    let quotedValue = try #require(HTTPHeaderFieldParameter.Value(#""quoted value""#))
+
+    #expect(tokenValue.description == "token-value")
+    #expect(quotedValue.description == #""quoted value""#)
+
+    division_test: do {
+      func __assert(
+        value: HTTPHeaderFieldParameter.Value,
+        divisionCount count: Int,
+        expected: (firstPart: String, secondPart: String?),
+        _ comment: @autoclosure () -> Comment? = nil,
+        sourceLocation: SourceLocation = #_sourceLocation
+      ) {
+        let divided = value.divide(whereFirstPartMaxUTF8Count: count)
+        #expect(
+          divided.0.description.utf8.count <= count,
+          Comment(rawValue: "[Count] " + (comment()?.rawValue ?? "")),
+          sourceLocation: sourceLocation
+        )
+        #expect(
+          divided.0.description == expected.firstPart,
+          Comment(rawValue: "[First Part] " + (comment()?.rawValue ?? "")),
+          sourceLocation: sourceLocation
+        )
+        #expect(
+          divided.1?.description == expected.secondPart,
+          Comment(rawValue: "[Second Part] " + (comment()?.rawValue ?? "")),
+          sourceLocation: sourceLocation
+        )
+      }
+
+      __assert(value: tokenValue, divisionCount: 99, expected: ("token-value", nil))
+      __assert(value: tokenValue, divisionCount: 11, expected: ("token-value", nil))
+      __assert(value: tokenValue, divisionCount: 10, expected: ("token-valu", "e"))
+      __assert(value: tokenValue, divisionCount:  9, expected: ("token-val", "ue"))
+      __assert(value: tokenValue, divisionCount:  5, expected: ("token", "-value"))
+
+      __assert(value: quotedValue, divisionCount: 99, expected: (#""quoted value""#, nil))
+      __assert(value: quotedValue, divisionCount: 14, expected: (#""quoted value""#, nil))
+      __assert(value: quotedValue, divisionCount: 13, expected: (#""quoted valu""#, #""e""#))
+      __assert(value: quotedValue, divisionCount:  8, expected: (#""quoted""#, #"" value""#))
+    }
   }
 
   @Test func test_extendedValue() throws {
@@ -139,6 +222,139 @@ import yExtensions
     #expect(value2.stringEncoding == .utf8)
     #expect(value2.locale?.language.languageCode?.identifier == "en")
     #expect(value2.decodedValue == "£ rates")
+
+    division_test: do {
+      func __assert(
+        value: HTTPHeaderFieldParameter.ExtendedValue,
+        divisionCount: Int,
+        expected: (firstPart: String, secondPart: String?)?,
+        sourceLocation: SourceLocation = #_sourceLocation
+      ) throws {
+        guard let divided = value.divide(whereFirstPartMaxUTF8Count: divisionCount) else {
+          #expect(expected.isNil, "Division must fail.", sourceLocation: sourceLocation)
+          return
+        }
+        guard let expected = expected else {
+          Issue.record("`expected` must not be nil.", sourceLocation: sourceLocation)
+          return
+        }
+        let expectedFirstPart = try #require(
+          HTTPHeaderFieldParameter.ExtendedValue(expected.firstPart),
+          "Create Expected First Part",
+          sourceLocation: sourceLocation
+        )
+        let expectedSecondPart = try expected.secondPart.map({
+          try #require(
+            HTTPHeaderFieldParameter.InformationlessExtendedValue($0),
+            "Create Expected Second Part",
+            sourceLocation: sourceLocation
+          )
+        })
+        #expect(divided.0 == expectedFirstPart, "First Part", sourceLocation: sourceLocation)
+        #expect(divided.1 == expectedSecondPart, "Second Part", sourceLocation: sourceLocation)
+      }
+
+      try __assert(
+        value: value1,
+        divisionCount: 99,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82%ac%20rates", nil)
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 39,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82%ac%20rates", nil)
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 38,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82%ac%20rate", "s")
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 34,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82%ac%20", "rates")
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 33,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82%ac", "%20rates")
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 31,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82%ac", "%20rates")
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 30,
+        expected: ("UTF-8''%c2%a3%20and%20%e2%82", "%ac%20rates")
+      )
+      try __assert(
+        value: value1,
+        divisionCount: 9,
+        expected: nil
+      )
+
+      try __assert(
+        value: value2,
+        divisionCount: 99,
+        expected: ("utf-8'en'%C2%A3%20rates", nil)
+      )
+      try __assert(
+        value: value2,
+        divisionCount: 23,
+        expected: ("utf-8'en'%C2%A3%20rates", nil)
+      )
+      try __assert(
+        value: value2,
+        divisionCount: 18,
+        expected: ("utf-8'en'%C2%A3%20", "rates")
+      )
+      try __assert(
+        value: value2,
+        divisionCount: 17,
+        expected: ("utf-8'en'%C2%A3", "%20rates")
+      )
+      try __assert(
+        value: value2,
+        divisionCount: 11,
+        expected: nil
+      )
+    }
+  }
+
+  @Test func test_informationlessExtendedValue() throws {
+    let value = try #require(
+      HTTPHeaderFieldParameter.InformationlessExtendedValue("%c2%a3%20and%20%e2%82%ac%20rates")
+    )
+    func __assert(
+      divisionCount: Int,
+      expected: (firstPart: String, secondPart: String?),
+      sourceLocation: SourceLocation = #_sourceLocation
+    ) throws {
+      let divided = value.divide(whereFirstPartMaxUTF8Count: divisionCount)
+      let expectedFirstPart = try #require(
+        HTTPHeaderFieldParameter.InformationlessExtendedValue(expected.firstPart),
+        "Create Expected First Part",
+        sourceLocation: sourceLocation
+      )
+      let expectedSecondPart = try expected.secondPart.map({
+        try #require(
+          HTTPHeaderFieldParameter.InformationlessExtendedValue($0),
+          "Create Expected Second Part",
+          sourceLocation: sourceLocation
+        )
+      })
+      #expect(divided.0 == expectedFirstPart, "First Part", sourceLocation: sourceLocation)
+      #expect(divided.1 == expectedSecondPart, "Second Part", sourceLocation: sourceLocation)
+    }
+
+    try __assert(divisionCount: 99, expected: ("%c2%a3%20and%20%e2%82%ac%20rates", nil))
+    try __assert(divisionCount: 32, expected: ("%c2%a3%20and%20%e2%82%ac%20rates", nil))
+    try __assert(divisionCount: 31, expected: ("%c2%a3%20and%20%e2%82%ac%20rate", "s"))
+    try __assert(divisionCount: 27, expected: ("%c2%a3%20and%20%e2%82%ac%20", "rates"))
+    try __assert(divisionCount: 26, expected: ("%c2%a3%20and%20%e2%82%ac", "%20rates"))
+    try __assert(divisionCount: 24, expected: ("%c2%a3%20and%20%e2%82%ac", "%20rates"))
   }
 
   @Test func test_name_value_initializers() {
@@ -208,12 +424,210 @@ import yExtensions
   }
 
   @Test func test_listParser() throws {
-    let string = "filename=\"my-file.txt\"; \u{0D}\u{0A}  filename*=UTF-8''%E7%A7%81%E3%81%AE%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB.txt;\u{0D}\u{0A}  my-parameter*0=zero; my-parameter*1=\"-one\";"
-    let list = try #require(HTTPHeaderFieldParameterList(string))
+    let CRLF = "\u{0D}\u{0A}"
+    do {
+      let string = "filename=\"my-file.txt\"; \(CRLF)  filename*=UTF-8''%E7%A7%81%E3%81%AE%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB.txt;\(CRLF)  my-parameter*0=zero; my-parameter*1=\"-one\";"
+      let list = try #require(HTTPHeaderFieldParameterList(string))
 
-    #expect(list["filename"]?.value == "私のファイル.txt")
-    #expect(list["my-parameter", sectionIndex: 0]?.value == "zero")
-    #expect(list["my-parameter", sectionIndex: 1]?.value == "-one")
-    #expect(list.combinedValue(for: "my-parameter") == "zero-one")
+      #expect(list["filename"]?.value == "私のファイル.txt")
+      #expect(list["my-parameter", sectionIndex: 0]?.value == "zero")
+      #expect(list["my-parameter", sectionIndex: 1]?.value == "-one")
+      #expect(list.combinedValue(for: "my-parameter") == "zero-one")
+    }
+
+    do {
+      let string = "title*0*=us-ascii'en'This%20is%20even%20more%20;\(CRLF) title*1*=%2A%2A%2Afun%2A%2A%2A%20;\(CRLF) title*2=\"isn't it!\""
+      let list = try #require(HTTPHeaderFieldParameterList(string))
+
+      #expect(list["title"].isNil)
+      #expect(list["title", sectionIndex: 0]?.isExtended == true)
+      #expect(list["title", sectionIndex: 0]?.extendedValue.isNil == false)
+      #expect(list["title", sectionIndex: 0]?.value == "This is even more ")
+
+      #expect(list["title", sectionIndex: 1]?.isExtended == true)
+      #expect(list["title", sectionIndex: 1]?.informationlessExtendedValue.isNil == false)
+      #expect(list["title", sectionIndex: 1]?.value == "***fun*** ")
+
+      #expect(list["title", sectionIndex: 2]?.isExtended == false)
+      #expect(list["title", sectionIndex: 2]?.regularValue.isNil == false)
+      #expect(list["title", sectionIndex: 2]?.value == "isn't it!")
+
+      #expect(list.combinedValue(for: "title") == "This is even more ***fun*** isn't it!")
+    }
+  }
+
+  @Test func test_fixForHTTP() throws {
+    Test_Fast_Path: do {
+      let list = try #require(HTTPHeaderFieldParameterList("a=regular; a*=UTF-8''extended"))
+      let fixed = try #require(list.fixed(for: .http))
+      #expect(fixed.allParameters.count == 2)
+      #expect(fixed["a"]?.value == "extended")
+      #expect(fixed[try _regularName("a")]?.content == "regular")
+    }
+
+
+    let listString = """
+    p1-1="v1-1-regular"; p1-1*=UTF-8''v1%2D1%2Dextended;
+    p1-2="v1-2-regular";
+    p1-3*=UTF-8''v1%2D3%2Dextended;
+    p2-1="v2-1-regular"; p2-1*=UTF-8''v2%2d1%2dextended;
+      p2-1*0="v2-1-0"; p2-1*1="-v2-1-1";
+    p2-2="v2-2-regular"; p2-2*=UTF-8''v2%2d2%2dextended;
+      p2-2*0*=UTF-8''v2%2d2%2d0; p2-2*1="-v2-2-1";
+    p3-1="v3-1-regular";
+      p3-1*0="v3-1-0"; p3-1*1="-v3-1-1";
+    p3-2="v3-2-regular";
+      p3-2*0*=UTF-8''v3%2d2%2d0; p3-2*1*=%2dv3%2d2%2d1; p3-2*2="-v3-2-2";
+    p4*=us-ascii''v4%2dextended;
+      p4*0="v4-0"; p4*1="-v4-1";
+    p5-a*=shift_jis''v5%2da%2dextended%2dto%2dregular;
+      p5-a*0*=shift_jis''v5%2da%2d0%2d%8Ag%92%A3; p5-a*1*=%2dv5%2da%2d1%2d%8Ag%92%A3;
+    p5-b*=UTF-8''v5%2Db%2D%E6%8B%A1%E5%BC%B5;
+      p5-b*0*=UTF-8''v5%2Db%2D0; p5-b*1*=%2Dv5%2Db%2D1;
+    p5-c*=UTF-8''v5%2Dc%2Dnon%2Dsectioned%2D%E6%8B%A1%E5%BC%B5;
+      p5-c*0*=UTF-8''v5%2Dc%2D0; p5-c*1*=%2Dv5%2Dc%2D1%2D%E6%8B%A1%E5%BC%B5;
+    p6*0*=UTF-8''v6%2D0; p6*1*=%2Dv6%2D1; p6*2="-v6-2";
+    """.split(
+      omittingEmptySubsequences: true,
+      whereSeparator: { $0.isWhitespace || $0.isNewline }
+    ).joined(separator: " ")
+    let list = try #require(HTTPHeaderFieldParameterList(listString))
+    let fixed = try #require(list.fixed(for: .http))
+
+    func __test(
+      _ attribute: String,
+      regular expectedRegularValue: String?,
+      extended expectedExtendedValue: String?,
+      _ comment: @autoclosure () -> Comment? = nil,
+      sourceLocation: SourceLocation = #_sourceLocation
+    ) throws {
+      let regularName = try _regularName(attribute, comment(), sourceLocation: sourceLocation)
+      let extendedName = try _extendedName(attribute, comment(), sourceLocation: sourceLocation)
+      #expect(
+        fixed[regularName]?.content == expectedRegularValue,
+        Comment(rawValue: "[Regular Value for '\(attribute)'] " + (comment()?.rawValue ?? "")),
+        sourceLocation: sourceLocation
+      )
+      #expect(
+        fixed[extendedName]?.decodedValue == expectedExtendedValue,
+        Comment(rawValue: "[Extended Value for '\(attribute)'] " + (comment()?.rawValue ?? "")),
+        sourceLocation: sourceLocation
+      )
+
+      let caseInsensitiveAttribute = ASCIICaseInsensitiveString(attribute)
+      let expectedDefaultValue: String? = expectedExtendedValue ?? expectedRegularValue
+      #expect(
+        fixed[caseInsensitiveAttribute]?.value == expectedDefaultValue,
+        Comment(rawValue: "[Default Value for '\(attribute)'] " + (comment()?.rawValue ?? "")),
+        sourceLocation: sourceLocation
+      )
+    }
+
+    try __test("foo", regular: nil, extended: nil)
+    try __test("p1-1", regular: "v1-1-regular", extended: "v1-1-extended")
+    try __test("p1-2", regular: "v1-2-regular", extended: nil)
+    try __test("p1-3", regular: nil, extended: "v1-3-extended")
+    try __test("p2-1", regular: "v2-1-regular", extended: "v2-1-extended")
+    try __test("p2-2", regular: "v2-2-regular", extended: "v2-2-extended")
+    try __test("p3-1", regular: "v3-1-regular", extended: "v3-1-0-v3-1-1")
+    try __test("p3-2", regular: "v3-2-regular", extended: "v3-2-0-v3-2-1-v3-2-2")
+    try __test("p4", regular: "v4-0-v4-1", extended: "v4-extended")
+    try __test("p5-a", regular: "v5-a-extended-to-regular", extended: "v5-a-0-拡張-v5-a-1-拡張")
+    try __test("p5-b", regular: "v5-b-0-v5-b-1", extended: "v5-b-拡張")
+    try __test("p5-c", regular: nil, extended: "v5-c-non-sectioned-拡張")
+    try __test("p6", regular: "v6-0-v6-1-v6-2", extended: "v6-0-v6-1-v6-2")
+  }
+
+  @Test func test_fixForMIME() throws {
+    let listString = """
+    short-parameter=short-value;
+    short-parameter*=utf-8''short-value-ext;
+    long-parameter=too-looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong-value;
+    short-ext-section*0*=utf-8''short-ext-section-0;
+    short-ext-section*1*=%20short-ext-section-1;
+    long-ext*=utf-8''too-looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong-value;
+    long-ext-section*0*=utf-8''too-looooooooooooooooooooooooooooooooooooooooooooooooooooong-value-0;
+    long-ext-section*1*=%20too-looooooooooooooooooooooooooooooooooooooooooooooooooooooooong-value-1;
+    """.split(
+      omittingEmptySubsequences: true,
+      whereSeparator: { $0.isWhitespace || $0.isNewline }
+    ).joined(separator: " ")
+    let list = try #require(HTTPHeaderFieldParameterList(listString))
+    let fixed = try #require(list.fixed(for: .mime))
+
+    #expect(fixed.allSatisfy({ $0.description.utf8.count <= 74 }))
+
+    func __value(
+      for attribute: String,
+      sectionIndex: Int? = nil,
+      isExtended: Bool = false,
+      sourceLocation: SourceLocation = #_sourceLocation
+    ) throws -> String {
+      let name = try #require(
+        HTTPHeaderFieldParameter.Name(attribute: attribute, sectionIndex: sectionIndex),
+        "Failed to create a name?!",
+        sourceLocation: sourceLocation
+      )
+      if isExtended {
+        let extName = HTTPHeaderFieldParameter.ExtendedName(_baseName: name)
+        return try #require(
+          fixed[extName]?.decodedValue,
+          "Extended value can't decoded?!",
+          sourceLocation: sourceLocation
+        )
+      } else {
+        return try #require(
+          fixed[name]?.content,
+          "Failed to get a value?!",
+          sourceLocation: sourceLocation
+        )
+      }
+    }
+
+    #expect(try __value(for: "short-parameter") == "short-value")
+    #expect(try __value(for: "short-parameter", isExtended: true) == "short-value-ext")
+    #expect(try fixed["long-parameter"].isNil)
+    #expect(
+      try __value(for: "long-parameter", sectionIndex: 0, isExtended: true) ==
+      "too-loooooooooooooooooooooooooooooooooooooooooooo"
+      // Name is "long-parameter*0*", and
+      // leading prefix `UTF-8''` exists in the value description.
+    )
+    #expect(
+      try __value(for: "long-parameter", sectionIndex: 1, isExtended: true) ==
+      "ooooooooooooooooooooooong-value"
+    )
+    #expect(
+      try __value(for: "short-ext-section", sectionIndex: 0, isExtended: true) ==
+      "short-ext-section-0"
+    )
+    #expect(
+      try __value(for: "short-ext-section", sectionIndex: 1, isExtended: true) ==
+      " short-ext-section-1"
+    )
+    #expect(
+      try __value(for: "long-ext", sectionIndex: 0, isExtended: true) ==
+      "too-loooooooooooooooooooooooooooooooooooooooooooooooooo"
+    )
+    #expect(
+      try __value(for: "long-ext", sectionIndex: 1, isExtended: true) ==
+      "ooooooooooooooong-value"
+    )
+    #expect(
+      try __value(for: "long-ext-section", sectionIndex: 0, isExtended: true) ==
+      "too-loooooooooooooooooooooooooooooooooooooooooo"
+    )
+    #expect(
+      try __value(for: "long-ext-section", sectionIndex: 1, isExtended: true) ==
+      "ooooooooooong-value-0"
+    )
+    #expect(
+      try __value(for: "long-ext-section", sectionIndex: 2, isExtended: true) ==
+      " too-loooooooooooooooooooooooooooooooooooooooooooooo"
+    )
+    #expect(
+      try __value(for: "long-ext-section", sectionIndex: 3, isExtended: true) ==
+      "ooooooooooong-value-1"
+    )
   }
 }
