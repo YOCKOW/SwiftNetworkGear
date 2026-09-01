@@ -33,6 +33,12 @@ struct HiraganaParser<Input: StringProtocol>: StringParser {
 
 typealias _DigitHiraganaParser<Input> = CombinedParser<Input, DigitParser<Input>, HiraganaParser<Input.SubSequence>> where Input: StringProtocol
 
+private let CR = "\u{0D}"
+private let LF = "\u{0A}"
+private let CRLF = CR + LF
+private let SP = "\u{20}"
+private let HTAB = "\u{09}"
+
 @Suite struct StringParserTests {
   @Test func test_prefixParser() throws {
     struct __Parser: _InputAccessibleParser {
@@ -62,12 +68,6 @@ typealias _DigitHiraganaParser<Input> = CombinedParser<Input, DigitParser<Input>
   }
 
   @Test func test_LinearWhitespace() throws {
-    let CR = "\u{0D}"
-    let LF = "\u{0A}"
-    let CRLF = CR + LF
-    let SP = "\u{20}"
-    let HTAB = "\u{09}"
-
     #expect(LinearWhitespaceParser.parse("ABC  ").isNil)
     #expect(LinearWhitespaceParser.parse(LF).isNil)
     #expect(LinearWhitespaceParser.parse(CR).isNil)
@@ -102,6 +102,60 @@ typealias _DigitHiraganaParser<Input> = CombinedParser<Input, DigitParser<Input>
       let result = try #require(LinearWhitespaceParser.parse(string))
       #expect(result.output == lwsp)
       #expect(string[result.endIndex...] == "ABC")
+    }
+
+    do {
+      let repeated = SP + CRLF + SP + CRLF + SP
+      let result = try #require(LinearWhitespaceParser.parse(repeated))
+      #expect(result.output == repeated)
+      #expect(result.endIndex == repeated.endIndex)
+    }
+  }
+
+  @Test func test_FoldingWhitespaceParser() throws {
+    #expect(FoldingWhitespaceParser.parse("ABC  ").isNil)
+    #expect(FoldingWhitespaceParser.parse(LF).isNil)
+    #expect(FoldingWhitespaceParser.parse(CR).isNil)
+    #expect(FoldingWhitespaceParser.parse(LF + CR).isNil)
+    #expect(FoldingWhitespaceParser.parse(CRLF).isNil)
+    #expect(FoldingWhitespaceParser.parse(CRLF + "ABC").isNil)
+
+    do {
+      let string = SP + HTAB + SP + HTAB
+      let result = try #require(FoldingWhitespaceParser.parse(string))
+      #expect(result.output == string)
+      #expect(result.endIndex == string.endIndex)
+    }
+
+    do {
+      let string = CRLF + HTAB + SP
+      let result = try #require(FoldingWhitespaceParser.parse(string))
+      #expect(result.output == string)
+      #expect(result.endIndex == string.endIndex)
+    }
+
+    do {
+      let string = SP + HTAB + CRLF + HTAB + SP
+      let result = try #require(FoldingWhitespaceParser.parse(string))
+      #expect(result.output == string)
+      #expect(result.endIndex == string.endIndex)
+    }
+
+    do {
+      let lwsp = HTAB + SP + CRLF + SP + HTAB
+      let string = lwsp + "ABC"
+      let result = try #require(FoldingWhitespaceParser.parse(string))
+      #expect(result.output == lwsp)
+      #expect(string[result.endIndex...] == "ABC")
+    }
+
+    do {
+      let fws1 = SP + CRLF + HTAB
+      let fws2 = HTAB + CRLF + SP
+      let string = fws1 + fws2
+      let result = try #require(FoldingWhitespaceParser.parse(string))
+      #expect(result.output == fws1 + HTAB)
+      #expect(string[result.endIndex...] == CRLF + SP)
     }
   }
 

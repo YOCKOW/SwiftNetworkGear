@@ -211,6 +211,18 @@ extension _UTF8Parser {
   }
 
   @inlinable
+  func parseCRLF(from currentIndex: inout Input.UTF8View.Index) -> Bool {
+    var index = currentIndex
+    guard
+      let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isCarriageReturn),
+      let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isLineFeed) else {
+      return false
+    }
+    currentIndex = index
+    return true
+  }
+
+  @inlinable
   func parseInt<T>(
     _ type: T.Type = Int.self,
     from  currentIndex: inout Input.UTF8View.Index,
@@ -344,10 +356,7 @@ public struct CRLFParser<Input>: StringParser, _UTF8Parser where Input: StringPr
 
   public func parse() -> (output: Input.SubSequence, endIndex: Input.Index)? {
     var index = utf8.startIndex
-    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isCarriageReturn) else {
-      return nil
-    }
-    guard let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isLineFeed) else {
+    guard self.parseCRLF(from: &index) else {
       return nil
     }
     return (input[..<index], index)
@@ -387,12 +396,11 @@ public struct LinearWhitespaceParser<Input>: StringParser, _UTF8Parser where Inp
       }
 
       let endIndexOfWSP = index
-      guard let (_, endIndexOfCRLF) = CRLFParser<Input.SubSequence>.parse(
-        input[endIndexOfWSP...]
-      ) else {
+      var tmpIndex = endIndexOfWSP
+      guard self.parseCRLF(from: &tmpIndex) else {
         break
       }
-      index = endIndexOfCRLF
+      index = tmpIndex
       guard __parseWSPs() else {
         index = endIndexOfWSP
         break
@@ -411,7 +419,7 @@ public struct LinearWhitespaceParser<Input>: StringParser, _UTF8Parser where Inp
 ///
 /// - Refernce:
 ///     * [RFC 5322 §3.2.2](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.2)
-public struct FoldingWhiteSpaceParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+public struct FoldingWhitespaceParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = Input.SubSequence
 
   let input: Input
@@ -428,23 +436,23 @@ public struct FoldingWhiteSpaceParser<Input>: StringParser, _UTF8Parser where In
 
     var currentIndex = utf8.startIndex
 
-    func `__parse[*WSP CRLF]`() -> Input.Index? {
-      var index = currentIndex
-      _ = self.parseMIMEWhitespaces(from: &index)
-      guard let _ = CRLFParser<Input.SubSequence>.parse(input, from: &index) else {
-        return nil
+    if let _ = self.parseMIMEWhitespaces(from: &currentIndex) {
+      let endIndexOfWSPs = currentIndex
+      if self.parseCRLF(from: &currentIndex) {
+        guard let _ = self.parseMIMEWhitespaces(from: &currentIndex) else {
+          return (input[..<endIndexOfWSPs], endIndexOfWSPs)
+        }
+        return (input[..<currentIndex], currentIndex)
       }
-      return index
+      return (input[..<endIndexOfWSPs], endIndexOfWSPs)
     }
 
-    if let wspCRLFIndex = `__parse[*WSP CRLF]`() {
-      currentIndex = wspCRLFIndex
-    }
-
-    guard let _ = self.parseMIMEWhitespaces(from: &currentIndex) else {
+    // No leading whitespaces.
+    assert(currentIndex == utf8.startIndex)
+    guard self.parseCRLF(from: &currentIndex),
+          let _ = self.parseMIMEWhitespaces(from: &currentIndex) else {
       return nil
     }
-
     return (input[..<currentIndex], currentIndex)
   }
 }
