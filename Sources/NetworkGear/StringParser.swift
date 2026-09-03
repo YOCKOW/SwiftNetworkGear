@@ -222,6 +222,23 @@ extension _UTF8Parser {
     return true
   }
 
+  /// Parses `quoted-pair` and returns an escaped character.
+  @inlinable
+  func parseMIMEQuotedPair(from currentIndex: inout Input.UTF8View.Index) -> UTF8.CodeUnit? {
+    var index = currentIndex
+    guard
+      let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isBackslash),
+      let escaped = self.readCurrentCodeUnit(
+        at: &index,
+        ifAllowedCodeUnit: { $0._isVisible || $0._isMIMEWhitespace }
+      )
+    else {
+      return nil
+    }
+    currentIndex = index
+    return escaped
+  }
+
   @inlinable
   func parseInt<T>(
     _ type: T.Type = Int.self,

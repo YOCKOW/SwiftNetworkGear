@@ -195,6 +195,14 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isApostrophe: Bool { self == 0x27 }
 
+  /// `(`
+  @inlinable
+  internal var _isLeftParenthesis: Bool { self == 0x28 }
+
+  /// `)`
+  @inlinable
+  internal var _isRightParenthesis: Bool { self == 0x29 }
+
   /// `*`
   @inlinable
   internal var _isAsterisk: Bool { self == 0x2A }
@@ -472,6 +480,19 @@ extension Unicode.UTF8.CodeUnit {
 
   internal var _isAvailableInPercentEncodedContentInExtendedValue: Bool {
     return _percentEncodedInURL.contains(self) || _attrChar.contains(self)
+  }
+
+  /// Returns the Boolean value whether or not the value is available as `ctext`.
+  ///
+  /// See [RFC 5322 §3.2.2](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.2)
+  @inlinable
+  internal var _isAvailableInMIMEComment: Bool {
+    switch self {
+    case 33...39, 42...91, 93...126:
+      return true
+    default:
+      return false
+    }
   }
 
   // MIME Type
