@@ -9,8 +9,6 @@
 import Testing
 import yExtensions
 
-let FWS = "\u{0D}\u{0A} "
-
 @Suite struct MIMECommentTests {
   @Test func test_parser() {
     #expect(MIMEComment(parsing: "foo").isNil)

@@ -126,8 +126,8 @@ private let _mimeCharsetCharsInExtendedValue = _mimeCharsetChars.subtracting("'"
 
 // MARK: - Internet Message Format (RFC 5322)
 
-
-
+/// `atext` defined in [RFC 5322 §3.2.3](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.3).
+private let _atext = _ALPHA.union(_DIGIT).union("!#$%&'*+-/=?^_`{|}~")
 
 // MARK: - UInt8 extension
 
@@ -493,6 +493,13 @@ extension Unicode.UTF8.CodeUnit {
     default:
       return false
     }
+  }
+
+  /// Returns the Boolean value whether or not the value is available as `atext`.
+  ///
+  /// See [RFC 5322 §3.2.3](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.3)
+  internal var _isAvailableInAtomText: Bool {
+    return _atext.contains(self)
   }
 
   // MIME Type
