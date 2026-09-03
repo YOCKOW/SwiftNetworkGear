@@ -135,3 +135,70 @@ extension MIMEComment: _InitializableWithParser {
     self.init(string, parser: MIMECommentParser<S>.self)
   }
 }
+
+
+/// A parser to parse `CFWS` defined in [RFC 5322 §3.2.2](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.2).
+public struct MIMECommentCoexistableFoldingWhitespaceParser<Input>: StringParser
+where Input: StringProtocol {
+  public typealias Output = Array<MIMEComment>?
+
+  let input: Input
+
+  public init(input: Input) {
+    self.input = input
+  }
+
+  private enum _Element {
+    case fws
+    case fwsAndComment(MIMEComment)
+    case comment(MIMEComment)
+
+    var comment: MIMEComment? {
+      switch self {
+      case .fws:
+        return nil
+      case .fwsAndComment(let comment), .comment(let comment):
+        return comment
+      }
+    }
+  }
+
+  private func _parseElement(from currentIndex: inout Input.Index) -> _Element? {
+    if let _ = FoldingWhitespaceParser<Input.SubSequence>.parse(input, from: &currentIndex) {
+      if let comment = MIMECommentParser<Input.SubSequence>.parse(input, from: &currentIndex) {
+        return .fwsAndComment(comment)
+      }
+      return .fws
+    }
+
+    guard let comment = MIMECommentParser<Input.SubSequence>.parse(input, from: &currentIndex) else {
+      return nil
+    }
+    return .comment(comment)
+  }
+
+  public mutating func parse() -> (output: Array<MIMEComment>?, endIndex: Input.Index)? {
+    var currentIndex = self.input.startIndex
+
+    // Implementation Note:
+    //   CFWS = (1*([FWS] comment) [FWS]) / FWS
+
+    guard let firstElement = self._parseElement(from: &currentIndex) else {
+      return nil
+    }
+
+    guard let firstComment = firstElement.comment else {
+      return (output: nil, endIndex: currentIndex)
+    }
+
+    var comments: [MIMEComment] = [firstComment]
+    while let element = self._parseElement(from: &currentIndex) {
+      guard let comment = element.comment else {
+        // `FWS` after `comment`.
+        break
+      }
+      comments.append(comment)
+    }
+    return (comments, currentIndex)
+  }
+}
