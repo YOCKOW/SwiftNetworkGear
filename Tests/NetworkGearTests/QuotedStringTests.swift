@@ -31,22 +31,27 @@ import Testing
     #expect(appended.content == ##"A"B"C"D"E"F"##)
   }
 
-  @Test func test_divide() throws {
+  @Test(arguments: [QuotedStringMode.http, QuotedStringMode.mime])
+  func test_divide(mode: QuotedStringMode) throws {
     let content = #"A\B"C\D"E"#
-    let quotedRawValue = try #require(content._quotedString(for: .http))
+    let quotedRawValue = try #require(content._quotedString(for: mode))
 
     enum __Source: Equatable {
       case content
       case quotedString
     }
     var source: __Source = .content
-    var quotedString: HTTPQuotedString {
+    var quotedString: any QuotedStringProtocol {
       get {
-        switch source {
-        case .content:
+        switch (mode, source) {
+        case (.http, .content):
           return HTTPQuotedString(content: content)
-        case .quotedString:
+        case (.mime, .content):
+          return MIMEQuotedString(content: content)
+        case (.http, .quotedString):
           return HTTPQuotedString(quotedString: quotedRawValue)
+        case (.mime, .quotedString):
+          return MIMEQuotedString(quotedString: quotedRawValue)
         }
       }
     }

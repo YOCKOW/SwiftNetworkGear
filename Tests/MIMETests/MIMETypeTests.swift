@@ -49,7 +49,7 @@ import Testing
 
       #expect(
         type._description(sortParameters: true) ==
-        #"example/x.foo.bar.baz+gzip; my-name=my-value; with-spaces="a b c""#
+        #"example/x.foo.bar.baz+gzip; my-name=my-value; with-spaces="a\ b\ c""#
       )
     }
   }

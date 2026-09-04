@@ -332,6 +332,26 @@ public protocol QuotedStringProtocol: Sendable {
 
   /// Returns content of the quoted string.
   var content: String { get }
+
+  init?<S>(quoting content: S) where S: StringProtocol
+
+  func appending(_ other: Self) -> Self
+
+  func appending<S>(content: S) -> Self? where S: StringProtocol
+
+  /// This function divides the quoted string into two quoted strings,
+  /// where the count of first one's UTF-8 reporesentation is less than or equal to `maxCount`.
+  ///
+  /// - Parameters:
+  ///   * maxCount: The maximum count of the first part's UTF-8 representation which must be greater than 3.
+  ///
+  /// - Returns: Two quoted strings.
+  ///            The second one may be `nil` if the count of the whole quoted string is less than or equal to `maxCount`.
+  func divide(whereFirstPartMaxUTF8Count maxCount: Int) -> (Self, Self?)
+}
+
+extension QuotedStringProtocol {
+  internal var utf8Count: Int { self.quotedString.utf8.count }
 }
 
 /// A representation of `quoted-string` for HTTP.
@@ -342,9 +362,8 @@ public struct HTTPQuotedString: Sendable, QuotedStringProtocol {
 
   public var content: String { _converter.content }
 
-  internal var utf8Count: Int { self.quotedString.utf8.count }
-
   private init(_converter converter: _LazyQuotedStringBidirectionalConverter) {
+    assert(converter.mode == .http)
     self._converter = converter
   }
 
@@ -412,14 +431,6 @@ public struct HTTPQuotedString: Sendable, QuotedStringProtocol {
     self.appending(_token: token)
   }
 
-  /// This function divides the quoted string into two quoted strings,
-  /// where the count of first one's UTF-8 reporesentation is less than or equal to `maxCount`.
-  ///
-  /// - Parameters:
-  ///   * maxCount: The maximum count of the first part's UTF-8 representation which must be greater than 3.
-  ///
-  /// - Returns: Two quoted strings.
-  ///            The second one may be `nil` if the count of the whole quoted string is less than or equal to `maxCount`.
   public func divide(whereFirstPartMaxUTF8Count maxCount: Int) -> (HTTPQuotedString, HTTPQuotedString?) {
     let (converter1, conveter2) = self._converter.divide(whereFirstPartMaxUTF8Count: maxCount)
     return (HTTPQuotedString(_converter: converter1), conveter2.map({ HTTPQuotedString(_converter: $0) }))
@@ -428,6 +439,59 @@ public struct HTTPQuotedString: Sendable, QuotedStringProtocol {
 
 @available(*, deprecated, renamed: "HTTPQuotedString")
 public typealias QuotedString = HTTPQuotedString
+
+/// A representation of `quoted-string` for MIME.
+public struct MIMEQuotedString: Sendable, QuotedStringProtocol {
+  private let _converter: _LazyQuotedStringBidirectionalConverter
+
+  public var quotedString: String { _converter.quotedString }
+
+  public var content: String { _converter.content }
+
+  private init(_converter converter: _LazyQuotedStringBidirectionalConverter) {
+    assert(converter.mode == .mime)
+    self._converter = converter
+  }
+
+  internal init(quotedString: String, content: String) {
+    assert(quotedString._unquotedString(for: .mime) == content)
+    self.init(_converter: .init(quotedString: quotedString, content: content, mode: .mime))
+  }
+
+  internal init(quotedString: String) {
+    assert(!quotedString._unquotedString(for: .mime).isNil)
+    self.init(_converter: .init(quotedString: quotedString, mode: .mime))
+  }
+
+  @usableFromInline
+  internal init<S>(content: S) where S: StringProtocol {
+    assert(QuotedStringMode.mime._validContent(content))
+    self.init(_converter: .init(content: content._bidiUTF8ViewString, mode: .mime))
+  }
+
+  public init?<S>(quoting content: S) where S: StringProtocol {
+    guard let quotedString = content._quotedString(for: .mime) else {
+      return nil
+    }
+    self.init(quotedString: quotedString, content: content._string)
+  }
+
+  public func appending(_ other: MIMEQuotedString) -> MIMEQuotedString {
+    return MIMEQuotedString(_converter: self._converter.appending(other._converter)!)
+  }
+
+  public func appending<S>(content: S) -> MIMEQuotedString? where S: StringProtocol {
+    guard let newConverter = self._converter.appending(content._string) else {
+      return nil
+    }
+    return MIMEQuotedString(_converter: newConverter)
+  }
+
+  public func divide(whereFirstPartMaxUTF8Count maxCount: Int) -> (MIMEQuotedString, MIMEQuotedString?) {
+    let (converter1, conveter2) = self._converter.divide(whereFirstPartMaxUTF8Count: maxCount)
+    return (MIMEQuotedString(_converter: converter1), conveter2.map({ MIMEQuotedString(_converter: $0) }))
+  }
+}
 
 /// A parser to pull out a quoted string.
 public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
@@ -494,7 +558,10 @@ public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: 
             endIndex: index
           )
         case .mime:
-          fatalError("Unimplemented.")
+          return (
+            output: MIMEQuotedString(quotedString: quotedString, content: content),
+            endIndex: index
+          )
         }
       } else if codeUnit._isBackslash {
         escaped = true
@@ -530,5 +597,29 @@ public struct HTTPQuotedStringParser<Input>: StringParser where Input: StringPro
 extension HTTPQuotedString: _InitializableWithParser {
   public init?<S>(validating quotedString: S) where S: StringProtocol {
     self.init(quotedString, parser: HTTPQuotedStringParser<S>.self)
+  }
+}
+
+/// A parser to pull out a quoted string for MIME.
+public struct MIMEQuotedStringParser<Input>: StringParser where Input: StringProtocol {
+  public typealias Output = MIMEQuotedString
+
+  let input: Input
+
+  public init(input: Input) {
+    self.input = input
+  }
+
+  public func parse() -> (output: MIMEQuotedString, endIndex: Input.Index)? {
+    guard let result = QuotedStringParser<Input>.parse(input, configuration: .init(mode: .mime)) else {
+      return nil
+    }
+    return (output: result.output as! MIMEQuotedString, endIndex: result.endIndex)
+  }
+}
+
+extension MIMEQuotedString: _InitializableWithParser {
+  public init?<S>(validating quotedString: S) where S: StringProtocol {
+    self.init(quotedString, parser: MIMEQuotedStringParser<S>.self)
   }
 }
