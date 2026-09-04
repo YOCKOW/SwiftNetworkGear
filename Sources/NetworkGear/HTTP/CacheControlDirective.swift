@@ -11,7 +11,7 @@ import yExtensions
 /// A string representation of an argument of cache directive.
 public enum CacheControlDirectiveStringArgument: Sendable, CustomStringConvertible, Equatable {
   case token(HTTPTokenString)
-  case quotedString(QuotedString)
+  case quotedString(HTTPQuotedString)
 
   public var description: String {
     return switch self {
@@ -144,7 +144,7 @@ public enum CacheControlDirective: Sendable {
       name: HTTPTokenString(validating: name)!,
       argument: HTTPTokenString(validating: value).map({
         CacheControlDirectiveStringArgument.token($0)
-      }) ?? value._quotedString.map({ QuotedString(quotedString: $0) }).map({
+      }) ?? value._quotedString.map({ HTTPQuotedString(quotedString: $0) }).map({
         CacheControlDirectiveStringArgument.quotedString($0)
       })
     )

@@ -186,7 +186,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
   public struct Value: ValueProtocol {
     fileprivate enum _Value: Sendable, Equatable, Hashable {
       case token(any HTTPTokenStringProtocol)
-      case quotedString(QuotedString)
+      case quotedString(HTTPQuotedString)
 
       static func ==(lhs: _Value, rhs: _Value) -> Bool {
         switch (lhs, rhs) {
@@ -258,7 +258,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
       self.init(_token: token)
     }
 
-    public init(quotedString: QuotedString) {
+    public init(quotedString: HTTPQuotedString) {
       self.init(_value: .quotedString(quotedString))
     }
 
@@ -269,7 +269,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
       guard let quoted = value._quotedString else {
         return  nil
       }
-      self.init(quotedString: QuotedString(quotedString: quoted))
+      self.init(quotedString: HTTPQuotedString(quotedString: quoted))
     }
 
     public func appending(_ other: Value) -> Value {
@@ -277,7 +277,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
       case (.token(let myToken), .token(let otherToken)):
         return Value(token: myToken._appending(otherToken))
       case (.token(let myToken), .quotedString(let otherQuotedString)):
-        return Value(quotedString: QuotedString(_token: myToken).appending(otherQuotedString))
+        return Value(quotedString: HTTPQuotedString(_token: myToken).appending(otherQuotedString))
       case (.quotedString(let myQuotedString), .token(let otherToken)):
         return Value(quotedString: myQuotedString.appending(_token: otherToken))
       case (.quotedString(let myQuotedString), .quotedString(let otherQuotedString)):
@@ -1507,7 +1507,7 @@ public struct HTTPHeaderFieldParameterList: Sendable {
           return .regular(name: regularName, value: combinedRegularValue)
         } else if let combinedExtendedParameter = __intoExtended() {
           guard let quotedString = combinedExtendedParameter.value.flatMap({
-            QuotedString(quoting: $0)
+            HTTPQuotedString(quoting: $0)
           }) else {
             return nil
           }
@@ -1578,7 +1578,7 @@ public struct HTTPHeaderFieldParameterList: Sendable {
 
         `Pattern ⅴ`: do {
           `Pattern ⅴ-a`: if let nonSectionedValue = nonSectionedExtended.value,
-                             let quotedValue = QuotedString(quoting: nonSectionedValue) {
+                             let quotedValue = HTTPQuotedString(quoting: nonSectionedValue) {
             newList.append(
               .regular(
                 name: Name(_validatedAttribute: attribute, sectionIndex: nil),

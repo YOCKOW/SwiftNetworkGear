@@ -16,7 +16,7 @@ extension StringProtocol {
     resultUTF8.append(._doubleQuotationMark) // "
 
     for byte in self.utf8 {
-      guard byte._canBeEscapedInQuotedText else { return nil }
+      guard byte._canBeEscapedInHTTPQuotedText else { return nil }
       if byte._isAvailableInHTTPHeaderFieldValueQuotedText {
         resultUTF8.append(byte)
       } else {
@@ -59,7 +59,7 @@ extension StringProtocol {
       if !escaped && byte._isBackslash {
         escaped = true
       } else {
-        guard byte._canBeEscapedInQuotedText else { return nil }
+        guard byte._canBeEscapedInHTTPQuotedText else { return nil }
         resultUTF8.append(byte)
         escaped = false
       }
@@ -74,8 +74,8 @@ extension StringProtocol {
   }
 }
 
-/// A representation of `quoted-string`.
-public struct QuotedString: Sendable {
+/// A representation of `quoted-string` for HTTP.
+public struct HTTPQuotedString: Sendable {
   private final class _LazyBidirectionalConverter: @unchecked Sendable {
     private let _queue: DispatchQueue = .init(
       label: "jp.YOCKOW.NetworkGear.QuotedString",
@@ -173,7 +173,7 @@ public struct QuotedString: Sendable {
         var currentIndex = contentUTF8.startIndex
         while currentIndex < contentUTF8.endIndex {
           let byte = contentUTF8[currentIndex]
-          assert(byte._canBeEscapedInQuotedText)
+          assert(byte._canBeEscapedInHTTPQuotedText)
           let increment = byte._isAvailableInHTTPHeaderFieldValueQuotedText ? 1 : 2
           guard currentCount + increment <= maxCount else {
             break
@@ -285,7 +285,7 @@ public struct QuotedString: Sendable {
   internal init<S>(content: S) where S: StringProtocol {
     assert(
       content.utf8.allSatisfy({
-        $0._isAvailableInHTTPHeaderFieldValueQuotedText || $0._canBeEscapedInQuotedText
+        $0._isAvailableInHTTPHeaderFieldValueQuotedText || $0._canBeEscapedInHTTPQuotedText
       })
     )
     self.init(_converter: .init(content: content._bidiUTF8ViewString))
@@ -312,32 +312,32 @@ public struct QuotedString: Sendable {
     self.init(quotedString: quotedString, content: content._string)
   }
 
-  public func appending(_ other: QuotedString) -> QuotedString {
-    return QuotedString(_converter: self._converter.appending(other._converter))
+  public func appending(_ other: HTTPQuotedString) -> HTTPQuotedString {
+    return HTTPQuotedString(_converter: self._converter.appending(other._converter))
   }
 
-  public func appending<S>(content: S) -> QuotedString? where S: StringProtocol {
+  public func appending<S>(content: S) -> HTTPQuotedString? where S: StringProtocol {
     guard content.utf8.allSatisfy({
-      $0._isAvailableInHTTPHeaderFieldValueQuotedText || $0._canBeEscapedInQuotedText
+      $0._isAvailableInHTTPHeaderFieldValueQuotedText || $0._canBeEscapedInHTTPQuotedText
     }) else {
       return nil
     }
-    return QuotedString(_converter: self._converter.appending(.init(content: content._string)))
+    return HTTPQuotedString(_converter: self._converter.appending(.init(content: content._string)))
   }
 
   @usableFromInline
-  internal func appending<T>(_token token: T) -> QuotedString where T: HTTPTokenStringProtocol {
+  internal func appending<T>(_token token: T) -> HTTPQuotedString where T: HTTPTokenStringProtocol {
     assert(token._string.utf8.allSatisfy(\._isAvailableInHTTPHeaderFieldValueQuotedText))
-    return QuotedString(_converter: self._converter.appending(.init(content: token._string)))
+    return HTTPQuotedString(_converter: self._converter.appending(.init(content: token._string)))
   }
 
   @inlinable
-  public func appending(token: HTTPTokenString) -> QuotedString {
+  public func appending(token: HTTPTokenString) -> HTTPQuotedString {
     self.appending(_token: token)
   }
 
   @inlinable
-  public func appending(token: HTTPTokenSubstring) -> QuotedString {
+  public func appending(token: HTTPTokenSubstring) -> HTTPQuotedString {
     self.appending(_token: token)
   }
 
@@ -349,15 +349,18 @@ public struct QuotedString: Sendable {
   ///
   /// - Returns: Two quoted strings.
   ///            The second one may be `nil` if the count of the whole quoted string is less than or equal to `maxCount`.
-  public func divide(whereFirstPartMaxUTF8Count maxCount: Int) -> (QuotedString, QuotedString?) {
+  public func divide(whereFirstPartMaxUTF8Count maxCount: Int) -> (HTTPQuotedString, HTTPQuotedString?) {
     let (converter1, conveter2) = self._converter.divide(whereFirstPartMaxUTF8Count: maxCount)
-    return (QuotedString(_converter: converter1), conveter2.map({ QuotedString(_converter: $0) }))
+    return (HTTPQuotedString(_converter: converter1), conveter2.map({ HTTPQuotedString(_converter: $0) }))
   }
 }
 
+@available(*, deprecated, renamed: "HTTPQuotedString")
+public typealias QuotedString = HTTPQuotedString
+
 /// A parser to pull out a quoted string.
 public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
-  public typealias Output = QuotedString
+  public typealias Output = HTTPQuotedString
 
   internal let input: Input
   internal let utf8: Input.UTF8View
@@ -367,9 +370,9 @@ public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: 
     self.utf8 = input.utf8
   }
 
-  private var _result: (output: QuotedString, endIndex: Input.Index)? = nil
+  private var _result: (output: HTTPQuotedString, endIndex: Input.Index)? = nil
   private var _parsed: Bool = false
-  public mutating func parse() -> (output: QuotedString, endIndex: Input.Index)? {
+  public mutating func parse() -> (output: HTTPQuotedString, endIndex: Input.Index)? {
     if _parsed {
       return _result
     }
@@ -393,18 +396,18 @@ public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: 
       at: &index,
       ifAllowedCodeUnit: {
         $0._isAvailableInHTTPHeaderFieldValueQuotedText ||
-        $0._canBeEscapedInQuotedText
+        $0._canBeEscapedInHTTPQuotedText
       }
     ) {
       if escaped {
-        guard codeUnit._canBeEscapedInQuotedText else { return nil }
+        guard codeUnit._canBeEscapedInHTTPQuotedText else { return nil }
         escaped = false
         contentUTF8.append(codeUnit)
       } else if codeUnit._isDoubleQuotationMark {
         let quotedString = String(self.input[..<index])
         let content = String(decoding: contentUTF8, as: Unicode.UTF8.self)
         _result = (
-          output: QuotedString(quotedString: quotedString, content: content),
+          output: HTTPQuotedString(quotedString: quotedString, content: content),
           endIndex: index
         )
         return _result
@@ -421,7 +424,7 @@ public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: 
   }
 }
 
-extension QuotedString: _InitializableWithParser {
+extension HTTPQuotedString: _InitializableWithParser {
   public init?<S>(validating quotedString: S) where S: StringProtocol {
     self.init(quotedString, parser: QuotedStringParser<S>.self)
   }

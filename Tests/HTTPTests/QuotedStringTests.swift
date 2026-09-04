@@ -20,8 +20,8 @@ import Testing
   }
 
   @Test func test_appending() throws {
-    let q1 = try #require(QuotedString(quoting: ##"A"B"C"##))
-    let q2 = try #require(QuotedString(quoting: ##""D"E"F"##))
+    let q1 = try #require(HTTPQuotedString(quoting: ##"A"B"C"##))
+    let q2 = try #require(HTTPQuotedString(quoting: ##""D"E"F"##))
     let appended = q1.appending(q2)
     #expect(appended.quotedString == ##""A\"B\"C\"D\"E\"F""##)
     #expect(appended.content == ##"A"B"C"D"E"F"##)
@@ -36,13 +36,13 @@ import Testing
       case quotedString
     }
     var source: __Source = .content
-    var quotedString: QuotedString {
+    var quotedString: HTTPQuotedString {
       get {
         switch source {
         case .content:
-          return QuotedString(content: content)
+          return HTTPQuotedString(content: content)
         case .quotedString:
-          return QuotedString(quotedString: quotedRawValue)
+          return HTTPQuotedString(quotedString: quotedRawValue)
         }
       }
     }

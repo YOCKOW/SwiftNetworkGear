@@ -23,7 +23,7 @@ import Testing
     #expect(set.contains(
       .extension(
         name: "my-extension",
-        argument: .quotedString(QuotedString(content: "my-value"))
+        argument: .quotedString(HTTPQuotedString(content: "my-value"))
       )) == true
     )
     #expect(set.contains(.private) != true)

@@ -129,6 +129,9 @@ private let _mimeCharsetCharsInExtendedValue = _mimeCharsetChars.subtracting("'"
 /// `atext` defined in [RFC 5322 §3.2.3](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.3).
 private let _atext = _ALPHA.union(_DIGIT).union("!#$%&'*+-/=?^_`{|}~")
 
+/// `obs-NO-WS-CTL` defined in [RFC 5322 §4.1](https://datatracker.ietf.org/doc/html/rfc5322#section-4.1).
+private let _obsNoWhitespaceControl = _U8CodeSet(1...8).union(11).union(12).union(14...31).union(127)
+
 // MARK: - UInt8 extension
 
 extension Unicode.UTF8.CodeUnit {
@@ -296,6 +299,18 @@ extension Unicode.UTF8.CodeUnit {
     return 0x80 <= self // && self <= 0xFF
   }
 
+  /// `obs-qtext` defined in [RFC 5322 §4.1](https://datatracker.ietf.org/doc/html/rfc5322#section-4.1).
+  @usableFromInline
+  internal var _isMIMEObsoletedQuotableText: Bool {
+    return _obsNoWhitespaceControl.contains(self)
+  }
+
+  /// `obs-qp` defined in [RFC 5322 §4.1](https://datatracker.ietf.org/doc/html/rfc5322#section-4.1).
+  @usableFromInline
+  internal var _isMIMEObsoltedEscapableText: Bool {
+    return self == 0 || _isLineFeed || _isCarriageReturn || _obsNoWhitespaceControl.contains(self)
+  }
+
   /// `token`
   @usableFromInline
   internal var _isAvailableInHTTPToken: Bool { _tchar.contains(self) }
@@ -321,7 +336,7 @@ extension Unicode.UTF8.CodeUnit {
   /// See: [RFC 9110 §5.5](https://datatracker.ietf.org/doc/html/rfc9110#section-5.5).
   internal var _isAvailableAtFirstInHTTPHeaderFieldValue: Bool { _isVisible }
 
-  /// `qdtext` defined in [RFC 9110 §5.6.4](https://datatracker.ietf.org/doc/html/rfc9110#section-5.6.4).
+  /// `qdtext` defined in [RFC 9110 §5.6.4](https://datatracker.ietf.org/doc/html/rfc9110#section-5.6.4) (HTTP).
   @inlinable
   internal var _isAvailableInHTTPHeaderFieldValueQuotedText: Bool {
     if _isHorizontalTab || _isSpace {
@@ -339,11 +354,11 @@ extension Unicode.UTF8.CodeUnit {
     }
   }
 
-  /// Character following `\` in `quoted-pair`.
+  /// Character following `\` in `quoted-pair` (HTTP).
   ///
   /// See: [RFC 9110 §5.6.4](https://datatracker.ietf.org/doc/html/rfc9110#section-5.6.4).
   @inlinable
-  internal var _canBeEscapedInQuotedText: Bool {
+  internal var _canBeEscapedInHTTPQuotedText: Bool {
     if _isHorizontalTab || _isSpace || _isVisible {
       return true
     }
@@ -352,6 +367,38 @@ extension Unicode.UTF8.CodeUnit {
     #else
     return false
     #endif
+  }
+
+  /// `qdtext` defined in [RFC 5332 §3.2.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.4) (Internet Message).
+  @inlinable
+  internal var _isAvailableInMIMEQuotedText: Bool {
+    switch self {
+    case 33, 35...91, 93...126:
+      return true
+    default:
+      #if MIME_ALLOW_OBSOLTED_TEXT
+      if _isMIMEObsoletedQuotableText {
+        return true
+      }
+      #endif
+      return false
+    }
+  }
+
+  /// Character following `\` in `quoted-pair` (Internet Message).
+  ///
+  /// See: [RFC 5322 §3.2.1](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.1).
+  @inlinable
+  internal var _canBeEscapedInMIMEQuotedText: Bool {
+    if _isVisible || _isMIMEWhitespace {
+      return true
+    }
+    #if MIME_ALLOW_OBSOLTED_TEXT
+    if _isMIMEObsoltedEscapableText {
+      return true
+    }
+    #endif
+    return false
   }
 
   /// Returns the Boolean value whether or not the value is available in `opaque-tag` defined in
