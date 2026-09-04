@@ -1040,7 +1040,7 @@ extension MIMEType: CustomStringConvertible {
         if value.utf8.allSatisfy(\._isAvailableInMIMETypeToken) {
           desc += value
         } else {
-          if let quotedString = value._quotedString {
+          if let quotedString = value._quotedString(for: .mime) {
             desc += quotedString
           } else {
             // FIXME: This may not be the correct way...

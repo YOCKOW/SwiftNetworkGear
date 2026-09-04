@@ -10,13 +10,17 @@ import Testing
 
 @Suite final class QuotedStringTests {
   @Test func test_quote() {
-    #expect("ABC\\DEF"._quotedString == "\"ABC\\\\DEF\"")
-    #expect("あ"._quotedString == nil)
+    #expect("ABC\\DEF"._quotedString(for: .http) == "\"ABC\\\\DEF\"")
+    #expect("ABC\\DEF"._quotedString(for: .mime) == "\"ABC\\\\DEF\"")
+    #expect("あ"._quotedString(for: .http) == nil)
+    #expect("あ"._quotedString(for: .mime) == nil)
   }
 
   @Test func test_unquote() {
-    #expect("\"ABC\\\\DEF\""._unquotedString == "ABC\\DEF")
-    #expect("\"NOTCLOSED"._unquotedString == nil)
+    #expect("\"ABC\\\\DEF\""._unquotedString(for: .http) == "ABC\\DEF")
+    #expect("\"ABC\\\\DEF\""._unquotedString(for: .mime) == "ABC\\DEF")
+    #expect("\"NOTCLOSED"._unquotedString(for: .http) == nil)
+    #expect("\"NOTCLOSED"._unquotedString(for: .mime) == nil)
   }
 
   @Test func test_appending() throws {
@@ -29,7 +33,7 @@ import Testing
 
   @Test func test_divide() throws {
     let content = #"A\B"C\D"E"#
-    let quotedRawValue = try #require(content._quotedString)
+    let quotedRawValue = try #require(content._quotedString(for: .http))
 
     enum __Source: Equatable {
       case content

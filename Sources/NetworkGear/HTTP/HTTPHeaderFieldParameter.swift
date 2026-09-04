@@ -266,7 +266,7 @@ public struct HTTPHeaderFieldParameter: Sendable, Equatable, Hashable {
     ///
     /// - Returns: `nil` if `value` contains any byte which cannot be used in quoted string.
     public init?<S>(quoting value: S) where S: StringProtocol {
-      guard let quoted = value._quotedString else {
+      guard let quoted = value._quotedString(for: .http) else {
         return  nil
       }
       self.init(quotedString: HTTPQuotedString(quotedString: quoted))
@@ -764,7 +764,7 @@ public struct HTTPHeaderFieldParameterValueParser<Input>: StringParser where Inp
   public mutating func parse() -> (output: HTTPHeaderFieldParameter.Value, endIndex: Input.Index)? {
     if let (token, endIndex) = HTTPTokenParser<Input>.parse(_string) {
       return (HTTPHeaderFieldParameter.Value(token: token), endIndex)
-    } else if let (quotedString, endIndex) = QuotedStringParser<Input>.parse(_string) {
+    } else if let (quotedString, endIndex) = HTTPQuotedStringParser<Input>.parse(_string) {
       return (HTTPHeaderFieldParameter.Value(quotedString: quotedString), endIndex)
     } else {
       return nil

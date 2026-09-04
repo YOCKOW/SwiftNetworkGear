@@ -144,7 +144,7 @@ public enum CacheControlDirective: Sendable {
       name: HTTPTokenString(validating: name)!,
       argument: HTTPTokenString(validating: value).map({
         CacheControlDirectiveStringArgument.token($0)
-      }) ?? value._quotedString.map({ HTTPQuotedString(quotedString: $0) }).map({
+      }) ?? value._quotedString(for: .http).map({ HTTPQuotedString(quotedString: $0) }).map({
         CacheControlDirectiveStringArgument.quotedString($0)
       })
     )
@@ -190,7 +190,7 @@ extension CacheControlDirective {
 
         let argumentString = input[currentIndex...]
         PARSE_QUOTED_STRING: if allowQuotedString {
-          guard let (quotedString, argumentEndIndex) = QuotedStringParser<Input.SubSequence>.parse(argumentString) else {
+          guard let (quotedString, argumentEndIndex) = HTTPQuotedStringParser<Input.SubSequence>.parse(argumentString) else {
             break PARSE_QUOTED_STRING
           }
           return (argument: .quotedString(quotedString), endIndex: argumentEndIndex)
@@ -299,7 +299,10 @@ extension CacheControlDirective: RawRepresentable, _InitializableWithParser {
       return "must-understand"
     case .private(fieldNames: let optionalFieldNames):
       if let filedNames = optionalFieldNames,
-         let fieldNamesString = filedNames.map({ $0.rawValue }).joined(separator: ",")._quotedString {
+         let fieldNamesString = filedNames.map({
+           $0.rawValue
+         }).joined(separator: ",")._quotedString(for: .http)
+      {
         return "private=\(fieldNamesString)"
       }
       return "private"
