@@ -10,6 +10,8 @@ import Testing
 
 @Suite final class QuotedStringTests {
   @Test func test_quote() {
+    #expect(""._quotedString(for: .http) == #""""#)
+    #expect(""._quotedString(for: .mime) == #""""#)
     #expect("ABC\\DEF"._quotedString(for: .http) == "\"ABC\\\\DEF\"")
     #expect("ABC\\DEF"._quotedString(for: .mime) == "\"ABC\\\\DEF\"")
     #expect("あ"._quotedString(for: .http) == nil)
@@ -17,6 +19,8 @@ import Testing
   }
 
   @Test func test_unquote() {
+    #expect(#""""#._unquotedString(for: .http) == "")
+    #expect(#""""#._unquotedString(for: .mime) == "")
     #expect("\"ABC\\\\DEF\""._unquotedString(for: .http) == "ABC\\DEF")
     #expect("\"ABC\\\\DEF\""._unquotedString(for: .mime) == "ABC\\DEF")
     #expect("\"NOTCLOSED"._unquotedString(for: .http) == nil)
@@ -29,6 +33,31 @@ import Testing
     let appended = q1.appending(q2)
     #expect(appended.quotedString == ##""A\"B\"C\"D\"E\"F""##)
     #expect(appended.content == ##"A"B"C"D"E"F"##)
+  }
+
+  @Test func test_HTTPQuotedStringParser() {
+    #expect(HTTPQuotedString(validating: #""""#)?.content.isEmpty == true)
+    #expect(HTTPQuotedString(validating: #""A\ B""#)?.content == "A B")
+  }
+
+  @Test func test_MIMEQuotedStringParser() throws {
+    #expect(MIMEQuotedString(parsing: #""""#)?.content.isEmpty == true)
+    #expect(MIMEQuotedString(parsing: #""A\ B""#)?.content == "A B")
+
+    let complexString = """
+    (
+      leading\\ comment
+    )
+    "quoted
+    content"
+    (
+      trailing comment
+    )
+    """.split(whereSeparator: { $0.isNewline }).joined(separator: "\u{0D}\u{0A}  ")
+    let complex = try #require(MIMEQuotedString(parsing: complexString))
+    #expect(complex.leadingComments == [MIMEComment([.text("leading comment")])])
+    #expect(complex.content == "quoted content")
+    #expect(complex.trailingComments == [MIMEComment([.text("trailing comment")])])
   }
 
   @Test(arguments: [QuotedStringMode.http, QuotedStringMode.mime])
@@ -47,11 +76,11 @@ import Testing
         case (.http, .content):
           return HTTPQuotedString(content: content)
         case (.mime, .content):
-          return MIMEQuotedString(content: content)
+          return MIMEQuotedString(leadingComments: nil, content: content, trailingComments: nil)
         case (.http, .quotedString):
           return HTTPQuotedString(quotedString: quotedRawValue)
         case (.mime, .quotedString):
-          return MIMEQuotedString(quotedString: quotedRawValue)
+          return MIMEQuotedString(leadingComments: nil, quotedString: quotedRawValue, trailingComments: nil)
         }
       }
     }

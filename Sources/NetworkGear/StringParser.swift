@@ -224,18 +224,35 @@ extension _UTF8Parser {
 
   /// Parses `quoted-pair` and returns an escaped character.
   @inlinable
-  func parseMIMEQuotedPair(from currentIndex: inout Input.UTF8View.Index) -> UTF8.CodeUnit? {
-    var index = currentIndex
+  func parseHTTPQuotedPair(from index: inout Input.UTF8View.Index) -> UTF8.CodeUnit? {
+    var currentIndex = index
     guard
-      let _ = self.readCurrentCodeUnit(at: &index, ifAllowedCodeUnit: \._isBackslash),
+      let _ = self.readCurrentCodeUnit(at: &currentIndex, ifAllowedCodeUnit: \._isBackslash),
       let escaped = self.readCurrentCodeUnit(
-        at: &index,
-        ifAllowedCodeUnit: { $0._isVisible || $0._isMIMEWhitespace }
+        at: &currentIndex,
+        ifAllowedCodeUnit: { $0._canBeEscapedInHTTPQuotedText }
       )
     else {
       return nil
     }
-    currentIndex = index
+    index = currentIndex
+    return escaped
+  }
+
+  /// Parses `quoted-pair` and returns an escaped character.
+  @inlinable
+  func parseMIMEQuotedPair(from index: inout Input.UTF8View.Index) -> UTF8.CodeUnit? {
+    var currentIndex = index
+    guard
+      let _ = self.readCurrentCodeUnit(at: &currentIndex, ifAllowedCodeUnit: \._isBackslash),
+      let escaped = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: { $0._canBeEscapedInMIMEQuotedText }
+      )
+    else {
+      return nil
+    }
+    index = currentIndex
     return escaped
   }
 

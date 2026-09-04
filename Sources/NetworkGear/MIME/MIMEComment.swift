@@ -60,12 +60,28 @@ extension MIMEComment.Content {
 public struct MIMECommentParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = MIMEComment
 
+  public struct Configuration: Sendable {
+    public let ignoreLeadingWhitespaces: Bool
+    public let ignoreTrailingWhitespaces: Bool
+
+    public init(
+      ignoreLeadingWhitespaces: Bool = true,
+      ignoreTrailingWhitespaces: Bool = true
+    ) {
+      self.ignoreLeadingWhitespaces = ignoreLeadingWhitespaces
+      self.ignoreTrailingWhitespaces = ignoreTrailingWhitespaces
+    }
+  }
+
   let input: Input
   let utf8: Input.UTF8View
 
-  public init(input: Input) {
+  public var configuration: Configuration
+
+  public init(input: Input, configuration: Configuration? = nil) {
     self.input = input
     self.utf8 = input.utf8
+    self.configuration = configuration ?? .init()
   }
 
   public mutating func parse() -> (output: MIMEComment, endIndex: Input.Index)? {
@@ -76,11 +92,17 @@ public struct MIMECommentParser<Input>: StringParser, _UTF8Parser where Input: S
     var comment = MIMEComment()
 
     var textBuffer = Data()
-    func __flushText() {
+    func __flushText(removeTrailingWhitespaces: Bool) {
       if textBuffer.isEmpty {
         return
       }
-      comment.append(String(decoding: textBuffer, as: UTF8.self))
+      if removeTrailingWhitespaces {
+        if let lastIndex = textBuffer.lastIndex(where: { !$0._isMIMEWhitespace }) {
+          comment.append(String(decoding: textBuffer[...lastIndex], as: UTF8.self))
+        }
+      } else {
+        comment.append(String(decoding: textBuffer, as: UTF8.self))
+      }
       textBuffer.removeAll(keepingCapacity: true)
     }
 
@@ -94,7 +116,11 @@ public struct MIMECommentParser<Input>: StringParser, _UTF8Parser where Input: S
     }
 
     while currentIndex < self.utf8.endIndex {
-      _ = FoldingWhitespaceParser.parse(input, from: &currentIndex)
+      if let _ = FoldingWhitespaceParser.parse(input, from: &currentIndex) {
+        if !textBuffer.isEmpty || !configuration.ignoreLeadingWhitespaces {
+          textBuffer.append(._space)
+        }
+      }
 
       if let ctext = self.readCurrentCodeUnit(
         at: &currentIndex,
@@ -107,16 +133,21 @@ public struct MIMECommentParser<Input>: StringParser, _UTF8Parser where Input: S
         continue
       }
 
-      __flushText()
-
       if let nestedComment = MIMECommentParser<Input.SubSequence>.parse(input, from: &currentIndex) {
+        __flushText(removeTrailingWhitespaces: configuration.ignoreTrailingWhitespaces)
         comment.append(nestedComment)
         continue
       }
 
-      _ = FoldingWhitespaceParser.parse(input, from: &currentIndex)
+      if let _ = FoldingWhitespaceParser.parse(input, from: &currentIndex) {
+        if !textBuffer.isEmpty || !configuration.ignoreTrailingWhitespaces {
+          textBuffer.append(._space)
+        }
+      }
       break
     }
+
+    __flushText(removeTrailingWhitespaces: configuration.ignoreTrailingWhitespaces)
 
     guard let _ = self.readCurrentCodeUnit(
       at: &currentIndex,
@@ -131,8 +162,8 @@ public struct MIMECommentParser<Input>: StringParser, _UTF8Parser where Input: S
 
 
 extension MIMEComment: _InitializableWithParser {
-  public init?<S>(parsing string: S) where S: StringProtocol {
-    self.init(string, parser: MIMECommentParser<S>.self)
+  public init?<S>(parsing string: S, configuration: MIMECommentParser<S>.Configuration? = nil) where S: StringProtocol {
+    self.init(string, parser: MIMECommentParser<S>.self, configuration: configuration)
   }
 }
 
@@ -142,10 +173,21 @@ public struct MIMECommentCoexistableFoldingWhitespaceParser<Input>: StringParser
 where Input: StringProtocol {
   public typealias Output = Array<MIMEComment>?
 
+  public struct Configuration: Sendable {
+    public var commentParsingConfiguration: MIMECommentParser<Input.SubSequence>.Configuration
+
+    public init(commentParsingConfiguration: MIMECommentParser<Input.SubSequence>.Configuration = .init()) {
+      self.commentParsingConfiguration = commentParsingConfiguration
+    }
+  }
+
   let input: Input
 
-  public init(input: Input) {
+  public var configuration: Configuration
+
+  public init(input: Input, configuration: Configuration? = nil) {
     self.input = input
+    self.configuration = configuration ?? .init()
   }
 
   private enum _Element {
@@ -165,13 +207,21 @@ where Input: StringProtocol {
 
   private func _parseElement(from currentIndex: inout Input.Index) -> _Element? {
     if let _ = FoldingWhitespaceParser<Input.SubSequence>.parse(input, from: &currentIndex) {
-      if let comment = MIMECommentParser<Input.SubSequence>.parse(input, from: &currentIndex) {
+      if let comment = MIMECommentParser<Input.SubSequence>.parse(
+        input,
+        from: &currentIndex,
+        configuration: configuration.commentParsingConfiguration
+      ) {
         return .fwsAndComment(comment)
       }
       return .fws
     }
 
-    guard let comment = MIMECommentParser<Input.SubSequence>.parse(input, from: &currentIndex) else {
+    guard let comment = MIMECommentParser<Input.SubSequence>.parse(
+      input,
+      from: &currentIndex,
+      configuration: configuration.commentParsingConfiguration
+    ) else {
       return nil
     }
     return .comment(comment)

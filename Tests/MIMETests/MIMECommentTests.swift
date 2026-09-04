@@ -15,8 +15,20 @@ import yExtensions
     #expect(MIMEComment(parsing: "(open").isNil)
     #expect(MIMEComment(parsing: "((double)").isNil)
 
+    #expect(MIMEComment(parsing: "(    )") == MIMEComment([]))
+    #expect(
+      MIMEComment(
+        parsing: "(    )",
+        configuration: .init(
+          ignoreLeadingWhitespaces: false,
+          ignoreTrailingWhitespaces: false
+        )
+      ) ==
+      MIMEComment([.text(" ")])
+    )
     #expect(MIMEComment(parsing: "(comment)") == MIMEComment([.text("comment")]))
     #expect(MIMEComment(parsing: #"(comment\ escaped)"#) == MIMEComment([.text("comment escaped")]))
+    #expect(MIMEComment(parsing: "(non-escaped   space)") == MIMEComment([.text("non-escaped space")]))
 
     let complexComment = [
       "(",
@@ -37,7 +49,7 @@ import yExtensions
             .text("baz")
           ]),
         ]),
-        .text("hoge(not comment)"),
+        .text("hoge (not comment)"),
       ])
     )
   }

@@ -441,60 +441,320 @@ public struct HTTPQuotedString: Sendable, QuotedStringProtocol {
 public typealias QuotedString = HTTPQuotedString
 
 /// A representation of `quoted-string` for MIME.
+///
+/// - Note: This type holds optional leading/trailing `CFWS` when the instance is created by a parser.
+///         On the other hand, leading/trailing `CFWS` may be discarded by some operations (i.g. `divide(whereFirstPartMaxUTF8Count:)`),
+///         because RFC 5322 says:
+///
+///         > Semantically, neither the optional `CFWS` outside of the quote characters nor the quote characters themselves are part of the `quoted-string`.
 public struct MIMEQuotedString: Sendable, QuotedStringProtocol {
   private let _converter: _LazyQuotedStringBidirectionalConverter
+
+  public let leadingComments: [MIMEComment]?
 
   public var quotedString: String { _converter.quotedString }
 
   public var content: String { _converter.content }
 
-  private init(_converter converter: _LazyQuotedStringBidirectionalConverter) {
+  public let trailingComments: [MIMEComment]?
+
+  private init(
+    _converter converter: _LazyQuotedStringBidirectionalConverter,
+    leadingComments: [MIMEComment]?,
+    trailingComments: [MIMEComment]?
+  ) {
     assert(converter.mode == .mime)
     self._converter = converter
+    self.leadingComments = leadingComments
+    self.trailingComments = trailingComments
   }
 
-  internal init(quotedString: String, content: String) {
+  internal init(
+    leadingComments: [MIMEComment]?,
+    quotedString: String,
+    content: String,
+    trailingComments: [MIMEComment]?
+  ) {
     assert(quotedString._unquotedString(for: .mime) == content)
-    self.init(_converter: .init(quotedString: quotedString, content: content, mode: .mime))
+    self.init(
+      _converter: .init(quotedString: quotedString, content: content, mode: .mime),
+      leadingComments: leadingComments,
+      trailingComments: trailingComments
+    )
   }
 
-  internal init(quotedString: String) {
+  internal init(
+    leadingComments: [MIMEComment]?,
+    quotedString: String,
+    trailingComments: [MIMEComment]?
+  ) {
     assert(!quotedString._unquotedString(for: .mime).isNil)
-    self.init(_converter: .init(quotedString: quotedString, mode: .mime))
+    self.init(
+      _converter: .init(quotedString: quotedString, mode: .mime),
+      leadingComments: leadingComments,
+      trailingComments: trailingComments
+    )
   }
 
   @usableFromInline
-  internal init<S>(content: S) where S: StringProtocol {
+  internal init<S>(
+    leadingComments: [MIMEComment]?,
+    content: S,
+    trailingComments: [MIMEComment]?
+  ) where S: StringProtocol {
     assert(QuotedStringMode.mime._validContent(content))
-    self.init(_converter: .init(content: content._bidiUTF8ViewString, mode: .mime))
+    self.init(
+      _converter: .init(content: content._bidiUTF8ViewString, mode: .mime),
+      leadingComments: leadingComments,
+      trailingComments: trailingComments
+    )
   }
 
   public init?<S>(quoting content: S) where S: StringProtocol {
     guard let quotedString = content._quotedString(for: .mime) else {
       return nil
     }
-    self.init(quotedString: quotedString, content: content._string)
+    self.init(
+      leadingComments: nil,
+      quotedString: quotedString,
+      content: content._string,
+      trailingComments: nil
+    )
   }
 
   public func appending(_ other: MIMEQuotedString) -> MIMEQuotedString {
-    return MIMEQuotedString(_converter: self._converter.appending(other._converter)!)
+    func __concatenate(_ comments1: [MIMEComment]?, _ comments2: [MIMEComment]?) -> [MIMEComment]? {
+      switch (comments1, comments2) {
+      case (nil, nil):
+        return nil
+      case (_?, nil):
+        return comments1
+      case (nil, _?):
+        return comments2
+      case (let c1?, let c2?):
+        return c1 + c2
+      }
+    }
+
+    return MIMEQuotedString(
+      _converter: self._converter.appending(other._converter)!,
+      leadingComments: __concatenate(self.leadingComments, other.leadingComments),
+      trailingComments: __concatenate(self.trailingComments, other.trailingComments),
+    )
   }
 
   public func appending<S>(content: S) -> MIMEQuotedString? where S: StringProtocol {
     guard let newConverter = self._converter.appending(content._string) else {
       return nil
     }
-    return MIMEQuotedString(_converter: newConverter)
+    return MIMEQuotedString(
+      _converter: newConverter,
+      leadingComments: self.leadingComments,
+      trailingComments: self.trailingComments
+    )
   }
 
   public func divide(whereFirstPartMaxUTF8Count maxCount: Int) -> (MIMEQuotedString, MIMEQuotedString?) {
     let (converter1, conveter2) = self._converter.divide(whereFirstPartMaxUTF8Count: maxCount)
-    return (MIMEQuotedString(_converter: converter1), conveter2.map({ MIMEQuotedString(_converter: $0) }))
+    return (
+      MIMEQuotedString(_converter: converter1, leadingComments: nil, trailingComments: nil),
+      conveter2.map({ MIMEQuotedString(_converter: $0, leadingComments: nil, trailingComments: nil) })
+    )
+  }
+}
+
+/// A parser to pull out a quoted string for HTTP.
+public struct HTTPQuotedStringParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = HTTPQuotedString
+
+  let input: Input
+  let utf8: Input.UTF8View
+
+  public init(input: Input) {
+    self.input = input
+    self.utf8 = input.utf8
+  }
+
+  public func parse() -> (output: HTTPQuotedString, endIndex: Input.Index)? {
+    var currentIndex = self.utf8.startIndex
+
+    guard let _ = self.readCurrentCodeUnit(
+      at: &currentIndex,
+      ifAllowedCodeUnit: \._isDoubleQuotationMark
+    ) else {
+      return nil
+    }
+
+    var contentUTF8 = Data()
+    while let codeUnit: UTF8.CodeUnit = (
+      self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: \._isAvailableInHTTPHeaderFieldValueQuotedText
+      ) ?? self.parseHTTPQuotedPair(from: &currentIndex)
+    ) {
+      contentUTF8.append(codeUnit)
+    }
+
+    guard let _ = self.readCurrentCodeUnit(
+      at: &currentIndex,
+      ifAllowedCodeUnit: \._isDoubleQuotationMark
+    ) else {
+      return nil
+    }
+
+    return (
+      HTTPQuotedString(
+        quotedString: input[..<currentIndex]._string,
+        content: String(decoding: contentUTF8, as: UTF8.self)
+      ),
+      currentIndex
+    )
+  }
+}
+
+extension HTTPQuotedString: _InitializableWithParser {
+  public init?<S>(validating quotedString: S) where S: StringProtocol {
+    self.init(quotedString, parser: HTTPQuotedStringParser<S>.self)
+  }
+}
+
+/// A parser to pull out a quoted string for MIME.
+public struct MIMEQuotedStringParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = MIMEQuotedString
+
+  public struct Configuration: Sendable {
+    public var cfwsParsingConfiguration: MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.Configuration
+
+    public init(cfwsParsingConfiguration: MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.Configuration = .init()) {
+      self.cfwsParsingConfiguration = cfwsParsingConfiguration
+    }
+  }
+
+  let input: Input
+  let utf8: Input.UTF8View
+
+  public var configuration: Configuration
+
+  public init(input: Input, configuration: Configuration? = nil) {
+    self.input = input
+    self.utf8 = input.utf8
+    self.configuration = configuration ?? .init()
+  }
+
+  private enum _Element: Sendable {
+    case fws
+    case fwsAndQuotedContent(UTF8.CodeUnit)
+    case quotedContent(UTF8.CodeUnit)
+  }
+
+  private func _parseElement(from index: inout Input.UTF8View.Index) -> _Element? {
+    var currentIndex = index
+
+    func __parseQuotedContent() -> UTF8.CodeUnit? {
+      return self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: \._isAvailableInMIMEQuotedText
+      ) ?? self.parseMIMEQuotedPair(from: &currentIndex)
+    }
+
+    if let _ = FoldingWhitespaceParser<Input.SubSequence>.parse(input, from: &currentIndex) {
+      if let quotedContent = __parseQuotedContent() {
+        index = currentIndex
+        return .fwsAndQuotedContent(quotedContent)
+      }
+      index = currentIndex
+      return .fws
+    } else {
+      guard let quotedContent = __parseQuotedContent() else {
+        return nil
+      }
+      index = currentIndex
+      return .quotedContent(quotedContent)
+    }
+  }
+
+  public func parse() -> (output: MIMEQuotedString, endIndex: Input.Index)? {
+    var currentIndex = self.utf8.startIndex
+
+    var leadingComments: [MIMEComment]? = nil
+    if let leadingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
+      input,
+      from: &currentIndex,
+      configuration: configuration.cfwsParsingConfiguration
+    ) {
+      leadingComments = leadingCFWS
+    }
+
+    let quoteStartIndex = currentIndex
+    guard let _ = self.readCurrentCodeUnit(
+      at: &currentIndex,
+      ifAllowedCodeUnit: \._isDoubleQuotationMark
+    ) else {
+      return nil
+    }
+
+    var fwsExists = false
+    var contentUTF8 = Data()
+    PARSE_ELEMENT: while let element = _parseElement(from: &currentIndex) {
+      switch element {
+      case .fws:
+        fwsExists = true
+        contentUTF8.append(._space)
+        break PARSE_ELEMENT
+      case .fwsAndQuotedContent(let codeUnit):
+        fwsExists = true
+        contentUTF8.append(._space)
+        contentUTF8.append(codeUnit)
+      case .quotedContent(let codeUnit):
+        contentUTF8.append(codeUnit)
+      }
+    }
+
+    guard let _ = self.readCurrentCodeUnit(
+      at: &currentIndex,
+      ifAllowedCodeUnit: \._isDoubleQuotationMark
+    ) else {
+      return nil
+    }
+    let quoteEndIndex = currentIndex
+
+    var trailingComments: [MIMEComment]? = nil
+    if let trailingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
+      input,
+      from: &currentIndex,
+      configuration: configuration.cfwsParsingConfiguration
+    ) {
+      trailingComments = trailingCFWS
+    }
+
+    let content = String(decoding: contentUTF8, as: UTF8.self)
+    let output: MIMEQuotedString = fwsExists ? MIMEQuotedString(
+      leadingComments: leadingComments,
+      content: content,
+      trailingComments: trailingComments
+    ) : MIMEQuotedString(
+      leadingComments: leadingComments,
+      quotedString: input[quoteStartIndex..<quoteEndIndex]._string,
+      content: content,
+      trailingComments: trailingComments
+    )
+    return (output, currentIndex)
+  }
+}
+
+extension MIMEQuotedString: _InitializableWithParser {
+  @available(*, deprecated, renamed: "init(parsing:)")
+  public init?<S>(validating quotedString: S) where S: StringProtocol {
+    self.init(quotedString, parser: MIMEQuotedStringParser<S>.self)
+  }
+
+  public init?<S>(parsing quotedString: S, configuration: MIMEQuotedStringParser<S>.Configuration? = nil) where S: StringProtocol {
+    self.init(quotedString, parser: MIMEQuotedStringParser<S>.self, configuration: configuration)
   }
 }
 
 /// A parser to pull out a quoted string.
-public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+public struct QuotedStringParser<Input>: StringParser where Input: StringProtocol {
   public typealias Output = any QuotedStringProtocol
 
   public struct Configuration: Sendable {
@@ -508,8 +768,6 @@ public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: 
   }
 
   internal let input: Input
-  internal let utf8: Input.UTF8View
-
   public var configuration: Configuration
 
   public var mode: QuotedStringMode {
@@ -519,107 +777,16 @@ public struct QuotedStringParser<Input>: StringParser, _UTF8Parser where Input: 
 
   public init(input: Input, configuration: Configuration?) {
     self.input = input
-    self.utf8 = input.utf8
     self.configuration = configuration ?? .default
   }
 
-  private var _parsed: Bool = false
+
   public mutating func parse() -> (output: any QuotedStringProtocol, endIndex: Input.Index)? {
-    var index = utf8.startIndex
-    guard let _ = self.readCurrentCodeUnit(
-      at: &index, ifAllowedCodeUnit: { $0._isDoubleQuotationMark }
-    ) else {
-      return nil
+    switch mode {
+    case .http:
+      return HTTPQuotedStringParser<Input>.parse(input)
+    case .mime:
+      return MIMEQuotedStringParser<Input>.parse(input)
     }
-    guard index < utf8.endIndex else {
-      return nil
-    }
-
-    let canBeEscaped = self.mode._escapableUTF8CodeUnitDecider
-    let isAvailable = self.mode._availableUTF8CodeUnitDecider
-
-    var escaped = false
-    var contentUTF8: [Unicode.UTF8.CodeUnit] = []
-    while let codeUnit = self.readCurrentCodeUnit(
-      at: &index,
-      ifAllowedCodeUnit: { canBeEscaped($0) || isAvailable($0) }
-    ) {
-      if escaped {
-        guard canBeEscaped(codeUnit) else { return nil }
-        escaped = false
-        contentUTF8.append(codeUnit)
-      } else if codeUnit._isDoubleQuotationMark {
-        let quotedString = self.input[..<index]._string
-        let content = String(decoding: contentUTF8, as: Unicode.UTF8.self)
-        switch self.mode {
-        case .http:
-          return (
-            output: HTTPQuotedString(quotedString: quotedString, content: content),
-            endIndex: index
-          )
-        case .mime:
-          return (
-            output: MIMEQuotedString(quotedString: quotedString, content: content),
-            endIndex: index
-          )
-        }
-      } else if codeUnit._isBackslash {
-        escaped = true
-      } else {
-        guard isAvailable(codeUnit) else {
-          return nil
-        }
-        contentUTF8.append(codeUnit)
-      }
-    }
-    return nil
-  }
-}
-
-/// A parser to pull out a quoted string for HTTP.
-public struct HTTPQuotedStringParser<Input>: StringParser where Input: StringProtocol {
-  public typealias Output = HTTPQuotedString
-
-  let input: Input
-
-  public init(input: Input) {
-    self.input = input
-  }
-
-  public func parse() -> (output: HTTPQuotedString, endIndex: Input.Index)? {
-    guard let result = QuotedStringParser<Input>.parse(input, configuration: .init(mode: .http)) else {
-      return nil
-    }
-    return (output: result.output as! HTTPQuotedString, endIndex: result.endIndex)
-  }
-}
-
-extension HTTPQuotedString: _InitializableWithParser {
-  public init?<S>(validating quotedString: S) where S: StringProtocol {
-    self.init(quotedString, parser: HTTPQuotedStringParser<S>.self)
-  }
-}
-
-/// A parser to pull out a quoted string for MIME.
-public struct MIMEQuotedStringParser<Input>: StringParser where Input: StringProtocol {
-  public typealias Output = MIMEQuotedString
-
-  let input: Input
-
-  public init(input: Input) {
-    self.input = input
-  }
-
-  public func parse() -> (output: MIMEQuotedString, endIndex: Input.Index)? {
-    guard let result = QuotedStringParser<Input>.parse(input, configuration: .init(mode: .mime)) else {
-      return nil
-    }
-    return (output: result.output as! MIMEQuotedString, endIndex: result.endIndex)
-  }
-}
-
-extension MIMEQuotedString: _InitializableWithParser {
-  public init?<S>(validating quotedString: S) where S: StringProtocol {
-    self.init(quotedString, parser: MIMEQuotedStringParser<S>.self)
   }
 }
