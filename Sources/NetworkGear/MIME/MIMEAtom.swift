@@ -7,47 +7,96 @@
 
 /// Representation of `atom` defined in [RFC 5322 §3.2.3](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.3).
 public struct MIMEAtom: Sendable {
-  public let leadingComments: [MIMEComment]?
+  public internal(set) var leadingComments: [MIMEComment]?
 
   public let text: String
 
-  public let trailingComments: [MIMEComment]?
+  public internal(set) var trailingComments: [MIMEComment]?
 
-  fileprivate init(
+  internal init(
     leadingComments: [MIMEComment]?,
     _validatedText text: String,
-    trailingComments: [MIMEComment]?) {
+    trailingComments: [MIMEComment]?
+  ) {
     self.leadingComments = leadingComments
     self.text = text
     self.trailingComments = trailingComments
   }
 }
 
-public struct MIMEAtomParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
-  public typealias Output = MIMEAtom
+internal struct _MIMEAtomCoreParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  typealias Output = Input.SubSequence
 
   let input: Input
   let utf8: Input.UTF8View
 
-  public init(input: Input) {
+  init(input: Input) {
     self.input = input
     self.utf8 = input.utf8
+  }
+
+  mutating func parse() -> (output: Input.SubSequence, endIndex: Input.Index)? {
+    var currentIndex = self.utf8.startIndex
+    guard let text = self.parseString(from: &currentIndex, while: \._isAvailableInAtomText) else {
+      return nil
+    }
+    return (text, currentIndex)
+  }
+}
+
+public struct MIMEAtomParserConfiguration: Sendable {
+  public var cfwsParserConfiguration: MIMECommentCoexistableFoldingWhitespaceParserConfiguration
+
+  @inlinable
+  public init(cfwsParserConfiguration: MIMECommentCoexistableFoldingWhitespaceParserConfiguration = .default) {
+    self.cfwsParserConfiguration = cfwsParserConfiguration
+  }
+
+  public static let `default`: MIMEAtomParserConfiguration = .init()
+}
+
+public struct MIMEAtomParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public typealias Output = MIMEAtom
+
+  public typealias Configuration = MIMEAtomParserConfiguration
+
+  @usableFromInline
+  let input: Input
+
+  @usableFromInline
+  let utf8: Input.UTF8View
+
+  public var configuration: Configuration
+
+  @inlinable
+  public init(input: Input, configuration: Configuration? = nil) {
+    self.input = input
+    self.utf8 = input.utf8
+    self.configuration = configuration ?? .default
   }
 
   public mutating func parse() -> (output: MIMEAtom, endIndex: Input.Index)? {
     var currentIndex = self.utf8.startIndex
 
     var leadingComments: [MIMEComment]? = nil
-    if let leadingCFWS = MIMECommentCoexistableFoldingWhitespaceParser.parse(input, from: &currentIndex) {
+    if let leadingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
+      input,
+      from: &currentIndex,
+      configuration: configuration.cfwsParserConfiguration
+    ) {
       leadingComments = leadingCFWS
     }
 
-    guard let text = self.parseString(from: &currentIndex, while: \._isAvailableInAtomText) else {
+    guard let text = _MIMEAtomCoreParser<Input.SubSequence>.parse(input, from: &currentIndex) else {
       return nil
     }
 
     var trailingComments: [MIMEComment]? = nil
-    if let trailingCFWS = MIMECommentCoexistableFoldingWhitespaceParser.parse(input, from: &currentIndex) {
+    if let trailingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
+      input,
+      from: &currentIndex,
+      configuration: configuration.cfwsParserConfiguration
+    ) {
       trailingComments = trailingCFWS
     }
 
@@ -63,8 +112,8 @@ public struct MIMEAtomParser<Input>: StringParser, _UTF8Parser where Input: Stri
 }
 
 extension MIMEAtom: _InitializableWithParser {
-  public init?<S>(parsing string: S) where S: StringProtocol {
-    self.init(string, parser: MIMEAtomParser<S>.self)
+  public init?<S>(parsing string: S, configuration: MIMEAtomParser<S>.Configuration? = nil) where S: StringProtocol {
+    self.init(string, parser: MIMEAtomParser<S>.self, configuration: configuration)
   }
 }
 
@@ -90,12 +139,21 @@ public struct MIMEDotAtom: Sendable {
 public struct MIMEDotAtomParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = MIMEDotAtom
 
+  public typealias Configuration = MIMEAtomParser<Input>.Configuration
+
+  @usableFromInline
   let input: Input
+
+  @usableFromInline
   let utf8: Input.UTF8View
 
-  public init(input: Input) {
+  public var configuration: Configuration
+
+  @inlinable
+  public init(input: Input, configuration: Configuration? = nil) {
     self.input = input
     self.utf8 = input.utf8
+    self.configuration = configuration ?? .default
   }
 
   private func _parseDotAndAtext(from index: inout Input.Index) -> Bool {
@@ -114,7 +172,11 @@ public struct MIMEDotAtomParser<Input>: StringParser, _UTF8Parser where Input: S
     var currentIndex = self.utf8.startIndex
 
     var leadingComments: [MIMEComment]? = nil
-    if let leadingCFWS = MIMECommentCoexistableFoldingWhitespaceParser.parse(input, from: &currentIndex) {
+    if let leadingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
+      input,
+      from: &currentIndex,
+      configuration: configuration.cfwsParserConfiguration
+    ) {
       leadingComments = leadingCFWS
     }
 
@@ -127,7 +189,11 @@ public struct MIMEDotAtomParser<Input>: StringParser, _UTF8Parser where Input: S
 
 
     var trailingComments: [MIMEComment]? = nil
-    if let trailingCFWS = MIMECommentCoexistableFoldingWhitespaceParser.parse(input, from: &currentIndex) {
+    if let trailingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
+      input,
+      from: &currentIndex,
+      configuration: configuration.cfwsParserConfiguration
+    ) {
       trailingComments = trailingCFWS
     }
 
@@ -143,7 +209,7 @@ public struct MIMEDotAtomParser<Input>: StringParser, _UTF8Parser where Input: S
 }
 
 extension MIMEDotAtom: _InitializableWithParser {
-  public init?<S>(parsing string: S) where S: StringProtocol {
-    self.init(string, parser: MIMEDotAtomParser<S>.self)
+  public init?<S>(parsing string: S, configuration: MIMEDotAtomParser<S>.Configuration? = nil) where S: StringProtocol {
+    self.init(string, parser: MIMEDotAtomParser<S>.self, configuration: configuration)
   }
 }

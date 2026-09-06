@@ -596,6 +596,16 @@ extension StringProtocol {
   }
 
   @inlinable
+  internal var _sendable: any StringProtocol & Sendable {
+    if case let string as String = self {
+      return string
+    } else if case let substring as Substring = self {
+      return substring
+    }
+    return self._string
+  }
+
+  @inlinable
   func _utf8CodeUnit(at index: String.Index) -> UTF8.CodeUnit {
     return self.utf8[index]
   }
@@ -836,6 +846,13 @@ extension StringProtocol {
   /// Returns the Boolean value that indicates whether or not the string can be a valid HTTP method.
   public var isLiterallyAcceptableForHTTPMethod: Bool {
     return !self.isEmpty && self.utf8.allSatisfy(\._isAvailableInHTTPToken)
+  }
+}
+
+extension Collection where Self.Element == UTF8.CodeUnit {
+  /// - Returns: A string that is created from the collection as UTF-8.
+  @inlinable internal var _string: String {
+    return String(decoding: self, as: UTF8.self)
   }
 }
 

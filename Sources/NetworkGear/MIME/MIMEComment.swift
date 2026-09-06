@@ -56,32 +56,41 @@ extension MIMEComment.Content {
   }
 }
 
+public struct MIMECommentParserConfiguration: Sendable {
+  public let ignoreLeadingWhitespaces: Bool
+  public let ignoreTrailingWhitespaces: Bool
+
+  @inlinable
+  public init(
+    ignoreLeadingWhitespaces: Bool = true,
+    ignoreTrailingWhitespaces: Bool = true
+  ) {
+    self.ignoreLeadingWhitespaces = ignoreLeadingWhitespaces
+    self.ignoreTrailingWhitespaces = ignoreTrailingWhitespaces
+  }
+
+  public static let `default`: MIMECommentParserConfiguration = .init()
+}
+
 /// A parser to parse a comment in MIME header
 public struct MIMECommentParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = MIMEComment
 
-  public struct Configuration: Sendable {
-    public let ignoreLeadingWhitespaces: Bool
-    public let ignoreTrailingWhitespaces: Bool
+  public typealias Configuration = MIMECommentParserConfiguration
 
-    public init(
-      ignoreLeadingWhitespaces: Bool = true,
-      ignoreTrailingWhitespaces: Bool = true
-    ) {
-      self.ignoreLeadingWhitespaces = ignoreLeadingWhitespaces
-      self.ignoreTrailingWhitespaces = ignoreTrailingWhitespaces
-    }
-  }
-
+  @usableFromInline
   let input: Input
+
+  @usableFromInline
   let utf8: Input.UTF8View
 
   public var configuration: Configuration
 
+  @inlinable
   public init(input: Input, configuration: Configuration? = nil) {
     self.input = input
     self.utf8 = input.utf8
-    self.configuration = configuration ?? .init()
+    self.configuration = configuration ?? .default
   }
 
   public mutating func parse() -> (output: MIMEComment, endIndex: Input.Index)? {
@@ -167,27 +176,33 @@ extension MIMEComment: _InitializableWithParser {
   }
 }
 
+public struct MIMECommentCoexistableFoldingWhitespaceParserConfiguration: Sendable {
+  public var commentParserConfiguration: MIMECommentParserConfiguration
+
+  @inlinable
+  public init(commentParserConfiguration: MIMECommentParserConfiguration = .default) {
+    self.commentParserConfiguration = commentParserConfiguration
+  }
+
+  public static let `default`: MIMECommentCoexistableFoldingWhitespaceParserConfiguration = .init()
+}
 
 /// A parser to parse `CFWS` defined in [RFC 5322 §3.2.2](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.2).
 public struct MIMECommentCoexistableFoldingWhitespaceParser<Input>: StringParser
 where Input: StringProtocol {
   public typealias Output = Array<MIMEComment>?
 
-  public struct Configuration: Sendable {
-    public var commentParsingConfiguration: MIMECommentParser<Input.SubSequence>.Configuration
+  public typealias Configuration = MIMECommentCoexistableFoldingWhitespaceParserConfiguration
 
-    public init(commentParsingConfiguration: MIMECommentParser<Input.SubSequence>.Configuration = .init()) {
-      self.commentParsingConfiguration = commentParsingConfiguration
-    }
-  }
-
+  @usableFromInline
   let input: Input
 
   public var configuration: Configuration
 
+  @inlinable
   public init(input: Input, configuration: Configuration? = nil) {
     self.input = input
-    self.configuration = configuration ?? .init()
+    self.configuration = configuration ?? .default
   }
 
   private enum _Element {
@@ -210,7 +225,7 @@ where Input: StringProtocol {
       if let comment = MIMECommentParser<Input.SubSequence>.parse(
         input,
         from: &currentIndex,
-        configuration: configuration.commentParsingConfiguration
+        configuration: configuration.commentParserConfiguration
       ) {
         return .fwsAndComment(comment)
       }
@@ -220,7 +235,7 @@ where Input: StringProtocol {
     guard let comment = MIMECommentParser<Input.SubSequence>.parse(
       input,
       from: &currentIndex,
-      configuration: configuration.commentParsingConfiguration
+      configuration: configuration.commentParserConfiguration
     ) else {
       return nil
     }
