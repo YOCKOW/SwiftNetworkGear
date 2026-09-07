@@ -8,6 +8,7 @@
 // MARK: - Day of the week
 
 /// Day of the week.
+@usableFromInline
 internal enum Weekday: Sendable, Equatable, Hashable {
   case sunday
   case monday
@@ -76,6 +77,7 @@ extension Weekday: _InitializableWithParser {
 
 // MARK: - Month
 
+@usableFromInline
 internal enum Month: Int {
   case january = 1
   case february = 2

@@ -241,9 +241,9 @@ public struct MIMEUnstructuredHeaderFieldValueParser<Input>: StringParser, _UTF8
 where Input: StringProtocol {
   public typealias Output = MIMEUnstructuredHeaderFieldValue
 
-  let input: Input
+  @usableFromInline let input: Input
 
-  let utf8: Input.UTF8View
+  @usableFromInline let utf8: Input.UTF8View
 
   public init(input: Input) {
     self.input = input

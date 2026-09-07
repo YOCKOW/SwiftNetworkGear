@@ -865,8 +865,8 @@ extension MIMEType: Equatable, Hashable {
 public struct MIMETypeParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = MIMEType
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
   public init(input: Input) {
     self.input = input
     self.utf8 = input.utf8

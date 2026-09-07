@@ -783,8 +783,8 @@ public struct ExtendedParameterValueParser<Input>: StringParser,
                                                    _UTF8Parser where Input: StringProtocol {
   public typealias Output = HTTPHeaderFieldParameter.ExtendedValue
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
 
   public init(input: Input) {
     self.input = input
@@ -891,8 +891,8 @@ where Input: StringProtocol {
     }
   }
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
   public let configuration: Configuration?
 
   public var mode: Configuration.Mode {
@@ -1928,8 +1928,8 @@ where Input: StringProtocol {
   public typealias Output = HTTPHeaderFieldParameterList
   public typealias Configuration = HTTPHeaderFieldParameterParser<Input.SubSequence>.Configuration
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
 
   public let configuration: Configuration?
 

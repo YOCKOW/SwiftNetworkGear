@@ -66,6 +66,7 @@ extension StringParser {
   }
 }
 
+@usableFromInline
 internal protocol _InputAccessibleParser: StringParser {
   var input: Input { get }
 }
@@ -105,13 +106,14 @@ extension _SubstringOutputParser {
   }
 }
 
+@usableFromInline
 internal protocol _UTF8Parser: _InputAccessibleParser {
   var input: Input { get }
   var utf8: Input.UTF8View { get }
 }
 
 extension _UTF8Parser {
-  var utf8: Input.UTF8View { self.input.utf8 }
+  @inlinable var utf8: Input.UTF8View { self.input.utf8 }
 }
 
 extension _UTF8Parser {
@@ -333,8 +335,8 @@ public struct DigitParser<Input>: StringParser, _UTF8Parser where Input: StringP
     }
   }
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
   let configuration: Configuration?
 
   public var minNumberOfDigits: Int { configuration?.minNumberOfDigits ?? 1 }
@@ -380,8 +382,8 @@ public struct DigitParser<Input>: StringParser, _UTF8Parser where Input: StringP
 public struct CRLFParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = Input.SubSequence
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
 
   public init(input: Input) {
     self.input = input
@@ -404,8 +406,8 @@ public struct CRLFParser<Input>: StringParser, _UTF8Parser where Input: StringPr
 public struct LinearWhitespaceParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = Input.SubSequence
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
 
   public init(input: Input) {
     self.input = input
@@ -456,14 +458,19 @@ public struct LinearWhitespaceParser<Input>: StringParser, _UTF8Parser where Inp
 public struct FoldingWhitespaceParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = Input.SubSequence
 
+  @usableFromInline
   let input: Input
+
+  @usableFromInline
   let utf8: Input.UTF8View
 
+  @inlinable
   public init(input: Input) {
     self.input = input
     self.utf8 = input.utf8
   }
 
+  @inlinable
   public mutating func parse() -> (output: Output, endIndex: Input.Index)? {
     // Implementation Note:
     //   FWS = ([*WSP CRLF] 1*WSP)
@@ -726,8 +733,8 @@ where Input: StringProtocol, ElementParser: StringParser, ElementParser.Input ==
     public var eachConfiguration: Optional<([ElementParser.Output]) -> ElementParser.Configuration?>
   }
 
-  internal let input: Input
-  internal let utf8: Input.UTF8View
+  @usableFromInline  internal let input: Input
+  @usableFromInline  internal let utf8: Input.UTF8View
   private var _configuration: Configuration?
 
   public init(input: Input, configuration: Configuration?) {
@@ -772,8 +779,8 @@ where Input: StringProtocol, ContentParser: StringParser, ContentParser.Input ==
   public typealias Output = ContentParser.Output
   public typealias Configuration = ContentParser.Configuration
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
   public var configuration: Configuration?
 
   public init(input: Input, configuration: Configuration?) {

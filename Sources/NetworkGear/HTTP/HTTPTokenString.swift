@@ -210,8 +210,8 @@ extension FixedWidthInteger {
 public struct HTTPTokenParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = HTTPTokenString
 
-  internal let input: Input
-  internal let utf8: Input.UTF8View
+  @usableFromInline internal let input: Input
+  @usableFromInline internal let utf8: Input.UTF8View
 
   public init(input: Input) {
     self.input = input

@@ -68,8 +68,8 @@ extension HTTPETagList: CustomStringConvertible {
 public struct HTTPETagListParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = HTTPETagList
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
 
   public init(input: Input) {
     self.input = input

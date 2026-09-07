@@ -45,8 +45,8 @@ public struct HTTPOpaqueTagContentParser<Input>: StringParser, _UTF8Parser
 where Input: StringProtocol {
   public typealias Output = HTTPOpaqueTagContentString
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
 
   public init(input: Input) {
     self.input = input
@@ -114,8 +114,8 @@ public enum HTTPETag: Sendable {
 public struct HTTPETagParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = HTTPETag
 
-  let input: Input
-  let utf8:Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8:Input.UTF8View
 
   public init(input: Input) {
     self.input = input

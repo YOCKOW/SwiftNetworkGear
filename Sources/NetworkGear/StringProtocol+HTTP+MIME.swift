@@ -211,8 +211,12 @@ extension Unicode.UTF8.CodeUnit {
   internal var _isAsterisk: Bool { self == 0x2A }
 
   /// `+`
+  @usableFromInline
+  internal static let _plusSign: UTF8.CodeUnit = 0x2B
+
+  /// `+`
   @inlinable
-  internal var _isPlusSign: Bool { self == 0x2B }
+  internal var _isPlusSign: Bool { self == ._plusSign }
 
   /// `,`
   @inlinable
@@ -227,8 +231,12 @@ extension Unicode.UTF8.CodeUnit {
   internal var _isSlash: Bool { self == 0x2F }
 
   /// `-`
+  @usableFromInline
+  internal static let _hyphen: UTF8.CodeUnit = 0x2D
+
+  /// `-`
   @inlinable
-  internal var _isHyphen: Bool { self == 0x2D }
+  internal var _isHyphen: Bool { self == ._hyphen }
 
   /// `:`
   @inlinable

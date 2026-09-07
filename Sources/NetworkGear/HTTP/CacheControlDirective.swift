@@ -159,8 +159,8 @@ extension CacheControlDirective {
   public struct Parser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
     public typealias Output = CacheControlDirective
 
-    let input: Input
-    let utf8: Input.UTF8View
+    @usableFromInline let input: Input
+    @usableFromInline let utf8: Input.UTF8View
 
     public init(input: Input) {
       self.input = input

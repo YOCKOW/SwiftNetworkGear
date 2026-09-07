@@ -251,8 +251,8 @@ extension _UTF8Parser {
 public struct RFC1123DateParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = DateComponents
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
 
   public init(input: Input) {
     self.input = input
@@ -277,8 +277,8 @@ public struct TraditionalHTTPCookieDateParser<Input>: StringParser,
                                                       _UTF8Parser where Input: StringProtocol {
   public typealias Output = DateComponents
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
 
   public init(input: Input) {
     self.input = input
@@ -331,8 +331,8 @@ private extension Unicode.UTF8.CodeUnit {
 public struct HTTPCookieDateParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = DateComponents
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
 
   public init(input: Input) {
     self.input = input

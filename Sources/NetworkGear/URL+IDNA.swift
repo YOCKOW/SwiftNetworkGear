@@ -332,7 +332,7 @@ where Input: StringProtocol {
     }
   } // _FragmentParser
 
-  let input: Input
+  @usableFromInline let input: Input
   public var configuration: Configuration
 
   public init(input: Input, configuration: Configuration?) {

@@ -26,8 +26,8 @@ where Input: StringProtocol {
   }
 
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
   var configuration: Configuration?
 
   /// The URL that the cookie is sent from.

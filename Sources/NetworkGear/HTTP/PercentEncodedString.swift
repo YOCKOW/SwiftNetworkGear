@@ -274,8 +274,8 @@ public struct PercentEncodedStringParser<Input>: StringParser, _UTF8Parser where
     }
   }
 
-  let input: Input
-  let utf8: Input.UTF8View
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
   public let configuration: Configuration
 
   public init(input: Input, configuration: Configuration?) {
