@@ -557,6 +557,17 @@ extension Unicode.UTF8.CodeUnit {
     return _atext.contains(self)
   }
 
+  /// Returns the Boolean value whether or not the value is available as `dtext`.
+  ///
+  /// See [RFC 5322 §3.4.1](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4.1)
+  @inlinable
+  internal var _isAvailableInMIMEDomainLiteral: Bool {
+    switch self {
+    case 33...90, 94...126: return true
+    default: return false
+    }
+  }
+
   // MIME Type
 
   private static let _mimeTypeRestrictedName = _DIGIT.union(_ALPHA).union("!#$&-^_").union(".+")

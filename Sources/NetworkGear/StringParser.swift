@@ -94,6 +94,7 @@ extension _InputAccessibleParser {
   }
 }
 
+@usableFromInline
 internal protocol _SubstringOutputParser: _InputAccessibleParser where Output == Input.SubSequence {
   mutating func parse() -> Input.Index?
 }
