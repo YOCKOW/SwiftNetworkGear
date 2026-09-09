@@ -20,7 +20,7 @@ import Testing
     let delegate = CURLClientGeneralDelegate()
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToCustom("DELETE")
-    try await client.setURL(try #require(URL(string: "https://httpcan.org/delete")))
+    try await client.setURL(try HTTPBinServer.default.url(withPath: "/delete"))
     try await client.perform(delegate: delegate)
 
     #expect(try #require(delegate.responseCode) == 200)
@@ -60,7 +60,7 @@ import Testing
     let delegate = CURLClientGeneralDelegate(requestBody: .init(data: Data("foo=foo&bar=bar".utf8)))
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
-    try await client.setURL(try #require(URL(string: "https://httpcan.org/post")))
+    try await client.setURL(try HTTPBinServer.default.url(withPath: "/post"))
     try await client.perform(delegate: delegate)
 
     let response = try delegate.responseBody(as: Data.self).map {
@@ -79,7 +79,15 @@ import Testing
     )
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
-    try await client.setURL(try #require(URL(string: "https://httpcan.org/redirect-to?url=%2Fpost&status_code=308")))
+    try await client.setURL(
+      try HTTPBinServer.default.url(
+        withPath: "/redirect-to",
+        queries: [
+          "url": "/post",
+          "status_code": "308",
+        ]
+      )
+    )
     try await client.setMaxNumberOfRedirectsAllowed(30)
     try await client.perform(delegate: delegate)
 
@@ -105,7 +113,7 @@ import Testing
     )
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
-    try await client.setURL(try #require(URL(string: "https://httpcan.org/post")))
+    try await client.setURL(try HTTPBinServer.default.url(withPath: "/post"))
     try await client.perform(delegate: delegate)
 
     let response = try delegate.responseBody(as: Data.self).map {
@@ -145,7 +153,7 @@ import Testing
     )
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
-    try await client.setURL(try #require(URL(string: "https://httpcan.org/post")))
+    try await client.setURL(try HTTPBinServer.default.url(withPath: "/post"))
     try await client.perform(delegate: delegate)
 
     let response = try #require(try delegate.responseBody(as: Data.self).map({
@@ -167,7 +175,7 @@ import Testing
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPut()
     try await client.setUploadFileSize(text.count)
-    try await client.setURL(try #require(URL(string: "https://httpcan.org/put")))
+    try await client.setURL(try HTTPBinServer.default.url(withPath: "/put"))
     try await client.perform(delegate: delegate)
 
     #expect(try #require(delegate.responseCode) / 100 == 2)
@@ -186,7 +194,7 @@ import Testing
     )
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToGet()
-    try await client.setURL(try #require(URL(string: "https://httpcan.org/get")))
+    try await client.setURL(try HTTPBinServer.default.url(withPath: "/get"))
     try await client.perform(delegate: delegate)
 
     #expect(try #require(delegate.responseCode) == 200)
@@ -204,7 +212,7 @@ import Testing
       "https://cURL.se/",
       "https://www.Example.com/",
       "https://www.Google.co.jp/",
-      "https://httpcan.org/",
+      try HTTPBinServer.default.url(withPath: "/get").absoluteString,
       "https://www.Swift.org/",
       "https://www.Wikipedia.org/",
       "https://www.Yahoo.co.jp/",

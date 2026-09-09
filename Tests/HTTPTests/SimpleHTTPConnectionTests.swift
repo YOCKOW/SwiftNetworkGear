@@ -23,7 +23,7 @@ import Testing
   }
 
   @Test func test_redirects() async throws {
-    let url = try #require(URL(string: "https://httpcan.org/absolute-redirect/4"))
+    let url = try HTTPBinServer.default.url(withPath: "/absolute-redirect/4")
 
     // No redirect
     let connection1 = SimpleHTTPConnection(url: url, redirectStrategy: .noFollow)
@@ -53,7 +53,7 @@ import Testing
     requestBodyStream.open()
     responseBodyStream.open()
 
-    let url = try #require(URL(string: "https://httpcan.org/post"))
+    let url = try HTTPBinServer.default.url(withPath: "/post")
     let connection = SimpleHTTPConnection(
       url: url,
       method: .post,

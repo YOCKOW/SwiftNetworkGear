@@ -35,12 +35,23 @@ jobs:
           # - '4.2'
           # - '4'
     runs-on: ${{ matrix.os }}
+    env:
+      HTTPBIN_SCHEME: http
+      HTTPBIN_HOST: httpbin.test
+      HTTPBIN_PORT: "60080"
     steps:
     - name: Install libcurl headers
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
         sudo apt-get install --no-install-recommends libcurl4-openssl-dev
+    - name: Set up Docker
+      uses: docker/setup-docker-action@v5
+      if: runner.os == 'macOS'
+    - name: Start "httpcan" locally
+      run: |
+        sudo echo "127.0.0.1 ${{ env.HTTPBIN_HOST }}" | sudo tee -a /etc/hosts
+        sudo docker run --detach --publish ${{ env.HTTPBIN_PORT }}:${{ env.HTTPBIN_PORT }} ghcr.io/seedvector/httpcan:latest --port ${{ env.HTTPBIN_PORT }}
     - uses: actions/checkout@v6
     - name: Use a cache for ".build" directory.
       uses: actions/cache@v5
