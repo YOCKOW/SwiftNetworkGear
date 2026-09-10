@@ -17,21 +17,21 @@ import Testing
   }
 
   @Test func test_performDelete() async throws {
-    let delegate = CURLClientGeneralDelegate()
+    var delegate = CURLClientGeneralDelegate()
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToCustom("DELETE")
     try await client.setURL(try HTTPBinServer.default.url(withPath: "/delete"))
-    try await client.perform(delegate: delegate)
+    try await client.perform(delegate: &delegate)
 
     #expect(try #require(delegate.responseCode) == 200)
   }
 
   @Test func test_performGet() async throws {
-    let delegate = CURLClientGeneralDelegate()
+    var delegate = CURLClientGeneralDelegate()
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToGet()
     try await client.setURL(try #require(URL(string: "https://storage.googleapis.com/public.data.yockow.jp/test-assets/test.txt")))
-    try await client.perform(delegate: delegate)
+    try await client.perform(delegate: &delegate)
 
     #expect(delegate.didFinish)
     #expect(try #require(delegate.responseCode) == 200)
@@ -46,22 +46,22 @@ import Testing
   }
 
   @Test func test_performHead() async throws {
-    let delegate = CURLClientGeneralDelegate()
+    var delegate = CURLClientGeneralDelegate()
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToHead()
     try await client.setURL(try #require(URL(string: "https://storage.googleapis.com/public.data.yockow.jp/test-assets/test.txt")))
-    try await client.perform(delegate: delegate)
+    try await client.perform(delegate: &delegate)
 
     #expect(try #require(delegate.responseCode) == 200)
     #expect(delegate.responseBody(as: Data.self)?.count == 0)
   }
 
   @Test func test_performPost() async throws {
-    let delegate = CURLClientGeneralDelegate(requestBody: .init(data: Data("foo=foo&bar=bar".utf8)))
+    var delegate = CURLClientGeneralDelegate(requestBody: .init(data: Data("foo=foo&bar=bar".utf8)))
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
     try await client.setURL(try HTTPBinServer.default.url(withPath: "/post"))
-    try await client.perform(delegate: delegate)
+    try await client.perform(delegate: &delegate)
 
     let response = try delegate.responseBody(as: Data.self).map {
       try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
@@ -71,7 +71,7 @@ import Testing
   }
 
   @Test func test_performPostRedirection() async throws {
-    let delegate = CURLClientGeneralDelegate(
+    var delegate = CURLClientGeneralDelegate(
       requestHeaderFields: [
         (name: "X-Y-POST-Redirection", value: "yes"),
       ],
@@ -89,7 +89,7 @@ import Testing
       )
     )
     try await client.setMaxNumberOfRedirectsAllowed(30)
-    try await client.perform(delegate: delegate)
+    try await client.perform(delegate: &delegate)
 
     let response = try delegate.responseBody(as: Data.self).map {
       try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
@@ -108,13 +108,13 @@ import Testing
       let data: Data
       func makeAsyncIterator() -> AsyncIterator { .init(iterator: data.makeIterator()) }
     }
-    let delegate = CURLClientGeneralDelegate(
+    var delegate = CURLClientGeneralDelegate(
       requestBody: .init(__AsyncRequestBody(data: Data("async=async&test=test".utf8)))
     )
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
     try await client.setURL(try HTTPBinServer.default.url(withPath: "/post"))
-    try await client.perform(delegate: delegate)
+    try await client.perform(delegate: &delegate)
 
     let response = try delegate.responseBody(as: Data.self).map {
       try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
@@ -145,7 +145,7 @@ import Testing
     let requestBody = InputStream(data: Data(multipartFormDataString.utf8))
     requestBody.open()
 
-    let delegate = CURLClientGeneralDelegate(
+    var delegate = CURLClientGeneralDelegate(
       requestHeaderFields: [
         (name: "Content-Type", value: "multipart/form-data; boundary=\(boundary)"),
       ],
@@ -154,7 +154,7 @@ import Testing
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToPost()
     try await client.setURL(try HTTPBinServer.default.url(withPath: "/post"))
-    try await client.perform(delegate: delegate)
+    try await client.perform(delegate: &delegate)
 
     let response = try #require(try delegate.responseBody(as: Data.self).map({
       return try JSONDecoder().decode(HTTPBinResponse.self, from: $0)
@@ -166,7 +166,7 @@ import Testing
 
   @Test func test_performPut() async throws {
     let text = "Hello, World!\n"
-    let delegate = CURLClientGeneralDelegate(
+    var delegate = CURLClientGeneralDelegate(
       requestHeaderFields: [
         (name: "Content-Type", value: "text/plain"),
       ],
@@ -176,7 +176,7 @@ import Testing
     try await client.setHTTPMethodToPut()
     try await client.setUploadFileSize(text.count)
     try await client.setURL(try HTTPBinServer.default.url(withPath: "/put"))
-    try await client.perform(delegate: delegate)
+    try await client.perform(delegate: &delegate)
 
     #expect(try #require(delegate.responseCode) / 100 == 2)
     let response = try delegate.responseBody(as: Data.self).map {
@@ -186,7 +186,7 @@ import Testing
   }
 
   @Test func test_requestHeaders() async throws {
-    let delegate = CURLClientGeneralDelegate(
+    var delegate = CURLClientGeneralDelegate(
       requestHeaderFields: [
         (name: "X-FOO", value: "FOO"),
         (name: "X-BAR", value: "BAR"),
@@ -195,7 +195,7 @@ import Testing
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToGet()
     try await client.setURL(try HTTPBinServer.default.url(withPath: "/get"))
-    try await client.perform(delegate: delegate)
+    try await client.perform(delegate: &delegate)
 
     #expect(try #require(delegate.responseCode) == 200)
 
@@ -234,8 +234,8 @@ import Testing
       }
       for urlAndClient in urlsAndClients {
         group.addTask {
-          let delegate = CURLClientGeneralDelegate()
-          try await urlAndClient.1.perform(delegate: delegate)
+          var delegate = CURLClientGeneralDelegate()
+          try await urlAndClient.1.perform(delegate: &delegate)
           return (urlAndClient.0, delegate.responseCode)
         }
       }
@@ -251,11 +251,11 @@ import Testing
   }
 
   @Test func test_adhocErrorHandling_HTTP2Head() async throws {
-    let delegate = CURLClientGeneralDelegate()
+    var delegate = CURLClientGeneralDelegate()
     let client = try CURLManager.shared.makeEasyClient()
     try await client.setHTTPMethodToHead()
     try await client.setURL(try #require(URL(string: "https://bot.yockow.jp/-/eTag/weak:foo")))
-    try await client.perform(delegate: delegate)
+    try await client.perform(delegate: &delegate)
 
     #expect(try #require(delegate.responseCode) == 200)
     #expect(delegate.responseBody(as: Data.self)?.count == 0)

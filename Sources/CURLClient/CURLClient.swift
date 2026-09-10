@@ -343,7 +343,7 @@ public actor EasyClient {
   }
 
   /// Call `curl_easy_perform` with the handle.
-  public func perform<Delegate>(delegate: Delegate) async throws where Delegate: CURLClientDelegate {
+  public func perform<Delegate>(delegate: inout Delegate) async throws where Delegate: CURLClientDelegate {
     guard case .notStartedYet = _state else {
       return
     }
@@ -361,7 +361,6 @@ public actor EasyClient {
 
     // Avoid "⛔️the compiler is unable to type-check this expression in reasonable time" 😓
 
-    var delegate = delegate
     try withUnsafeMutablePointer(to: &delegate) { delegatePointer in
       var userInfo = try _UserInfo(
         delegatePointer: delegatePointer,

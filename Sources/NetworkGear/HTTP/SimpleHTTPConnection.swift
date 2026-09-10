@@ -202,8 +202,8 @@ public actor SimpleHTTPConnection {
 
     let clientAndDelegate = try await _makeClientAndDelegate(responseBody: responseBody)
     let client = clientAndDelegate.0
-    let delegate = clientAndDelegate.1
-    try await client.perform(delegate: delegate)
+    var delegate = clientAndDelegate.1
+    try await client.perform(delegate: &delegate)
     return Response<T>(delegate)
   }
 
