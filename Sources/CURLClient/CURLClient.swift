@@ -1,6 +1,6 @@
 /* *************************************************************************************************
  CURLClient.swift
-   © 2024 YOCKOW.
+   © 2024,2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
  **************************************************************************************************/
@@ -13,15 +13,19 @@ import Darwin
 import Glibc
 #endif
 import  Foundation
+import yExtensions
 
 public enum CURLClientError: Error, Equatable {
   case failedToCreateClient
+  case failedToGenerateRequestHeaders
   case curlCode(CURLcode)
 
   public var description: String {
     switch self {
     case .failedToCreateClient:
       return "Failed to create a client."
+    case .failedToGenerateRequestHeaders:
+      return "Failed to create request headers."
     case .curlCode(let code):
       return String(cString: curl_easy_strerror(code))
     }
@@ -170,13 +174,51 @@ public actor EasyClient {
 
   // MARK: - PERFORM
 
-  private var _performed: Bool = false
+  private enum _State: Sendable {
+    case notStartedYet
+    case performing
+    case performed
+  }
 
+  private var _state: _State = .notStartedYet
+
+  private var _requestHeaderFieldList: UnsafeMutablePointer<CCURLStringList>? = nil
   private func __setRequestHeaderHandler(
     _ userInfoPointer: UnsafeMutablePointer<_UserInfo>
   ) throws {
-    let list = try userInfoPointer.pointee.requestHeaderFieldList
-    try _throwIfFailed({ _NWG_curl_easy_set_http_request_headers($0, list) })
+    guard _requestHeaderFieldList == nil,
+          let fields = userInfoPointer.pointee.requestHeaderFields else {
+      return
+    }
+
+    var currentList: UnsafeMutablePointer<CCURLStringList>? = nil
+    func __append(_ field: CURLHeaderField) throws {
+      if let theList = currentList {
+        guard let newList = _NWG_curl_slist_append(theList, "\(field.name): \(field.value)") else {
+          _NWG_curl_slist_free_all(currentList)
+          throw CURLClientError.failedToGenerateRequestHeaders
+        }
+        currentList = newList
+      } else {
+        guard let newList = _NWG_curl_slist_create("\(field.name): \(field.value)") else {
+          throw CURLClientError.failedToGenerateRequestHeaders
+        }
+        currentList = newList
+      }
+    }
+
+    for field in fields {
+      if field.name.isASCIICaseInsensitivelyEqual(to: "Content-Length") {
+        guard let length = CCURLOffset(field.value) else {
+          continue
+        }
+        try self.setUploadFileSize(length)
+      } else {
+        try __append(field)
+      }
+    }
+
+    try _throwIfFailed({ _NWG_curl_easy_set_http_request_headers($0, currentList) })
   }
 
   private func __setRequestBodyHandler(_ userInfoPointer: UnsafeMutablePointer<_UserInfo>) throws {
@@ -302,10 +344,18 @@ public actor EasyClient {
 
   /// Call `curl_easy_perform` with the handle.
   public func perform<Delegate>(delegate: Delegate) async throws where Delegate: CURLClientDelegate {
-    if _performed {
+    guard case .notStartedYet = _state else {
       return
     }
-    defer { _performed = true }
+
+    _state = .performing
+
+    defer {
+      if let requestHeaderFieldList = self._requestHeaderFieldList {
+        _NWG_curl_slist_free_all(requestHeaderFieldList)
+      }
+      _state = .performed
+    }
 
     try await delegate.willStartPerforming(client: self)
 

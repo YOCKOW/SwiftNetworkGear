@@ -8,7 +8,7 @@
 import Foundation
 import Testing
 
-public enum HTTPBinServer: Sendable {
+public enum HTTPBinServer: Sendable, Equatable {
   case httpbin
   case httpcan
   case other(scheme: String, host: String, port: UInt16)
