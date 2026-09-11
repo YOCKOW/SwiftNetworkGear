@@ -250,9 +250,17 @@ extension Unicode.UTF8.CodeUnit {
   @inlinable
   internal var _isSemicolon: Bool { self == ._semicolon }
 
+  /// `<`
+  @inlinable
+  internal var _isLessThanSign: Bool { self == 0x3C }
+
   /// `=`
   @inlinable
   internal var _isEqualSign: Bool { self == 0x3D }
+
+  /// `>`
+  @inlinable
+  internal var _isGreaterThanSign: Bool { self == 0x3E }
 
   /// `?`
   @inlinable

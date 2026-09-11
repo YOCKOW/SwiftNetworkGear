@@ -18,19 +18,19 @@ import Testing
 
   @Test func addrSpecParser() throws {
     do {
-      let addrSpec = try #require(MIMEAddressSpecification(parsing: "YOCKOW@YOCKOW.jp"))
+      let addrSpec = try #require(MIMEAddressSpecification(parsing: "addr@spec.parser"))
 
       let localPart = addrSpec.localPart
       #expect(localPart.isDotAtom)
       #expect(localPart.leadingComments.isNil)
       #expect(localPart.trailingComments.isNil)
-      #expect(localPart.dotAtom?.text == "YOCKOW")
+      #expect(localPart.dotAtom?.text == "addr")
 
       let domainPortion = addrSpec.domainPortion
       #expect(domainPortion.isDotAtom)
       #expect(domainPortion.leadingComments.isNil)
       #expect(domainPortion.trailingComments.isNil)
-      #expect(domainPortion.dotAtom?.text == "YOCKOW.jp")
+      #expect(domainPortion.dotAtom?.text == "spec.parser")
     }
 
     do {
@@ -52,4 +52,21 @@ import Testing
     }
   }
 
+  @Test func angleAddr() throws {
+    do {
+      let angleAddr = try #require(MIMEAngleBracketEnclosedAddress(parsing: "<angle@bracket.com>"))
+      #expect(angleAddr.leadingComments.isNil)
+      #expect(angleAddr.trailingComments.isNil)
+      #expect(angleAddr.addressSpecification.localPart.dotAtom?.text == "angle")
+      #expect(angleAddr.addressSpecification.domainPortion.dotAtom?.text == "bracket.com")
+    }
+
+    do {
+      let angleAddr = try #require(MIMEAngleBracketEnclosedAddress(parsing: "(foo)<bar@baz>(qux)"))
+      #expect(angleAddr.leadingComments == [MIMEComment([.text("foo")])])
+      #expect(angleAddr.addressSpecification.localPart.dotAtom?.text == "bar")
+      #expect(angleAddr.addressSpecification.domainPortion.dotAtom?.text == "baz")
+      #expect(angleAddr.trailingComments == [MIMEComment([.text("qux")])])
+    }
+  }
 }

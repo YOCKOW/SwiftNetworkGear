@@ -543,3 +543,126 @@ extension MIMEAddressSpecification: _InitializableWithParser {
     )
   }
 }
+
+/// Representation of `display-name` defined in [RFC 5322 §3.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4).
+public struct MIMEDisplayName: Sendable {
+  private let _entity: MIMEPhrase
+
+  public init(_ phrase: MIMEPhrase) {
+    self._entity = phrase
+  }
+}
+
+/// Representation of `angle-addr` defined in [RFC 5322 §3.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4).
+public struct MIMEAngleBracketEnclosedAddress: Sendable {
+  public internal(set) var leadingComments: [MIMEComment]?
+
+  public var addressSpecification: MIMEAddressSpecification
+
+  public internal(set) var trailingComments: [MIMEComment]?
+
+  internal init(
+    leadingComments: [MIMEComment]?,
+    addressSpecification: MIMEAddressSpecification,
+    trailingComments: [MIMEComment]?
+  ) {
+    self.leadingComments = leadingComments
+    self.addressSpecification = addressSpecification
+    self.trailingComments = trailingComments
+  }
+}
+
+public struct MIMEAngleBracketEnclosedAddressParserConfiguration: Sendable {
+  public var cfwsParserConfiguration: MIMECommentCoexistableFoldingWhitespaceParserConfiguration
+
+  public init(
+    cfwsParserConfiguration: MIMECommentCoexistableFoldingWhitespaceParserConfiguration = .default
+  ) {
+    self.cfwsParserConfiguration = cfwsParserConfiguration
+  }
+
+  public static let `default`: MIMEAngleBracketEnclosedAddressParserConfiguration = .init()
+}
+
+public struct MIMEAngleBracketEnclosedAddressParser<Input>: StringParser, _UTF8Parser
+where Input: StringProtocol {
+  public typealias Output = MIMEAngleBracketEnclosedAddress
+
+  public typealias Configuration = MIMEAngleBracketEnclosedAddressParserConfiguration
+
+  @usableFromInline let input: Input
+  @usableFromInline let utf8: Input.UTF8View
+  public var configuration: Configuration
+
+  @inlinable
+  public init(input: Input, configuration: Configuration? = nil) {
+    self.input = input
+    self.utf8 = input.utf8
+    self.configuration = configuration ?? .default
+  }
+
+  public mutating func parse() -> (output: MIMEAngleBracketEnclosedAddress, endIndex: Input.Index)? {
+    var currentIndex = self.utf8.startIndex
+
+    var leadingComments: [MIMEComment]? = nil
+    if let leadingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
+      input,
+      from: &currentIndex,
+      configuration: configuration.cfwsParserConfiguration
+    ) {
+      leadingComments = leadingCFWS
+    }
+
+    guard let _ = self.readCurrentCodeUnit(
+      at: &currentIndex,
+      ifAllowedCodeUnit: \._isLessThanSign
+    ) else {
+      return nil
+    }
+
+    guard let addrSpec = MIMEAddressSpecificationParser<Input.SubSequence>.parse(
+      input,
+      from: &currentIndex,
+    ) else {
+      return nil
+    }
+
+    guard let _ = self.readCurrentCodeUnit(
+      at: &currentIndex,
+      ifAllowedCodeUnit: \._isGreaterThanSign
+    ) else {
+      return nil
+    }
+
+    var trailingComments: [MIMEComment]? = nil
+    if let trailingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
+      input,
+      from: &currentIndex,
+      configuration: configuration.cfwsParserConfiguration
+    ) {
+      trailingComments = trailingCFWS
+    }
+
+    return (
+      MIMEAngleBracketEnclosedAddress(
+        leadingComments: leadingComments,
+        addressSpecification: addrSpec,
+        trailingComments: trailingComments
+      ),
+      currentIndex
+    )
+  }
+}
+
+extension MIMEAngleBracketEnclosedAddress: _InitializableWithParser {
+  public init?<S>(
+    parsing string: S,
+    configuration: MIMEAngleBracketEnclosedAddressParserConfiguration? = nil
+  ) where S: StringProtocol {
+    self.init(
+      string,
+      parser: MIMEAngleBracketEnclosedAddressParser<S>.self,
+      configuration: configuration
+    )
+  }
+}
