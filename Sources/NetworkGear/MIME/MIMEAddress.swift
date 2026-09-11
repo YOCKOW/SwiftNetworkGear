@@ -1,5 +1,5 @@
 /* *************************************************************************************************
- MIMEAddressSpecification.swift
+ MIMEAddress.swift
    © 2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.

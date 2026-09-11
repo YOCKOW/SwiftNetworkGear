@@ -1,5 +1,5 @@
 /* *************************************************************************************************
- MIMEAddressSpecificationTests.swift
+ MIMEAddressTests.swift
    © 2026 YOCKOW.
      Licensed under MIT License.
      See "LICENSE.txt" for more information.
@@ -8,7 +8,7 @@
 @testable import NetworkGear
 import Testing
 
-@Suite struct MIMEAddressSpecificationTests {
+@Suite struct MIMEAddressTests {
   @Test func domainLiteralParser() throws {
     let literal = try #require(MIMEDomainLiteral(parsing: "(foo)[bar](baz)"))
     #expect(literal.leadingComments == [MIMEComment([.text("foo")])])
@@ -16,7 +16,7 @@ import Testing
     #expect(literal.trailingComments == [MIMEComment([.text("baz")])])
   }
 
-  @Test func parser() throws {
+  @Test func addrSpecParser() throws {
     do {
       let addrSpec = try #require(MIMEAddressSpecification(parsing: "YOCKOW@YOCKOW.jp"))
 
