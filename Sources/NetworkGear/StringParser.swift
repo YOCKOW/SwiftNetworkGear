@@ -71,6 +71,17 @@ internal protocol _InputAccessibleParser: StringParser {
   var input: Input { get }
 }
 
+@usableFromInline
+internal protocol _OptionalConfigurationAccessibleParser: StringParser {
+  var configuration: Configuration? { get }
+}
+
+
+@usableFromInline
+internal protocol _ConfigurationAccessibleParser: StringParser {
+  var configuration: Configuration { get }
+}
+
 extension _InputAccessibleParser {
   @inlinable
   func parseASCIICaseInsensitivePrefix<S>(

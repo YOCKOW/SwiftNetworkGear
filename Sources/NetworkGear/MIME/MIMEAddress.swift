@@ -8,7 +8,7 @@
 import Foundation
 
 /// Representation of `domain-literal` defined in [RFC 5322 §3.4.1](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4.1).
-public struct MIMEDomainLiteral: Sendable {
+public struct MIMEDomainLiteral: Sendable, _SandwichedByOptionalCFWS {
   public internal(set) var leadingComments: [MIMEComment]?
 
   public let text: String
@@ -37,9 +37,20 @@ public struct MIMEDomainLiteral: Sendable {
 public struct MIMEAddressSpecification: Sendable {
   /// Representation of `local-part` defined in [RFC 5322 §3.4.1](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4.1).
   public struct LocalPart: Sendable {
-    private enum _Entity: Sendable {
+    fileprivate enum _Entity: Sendable, _EitherMappable {
       case dotAtom(MIMEDotAtom)
       case quotedString(MIMEQuotedString)
+
+      typealias _Left = MIMEDotAtom
+      typealias _Right = MIMEQuotedString
+
+      init(_ dotAtom: MIMEDotAtom) {
+        self = .dotAtom(dotAtom)
+      }
+
+      init(_ quotedString: MIMEQuotedString) {
+        self = .quotedString(quotedString)
+      }
     }
 
     private var _entity: _Entity
@@ -72,7 +83,7 @@ public struct MIMEAddressSpecification: Sendable {
       return quotedString
     }
 
-    public fileprivate(set) var leadingComments: [MIMEComment]? {
+    public internal(set) var leadingComments: [MIMEComment]? {
       get {
         switch self._entity {
         case .dotAtom(let dotAtom): return dotAtom.leadingComments
@@ -92,7 +103,7 @@ public struct MIMEAddressSpecification: Sendable {
     }
 
 
-    public fileprivate(set) var trailingComments: [MIMEComment]? {
+    public internal(set) var trailingComments: [MIMEComment]? {
       get {
         switch self._entity {
         case .dotAtom(let dotAtom): return dotAtom.trailingComments
@@ -119,20 +130,35 @@ public struct MIMEAddressSpecification: Sendable {
       self.trailingComments = nil
     }
 
+    fileprivate init(_entity entity: _Entity) {
+      self._entity = entity
+    }
+
     public init(_ dotAtom: MIMEDotAtom) {
-      self._entity = .dotAtom(dotAtom)
+      self.init(_entity: .dotAtom(dotAtom))
     }
 
     public init(_ quotedString: MIMEQuotedString) {
-      self._entity = .quotedString(quotedString)
+      self.init(_entity: .quotedString(quotedString))
     }
   }
 
   /// Representation of `domain` defined in [RFC 5322 §3.4.1](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4.1).
-  public struct DomainPortion: Sendable {
-    private enum _Entity: Sendable {
+  public struct DomainPortion: Sendable, _SandwichedByOptionalCFWS {
+    fileprivate enum _Entity: Sendable, _EitherMappable {
       case dotAtom(MIMEDotAtom)
       case domainLiteral(MIMEDomainLiteral)
+
+      typealias _Left = MIMEDotAtom
+      typealias _Right = MIMEDomainLiteral
+
+      init(_ dotAtom: MIMEDotAtom) {
+        self = .dotAtom(dotAtom)
+      }
+
+      init(_ literal: MIMEDomainLiteral) {
+        self = .domainLiteral(literal)
+      }
     }
 
     private var _entity: _Entity
@@ -165,7 +191,7 @@ public struct MIMEAddressSpecification: Sendable {
       return literal
     }
 
-    public fileprivate(set) var leadingComments: [MIMEComment]? {
+    public internal(set) var leadingComments: [MIMEComment]? {
       get {
         switch self._entity {
         case .dotAtom(let dotAtom): return dotAtom.leadingComments
@@ -185,7 +211,7 @@ public struct MIMEAddressSpecification: Sendable {
     }
 
 
-    public fileprivate(set) var trailingComments: [MIMEComment]? {
+    public internal(set) var trailingComments: [MIMEComment]? {
       get {
         switch self._entity {
         case .dotAtom(let dotAtom): return dotAtom.trailingComments
@@ -212,12 +238,16 @@ public struct MIMEAddressSpecification: Sendable {
       self.trailingComments = nil
     }
 
+    fileprivate init(_entity entity: _Entity) {
+      self._entity = entity
+    }
+
     public init(_ dotAtom: MIMEDotAtom) {
-      self._entity = .dotAtom(dotAtom)
+      self.init(_entity: .dotAtom(dotAtom))
     }
 
     public init(_ domainLiteral: MIMEDomainLiteral) {
-      self._entity = .domainLiteral(domainLiteral)
+      self.init(_entity: .domainLiteral(domainLiteral))
     }
   }
 
@@ -233,7 +263,7 @@ public struct MIMEAddressSpecification: Sendable {
 }
 
 extension MIMEAddressSpecification {
-  public struct ParserConfiguration: Sendable {
+  public struct ParserConfiguration: Sendable, _SandwichedByOptionalCFWSParserConfiguration {
     public var cfwsParserConfiguration: MIMECommentCoexistableFoldingWhitespaceParserConfiguration
 
     public init(
@@ -246,67 +276,75 @@ extension MIMEAddressSpecification {
   }
 }
 
-private struct _MIMEDomainLiteralCoreParser<Input>: StringParser, _UTF8Parser
+public struct MIMEDomainLiteralParser<Input>: StringParser, _SandwichedByOptionalCFWSParser
 where Input: StringProtocol {
-  typealias Output = String
-
-  let input: Input
-  let utf8: Input.UTF8View
-
-  init(input: Input) {
-    self.input = input
-    self.utf8 = input.utf8
-  }
-
-  mutating func parse() -> (output: String, endIndex: Input.Index)? {
-    var currentIndex = self.utf8.startIndex
-
-    var resultUTF8 = Data()
-
-    guard let open = self.readCurrentCodeUnit(
-      at: &currentIndex,
-      ifAllowedCodeUnit: \._isLeftSquareBracket
-    ) else {
-      return nil
-    }
-    resultUTF8.append(open)
-
-    while currentIndex < self.utf8.endIndex {
-      if let _ = FoldingWhitespaceParser<Input.SubSequence>.parse(input, from: &currentIndex) {
-        resultUTF8.append(._space)
-      }
-
-      guard let dText = self.parseString(
-        from: &currentIndex,
-        while: \._isAvailableInMIMEDomainLiteral
-      ) else {
-        break
-      }
-      resultUTF8.append(contentsOf: dText.utf8)
-    }
-
-    if let _ = FoldingWhitespaceParser<Input.SubSequence>.parse(input, from: &currentIndex) {
-      resultUTF8.append(._space)
-    }
-
-    guard let close = self.readCurrentCodeUnit(
-      at: &currentIndex,
-      ifAllowedCodeUnit: \._isRightSquareBracket
-    ) else {
-      return nil
-    }
-    resultUTF8.append(close)
-
-    return (String(decoding: resultUTF8, as: UTF8.self), currentIndex)
-  }
-}
-
-public struct MIMEDomainLiteralParser<Input>: StringParser where Input: StringProtocol {
   public typealias Output = MIMEDomainLiteral
 
   public typealias Configuration = MIMEAddressSpecification.ParserConfiguration
 
-  let input: Input
+  typealias CoreParserInput = Input.SubSequence
+  struct CoreParser: StringParser, _UTF8Parser {
+    let input: CoreParserInput
+    let utf8: CoreParserInput.UTF8View
+    var configuration: Configuration
+
+    init(input: CoreParserInput, configuration: Configuration?) {
+      self.input = input
+      self.utf8 = input.utf8
+      self.configuration = configuration ?? .default
+    }
+
+    mutating func parse() -> (output: Output, endIndex: CoreParserInput.Index)? {
+      var currentIndex = self.utf8.startIndex
+
+      var resultUTF8 = Data()
+
+      guard let open = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: \._isLeftSquareBracket
+      ) else {
+        return nil
+      }
+      resultUTF8.append(open)
+
+      while currentIndex < self.utf8.endIndex {
+        if let _ = FoldingWhitespaceParser<Input.SubSequence>.parse(input, from: &currentIndex) {
+          resultUTF8.append(._space)
+        }
+
+        guard let dText = self.parseString(
+          from: &currentIndex,
+          while: \._isAvailableInMIMEDomainLiteral
+        ) else {
+          break
+        }
+        resultUTF8.append(contentsOf: dText.utf8)
+      }
+
+      if let _ = FoldingWhitespaceParser<Input.SubSequence>.parse(input, from: &currentIndex) {
+        resultUTF8.append(._space)
+      }
+
+      guard let close = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: \._isRightSquareBracket
+      ) else {
+        return nil
+      }
+      resultUTF8.append(close)
+
+      return (
+        MIMEDomainLiteral(
+          leadingComments: nil,
+          _validatedText: String(decoding: resultUTF8, as: UTF8.self),
+          trailingComments: nil
+        ),
+        currentIndex
+      )
+    }
+  } // /CoreParser
+
+  @usableFromInline let input: Input
   public var configuration: Configuration
 
   public init(input: Input, configuration: Configuration? = nil) {
@@ -315,34 +353,7 @@ public struct MIMEDomainLiteralParser<Input>: StringParser where Input: StringPr
   }
 
   public mutating func parse() -> (output: MIMEDomainLiteral, endIndex: Input.Index)? {
-    typealias __CFWSParser = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>
-
-    var currentIndex = input.startIndex
-
-    let leadingComments: [MIMEComment]? = __CFWSParser.parse(
-      input,
-      from: &currentIndex,
-      configuration: configuration.cfwsParserConfiguration
-    ) ?? nil
-
-    guard let core = _MIMEDomainLiteralCoreParser<Input.SubSequence>.parse(input, from: &currentIndex) else {
-      return nil
-    }
-
-    let trailingComments: [MIMEComment]? = __CFWSParser.parse(
-      input,
-      from: &currentIndex,
-      configuration: configuration.cfwsParserConfiguration
-    ) ?? nil
-
-    return (
-      MIMEDomainLiteral(
-        leadingComments: leadingComments,
-        _validatedText: core,
-        trailingComments: trailingComments
-      ),
-      currentIndex
-    )
+    return self._parseWhole()
   }
 }
 
@@ -367,6 +378,11 @@ extension MIMEAddressSpecification {
 
     public var configuration: Configuration
 
+    @inlinable
+    public var cfwsParserConfiguration: CFWSParserConfiguration {
+      return self.configuration.cfwsParserConfiguration
+    }
+
     public init(input: Input, configuration: Configuration? = nil) {
       self.input = input
       self.utf8 = input.utf8
@@ -374,46 +390,24 @@ extension MIMEAddressSpecification {
     }
 
     public mutating func parse() -> (output: LocalPart, endIndex: Input.Index)? {
-      var currentIndex = input.startIndex
-
-      func __parseCFWS() -> Optional<[MIMEComment]?> {
-        if let cfws = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
-          input,
-          from: &currentIndex,
-          configuration: configuration.cfwsParserConfiguration
-        ) {
-          return cfws
-        }
-        return Optional<[MIMEComment]?>.none
-      }
-
-      var leadingComments: [MIMEComment]? = nil
-      if let leadingCFWS = __parseCFWS() {
-        leadingComments = leadingCFWS
-      }
-
-      var partialLocalPart: LocalPart? = nil
-      if let dotAtomCore = _MIMEDotAtomCoreParser<Input.SubSequence>.parse(input, from: &currentIndex) {
-        partialLocalPart = LocalPart(
-          MIMEDotAtom(
-            leadingComments: nil,
-            _validatedText: dotAtomCore._string,
-            trailingComments: nil
-          )
+      var parser = _EitherOfTypesStartingWithOptionalCFWSParser<
+        Input,
+        MIMEDotAtomParser<Input.SubSequence>,
+        MIMEQuotedStringParser<Input.SubSequence>
+      >(
+        input: input,
+        configuration: .init(
+          leftParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration),
+          rightParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration)
         )
-      } else if let qsCore = _MIMEQuotedStringCoreParser<Input.SubSequence>.parse(input, from: &currentIndex) {
-        partialLocalPart = LocalPart(qsCore)
-      }
-
-      guard var localPart = partialLocalPart else {
+      )
+      guard let parsedResult = parser.parse() else {
         return nil
       }
-      localPart.leadingComments = leadingComments
-      if let trailingCFWS = __parseCFWS() {
-        localPart.trailingComments = trailingCFWS
-      }
-
-      return (localPart, currentIndex)
+      return (
+        LocalPart(_entity: parsedResult.output.map(type: LocalPart._Entity.self)),
+        parsedResult.endIndex
+      )
     }
   }
 
@@ -427,6 +421,16 @@ extension MIMEAddressSpecification {
 
     public var configuration: Configuration
 
+    @inlinable
+    public var cfwsParserConfiguration: CFWSParserConfiguration {
+      get {
+        return configuration.cfwsParserConfiguration
+      }
+      set {
+        self.configuration.cfwsParserConfiguration = newValue
+      }
+    }
+
     public init(input: Input, configuration: Configuration? = nil) {
       self.input = input
       self.utf8 = input.utf8
@@ -434,52 +438,24 @@ extension MIMEAddressSpecification {
     }
 
     public mutating func parse() -> (output: DomainPortion, endIndex: Input.Index)? {
-      var currentIndex = input.startIndex
-
-      func __parseCFWS() -> Optional<[MIMEComment]?> {
-        if let cfws = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
-          input,
-          from: &currentIndex,
-          configuration: configuration.cfwsParserConfiguration
-        ) {
-          return cfws
-        }
-        return Optional<[MIMEComment]?>.none
-      }
-
-      var leadingComments: [MIMEComment]? = nil
-      if let leadingCFWS = __parseCFWS() {
-        leadingComments = leadingCFWS
-      }
-
-      var partialDomainPortion: DomainPortion? = nil
-      if let dotAtomCore = _MIMEDotAtomCoreParser<Input.SubSequence>.parse(input, from: &currentIndex) {
-        partialDomainPortion = DomainPortion(
-          MIMEDotAtom(
-            leadingComments: nil,
-            _validatedText: dotAtomCore._string,
-            trailingComments: nil
-          )
+      var parser = _EitherOfTypesStartingWithOptionalCFWSParser<
+        Input,
+        MIMEDotAtomParser<Input.SubSequence>,
+        MIMEDomainLiteralParser<Input.SubSequence>
+      >(
+        input: input,
+        configuration: .init(
+          leftParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration),
+          rightParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration)
         )
-      } else if let literalCore = _MIMEDomainLiteralCoreParser<Input.SubSequence>.parse(input, from: &currentIndex) {
-        partialDomainPortion = DomainPortion(
-          MIMEDomainLiteral(
-            leadingComments: nil,
-            _validatedText: literalCore,
-            trailingComments: nil
-          )
-        )
-      }
-
-      guard var domainPortion = partialDomainPortion else {
+      )
+      guard let parsedResult = parser.parse() else {
         return nil
       }
-      domainPortion.leadingComments = leadingComments
-      if let trailingCFWS = __parseCFWS() {
-        domainPortion.trailingComments = trailingCFWS
-      }
-
-      return (domainPortion, currentIndex)
+      return (
+        DomainPortion(_entity: parsedResult.output.map(type: DomainPortion._Entity.self)),
+        parsedResult.endIndex
+      )
     }
   }
 }

@@ -8,10 +8,21 @@
 import Foundation
 
 /// Representation of `word` defined in [RFC 5322 §3.2.5](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.5).
-public struct MIMEWord: Sendable {
-  private enum _Entity: Sendable {
+public struct MIMEWord: Sendable, _SandwichedByOptionalCFWS {
+  fileprivate enum _Entity: Sendable, _EitherMappable {
     case atom(MIMEAtom)
     case quotedString(MIMEQuotedString)
+
+    typealias _Left = MIMEAtom
+    typealias _Right = MIMEQuotedString
+
+    init(_ atom: MIMEAtom) {
+      self = .atom(atom)
+    }
+
+    init(_ quotedString: MIMEQuotedString) {
+      self = .quotedString(quotedString)
+    }
   }
 
   private var _entity: _Entity
@@ -44,7 +55,7 @@ public struct MIMEWord: Sendable {
     return quotedString
   }
 
-  fileprivate var leadingComments: [MIMEComment]? {
+  public internal(set) var leadingComments: [MIMEComment]? {
     get {
       switch self._entity {
       case .atom(let atom): return atom.leadingComments
@@ -63,7 +74,7 @@ public struct MIMEWord: Sendable {
     }
   }
 
-  fileprivate var trailingComments: [MIMEComment]? {
+  public internal(set) var trailingComments: [MIMEComment]? {
     get {
       switch self._entity {
       case .atom(let atom): return atom.trailingComments
@@ -82,12 +93,16 @@ public struct MIMEWord: Sendable {
     }
   }
 
+  fileprivate init(_entity entity: _Entity) {
+    self._entity = entity
+  }
+
   public init(_ atom: MIMEAtom) {
-    self._entity = .atom(atom)
+    self.init(_entity: .atom(atom))
   }
 
   public init(_ quotedString: MIMEQuotedString) {
-    self._entity = .quotedString(quotedString)
+    self.init(_entity: .quotedString(quotedString))
   }
 }
 
@@ -111,50 +126,34 @@ public struct MIMEWordParser<Input>: StringParser where Input: StringProtocol {
 
   public var configuration: Configuration
 
+  public var cfwsParserConfiguration: MIMECommentCoexistableFoldingWhitespaceParserConfiguration {
+    return self.configuration.cfwsParserConfiguration
+  }
+
   public init(input: Input, configuration: Configuration? = nil) {
     self.input = input
     self.configuration = configuration ?? .default
   }
 
   public mutating func parse() -> (output: MIMEWord, endIndex: Input.Index)? {
-    var currentIndex = input.startIndex
-
-    func __parseCFWS() -> Optional<[MIMEComment]?> {
-      if let cfws = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
-        input,
-        from: &currentIndex,
-        configuration: configuration.cfwsParserConfiguration
-      ) {
-        return cfws
-      }
-      return Optional<[MIMEComment]?>.none
-    }
-
-    var leadingComments: [MIMEComment]? = nil
-    if let leadingCFWS = __parseCFWS() {
-      leadingComments = leadingCFWS
-    }
-
-    var partialWord: MIMEWord? = nil
-    if let atomCore = _MIMEAtomCoreParser<Input.SubSequence>.parse(input, from: &currentIndex) {
-      partialWord = MIMEWord(MIMEAtom(
-        leadingComments: nil,
-        _validatedText: atomCore._string,
-        trailingComments: nil)
+    var parser = _EitherOfTypesStartingWithOptionalCFWSParser<
+      Input,
+      MIMEAtomParser<Input.SubSequence>,
+      MIMEQuotedStringParser<Input.SubSequence>
+    >(
+      input: input,
+      configuration: .init(
+        leftParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration),
+        rightParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration)
       )
-    } else if let qsCore = _MIMEQuotedStringCoreParser<Input.SubSequence>.parse(input, from: &currentIndex) {
-      partialWord = MIMEWord(qsCore)
-    }
-
-    guard var word = partialWord else {
+    )
+    guard let parsedResult = parser.parse() else {
       return nil
     }
-    word.leadingComments = leadingComments
-    if let trailingCFWS = __parseCFWS() {
-      word.trailingComments = trailingCFWS
-    }
-
-    return (word, currentIndex)
+    return (
+      MIMEWord(_entity: parsedResult.output.map(type: MIMEWord._Entity.self)),
+      parsedResult.endIndex
+    )
   }
 }
 

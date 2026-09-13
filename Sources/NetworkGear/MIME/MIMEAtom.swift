@@ -6,7 +6,7 @@
  ************************************************************************************************ */
 
 /// Representation of `atom` defined in [RFC 5322 §3.2.3](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.3).
-public struct MIMEAtom: Sendable {
+public struct MIMEAtom: Sendable, _SandwichedByOptionalCFWS {
   public internal(set) var leadingComments: [MIMEComment]?
 
   public let text: String
@@ -24,27 +24,7 @@ public struct MIMEAtom: Sendable {
   }
 }
 
-internal struct _MIMEAtomCoreParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
-  typealias Output = Input.SubSequence
-
-  let input: Input
-  let utf8: Input.UTF8View
-
-  init(input: Input) {
-    self.input = input
-    self.utf8 = input.utf8
-  }
-
-  mutating func parse() -> (output: Input.SubSequence, endIndex: Input.Index)? {
-    var currentIndex = self.utf8.startIndex
-    guard let text = self.parseString(from: &currentIndex, while: \._isAvailableInAtomText) else {
-      return nil
-    }
-    return (text, currentIndex)
-  }
-}
-
-public struct MIMEAtomParserConfiguration: Sendable {
+public struct MIMEAtomParserConfiguration: Sendable, _SandwichedByOptionalCFWSParserConfiguration {
   public var cfwsParserConfiguration: MIMECommentCoexistableFoldingWhitespaceParserConfiguration
 
   @inlinable
@@ -55,10 +35,41 @@ public struct MIMEAtomParserConfiguration: Sendable {
   public static let `default`: MIMEAtomParserConfiguration = .init()
 }
 
-public struct MIMEAtomParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+public struct MIMEAtomParser<Input>: StringParser,
+                                     _UTF8Parser,
+                                     _SandwichedByOptionalCFWSParser
+where Input: StringProtocol {
   public typealias Output = MIMEAtom
 
   public typealias Configuration = MIMEAtomParserConfiguration
+
+  internal struct CoreParser: StringParser, _UTF8Parser {
+    typealias Output = MIMEAtom
+    typealias Configuration = MIMEAtomParserConfiguration
+
+    @usableFromInline let input: Input.SubSequence
+    @usableFromInline let utf8: Input.SubSequence.UTF8View
+    var configuration: Configuration
+
+    init(input: Input.SubSequence, configuration: Configuration? = nil) {
+      self.input = input
+      self.utf8 = input.utf8
+      self.configuration = configuration ?? .default
+    }
+
+    mutating func parse() -> (output: MIMEAtom, endIndex: Input.SubSequence.Index)? {
+      var currentIndex = self.utf8.startIndex
+      guard let text = self.parseString(from: &currentIndex, while: \._isAvailableInAtomText) else {
+        return nil
+      }
+      let partialAtom = MIMEAtom(
+        leadingComments: nil,
+        _validatedText: text._string,
+        trailingComments: nil
+      )
+      return (partialAtom, currentIndex)
+    }
+  }
 
   @usableFromInline
   let input: Input
@@ -76,38 +87,7 @@ public struct MIMEAtomParser<Input>: StringParser, _UTF8Parser where Input: Stri
   }
 
   public mutating func parse() -> (output: MIMEAtom, endIndex: Input.Index)? {
-    var currentIndex = self.utf8.startIndex
-
-    var leadingComments: [MIMEComment]? = nil
-    if let leadingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
-      input,
-      from: &currentIndex,
-      configuration: configuration.cfwsParserConfiguration
-    ) {
-      leadingComments = leadingCFWS
-    }
-
-    guard let text = _MIMEAtomCoreParser<Input.SubSequence>.parse(input, from: &currentIndex) else {
-      return nil
-    }
-
-    var trailingComments: [MIMEComment]? = nil
-    if let trailingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
-      input,
-      from: &currentIndex,
-      configuration: configuration.cfwsParserConfiguration
-    ) {
-      trailingComments = trailingCFWS
-    }
-
-    return (
-      MIMEAtom(
-        leadingComments: leadingComments,
-        _validatedText: text._string,
-        trailingComments: trailingComments
-      ),
-      currentIndex
-    )
+    return _parseWhole()
   }
 }
 
@@ -118,7 +98,7 @@ extension MIMEAtom: _InitializableWithParser {
 }
 
 /// Representation of `dot-atom` defined in [RFC 5322 §3.2.3](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.3).
-public struct MIMEDotAtom: Sendable {
+public struct MIMEDotAtom: Sendable, _SandwichedByOptionalCFWS {
   public internal(set) var leadingComments: [MIMEComment]?
 
   /// `dot-atom-text`
@@ -137,45 +117,59 @@ public struct MIMEDotAtom: Sendable {
   }
 }
 
-internal struct _MIMEDotAtomCoreParser<Input>: StringParser, _UTF8Parser, _SubstringOutputParser
+public struct MIMEDotAtomParser<Input>: StringParser,
+                                        _UTF8Parser,
+                                        _SandwichedByOptionalCFWSParser
 where Input: StringProtocol {
-  typealias Output = Input.SubSequence
-
-  let input: Input
-  let utf8: Input.UTF8View
-
-  init(input: Input) {
-    self.input = input
-    self.utf8 = input.utf8
-  }
-
-  private func _parseDotAndAtext(from index: inout Input.Index) -> Bool {
-    var currentIndex = index
-    guard let _ = self.readCurrentCodeUnit(at: &currentIndex, ifAllowedCodeUnit: \._isPeriod) else {
-      return false
-    }
-    guard let _ = self.parseString(from: &currentIndex, while: \._isAvailableInAtomText) else {
-      return false
-    }
-    index = currentIndex
-    return true
-  }
-
-  @inlinable
-  mutating func parse() -> Input.Index? {
-    var currentIndex = self.utf8.startIndex
-    guard let _ = self.parseString(from: &currentIndex, while: \._isAvailableInAtomText) else {
-      return nil
-    }
-    while self._parseDotAndAtext(from: &currentIndex) {}
-    return currentIndex
-  }
-}
-
-public struct MIMEDotAtomParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
   public typealias Output = MIMEDotAtom
 
   public typealias Configuration = MIMEAtomParser<Input>.Configuration
+
+  struct CoreParser: StringParser, _UTF8Parser {
+    typealias Output = MIMEDotAtom
+    typealias Configuration = MIMEAtomParserConfiguration
+
+    @usableFromInline let input: Input.SubSequence
+    @usableFromInline let utf8: Input.SubSequence.UTF8View
+    var configuration: Configuration
+
+    init(input: Input.SubSequence, configuration: Configuration? = nil) {
+      self.input = input
+      self.utf8 = input.utf8
+      self.configuration = configuration ?? .default
+    }
+
+    private func _parseDotAndAtext(from index: inout Input.Index) -> Bool {
+      var currentIndex = index
+      guard let _ = self.readCurrentCodeUnit(at: &currentIndex, ifAllowedCodeUnit: \._isPeriod) else {
+        return false
+      }
+      guard let _ = self.parseString(from: &currentIndex, while: \._isAvailableInAtomText) else {
+        return false
+      }
+      index = currentIndex
+      return true
+    }
+
+    @inlinable
+    mutating func parse() -> (output: MIMEDotAtom, endIndex: Input.SubSequence.Index)? {
+      var currentIndex = self.utf8.startIndex
+
+      guard let _ = self.parseString(from: &currentIndex, while: \._isAvailableInAtomText) else {
+        return nil
+      }
+      while self._parseDotAndAtext(from: &currentIndex) {}
+      let text = self.input[..<currentIndex]
+
+      let partialDotAtom = MIMEDotAtom(
+        leadingComments: nil,
+        _validatedText: text._string,
+        trailingComments: nil
+      )
+
+      return (partialDotAtom, currentIndex)
+    }
+  }
 
   @usableFromInline
   let input: Input
@@ -192,52 +186,8 @@ public struct MIMEDotAtomParser<Input>: StringParser, _UTF8Parser where Input: S
     self.configuration = configuration ?? .default
   }
 
-  private func _parseDotAndAtext(from index: inout Input.Index) -> Bool {
-    var currentIndex = index
-    guard let _ = self.readCurrentCodeUnit(at: &currentIndex, ifAllowedCodeUnit: \._isPeriod) else {
-      return false
-    }
-    guard let _ = self.parseString(from: &currentIndex, while: \._isAvailableInAtomText) else {
-      return false
-    }
-    index = currentIndex
-    return true
-  }
-
   public mutating func parse() -> (output: MIMEDotAtom, endIndex: Input.Index)? {
-    var currentIndex = self.utf8.startIndex
-
-    var leadingComments: [MIMEComment]? = nil
-    if let leadingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
-      input,
-      from: &currentIndex,
-      configuration: configuration.cfwsParserConfiguration
-    ) {
-      leadingComments = leadingCFWS
-    }
-
-    guard let text = _MIMEDotAtomCoreParser<Input.SubSequence>.parse(input, from: &currentIndex) else {
-      return nil
-    }
-
-
-    var trailingComments: [MIMEComment]? = nil
-    if let trailingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
-      input,
-      from: &currentIndex,
-      configuration: configuration.cfwsParserConfiguration
-    ) {
-      trailingComments = trailingCFWS
-    }
-
-    return (
-      MIMEDotAtom(
-        leadingComments: leadingComments,
-        _validatedText: text._string,
-        trailingComments: trailingComments
-      ),
-      currentIndex
-    )
+    return self._parseWhole()
   }
 }
 

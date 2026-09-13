@@ -267,3 +267,6 @@ where Input: StringProtocol {
     return (comments, currentIndex)
   }
 }
+
+public typealias CFWSParserConfiguration = MIMECommentCoexistableFoldingWhitespaceParserConfiguration
+public typealias CFWSParser = MIMECommentCoexistableFoldingWhitespaceParser
