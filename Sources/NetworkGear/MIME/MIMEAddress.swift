@@ -530,7 +530,7 @@ public struct MIMEDisplayName: Sendable {
 }
 
 /// Representation of `angle-addr` defined in [RFC 5322 §3.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4).
-public struct MIMEAngleBracketEnclosedAddress: Sendable {
+public struct MIMEAngleBracketEnclosedAddress: Sendable, _SandwichedByOptionalCFWS {
   public internal(set) var leadingComments: [MIMEComment]?
 
   public var addressSpecification: MIMEAddressSpecification
@@ -548,7 +548,7 @@ public struct MIMEAngleBracketEnclosedAddress: Sendable {
   }
 }
 
-public struct MIMEAngleBracketEnclosedAddressParserConfiguration: Sendable {
+public struct MIMEAngleBracketEnclosedAddressParserConfiguration: Sendable, _SandwichedByOptionalCFWSParserConfiguration {
   public var cfwsParserConfiguration: MIMECommentCoexistableFoldingWhitespaceParserConfiguration
 
   public init(
@@ -560,73 +560,69 @@ public struct MIMEAngleBracketEnclosedAddressParserConfiguration: Sendable {
   public static let `default`: MIMEAngleBracketEnclosedAddressParserConfiguration = .init()
 }
 
-public struct MIMEAngleBracketEnclosedAddressParser<Input>: StringParser, _UTF8Parser
+public struct MIMEAngleBracketEnclosedAddressParser<Input>: StringParser, _SandwichedByOptionalCFWSParser
 where Input: StringProtocol {
   public typealias Output = MIMEAngleBracketEnclosedAddress
 
   public typealias Configuration = MIMEAngleBracketEnclosedAddressParserConfiguration
 
+  struct CoreParser: StringParser, _UTF8Parser {
+    let input: Input.SubSequence
+    let utf8: Input.SubSequence.UTF8View
+    var configuration: Configuration
+
+    init(input: Input.SubSequence, configuration: Configuration? = nil) {
+      self.input = input
+      self.utf8 = input.utf8
+      self.configuration = configuration ?? .default
+    }
+
+    mutating func parse() -> (output: Output, endIndex: Input.SubSequence.Index)? {
+      var currentIndex = self.utf8.startIndex
+
+      guard let _ = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: \._isLessThanSign
+      ) else {
+        return nil
+      }
+
+      guard let addrSpec = MIMEAddressSpecificationParser<Input.SubSequence.SubSequence>.parse(
+        input,
+        from: &currentIndex,
+      ) else {
+        return nil
+      }
+
+      guard let _ = self.readCurrentCodeUnit(
+        at: &currentIndex,
+        ifAllowedCodeUnit: \._isGreaterThanSign
+      ) else {
+        return nil
+      }
+
+      return (
+        MIMEAngleBracketEnclosedAddress(
+          leadingComments: nil,
+          addressSpecification: addrSpec,
+          trailingComments: nil
+        ),
+        currentIndex
+      )
+    }
+  }
+
   @usableFromInline let input: Input
-  @usableFromInline let utf8: Input.UTF8View
   public var configuration: Configuration
 
   @inlinable
   public init(input: Input, configuration: Configuration? = nil) {
     self.input = input
-    self.utf8 = input.utf8
     self.configuration = configuration ?? .default
   }
 
   public mutating func parse() -> (output: MIMEAngleBracketEnclosedAddress, endIndex: Input.Index)? {
-    var currentIndex = self.utf8.startIndex
-
-    var leadingComments: [MIMEComment]? = nil
-    if let leadingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
-      input,
-      from: &currentIndex,
-      configuration: configuration.cfwsParserConfiguration
-    ) {
-      leadingComments = leadingCFWS
-    }
-
-    guard let _ = self.readCurrentCodeUnit(
-      at: &currentIndex,
-      ifAllowedCodeUnit: \._isLessThanSign
-    ) else {
-      return nil
-    }
-
-    guard let addrSpec = MIMEAddressSpecificationParser<Input.SubSequence>.parse(
-      input,
-      from: &currentIndex,
-    ) else {
-      return nil
-    }
-
-    guard let _ = self.readCurrentCodeUnit(
-      at: &currentIndex,
-      ifAllowedCodeUnit: \._isGreaterThanSign
-    ) else {
-      return nil
-    }
-
-    var trailingComments: [MIMEComment]? = nil
-    if let trailingCFWS = MIMECommentCoexistableFoldingWhitespaceParser<Input.SubSequence>.parse(
-      input,
-      from: &currentIndex,
-      configuration: configuration.cfwsParserConfiguration
-    ) {
-      trailingComments = trailingCFWS
-    }
-
-    return (
-      MIMEAngleBracketEnclosedAddress(
-        leadingComments: leadingComments,
-        addressSpecification: addrSpec,
-        trailingComments: trailingComments
-      ),
-      currentIndex
-    )
+    return self._parseWhole()
   }
 }
 
