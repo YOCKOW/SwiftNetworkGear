@@ -669,14 +669,15 @@ where Input: StringProtocol, RepeatParser: StringParser, RepeatParser.Input == I
   @inlinable
   public init(
     input: Input,
-    minCount: Int
+    minCount: Int,
+    eachConfiguration: Optional<([RepeatParser.Output]) -> RepeatParser.Configuration?> = nil
   ) {
     self.init(
       input: input,
       configuration: Configuration(
         minCount: minCount,
         maxCount: .max,
-        eachConfiguration: nil
+        eachConfiguration: eachConfiguration
       )
     )
   }
@@ -684,14 +685,15 @@ where Input: StringProtocol, RepeatParser: StringParser, RepeatParser.Input == I
   @inlinable
   public init(
     input: Input,
-    maxCount: Int
+    maxCount: Int,
+    eachConfiguration: Optional<([RepeatParser.Output]) -> RepeatParser.Configuration?> = nil
   ) {
     self.init(
       input: input,
       configuration: Configuration(
         minCount: 1,
         maxCount: maxCount,
-        eachConfiguration: nil
+        eachConfiguration: eachConfiguration
       )
     )
   }

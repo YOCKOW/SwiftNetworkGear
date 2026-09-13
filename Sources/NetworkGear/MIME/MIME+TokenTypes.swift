@@ -164,9 +164,20 @@ extension MIMEWord: _InitializableWithParser {
 }
 
 /// Representation of `phrase` defined in [RFC 5322 §3.2.5](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.5).
-public struct MIMEPhrase: Sendable {
+public struct MIMEPhrase: Sendable, _StartsWithOptionalCFWS {
   @usableFromInline
   internal private(set) var _words: [MIMEWord]
+
+  internal var leadingComments: [MIMEComment]? {
+    @inlinable get {
+      return _words.first?.leadingComments
+    }
+    set {
+      var firstWord = _words.first!
+      firstWord.leadingComments = newValue
+      _words[0] = firstWord
+    }
+  }
 
   @usableFromInline
   internal init(_words words: [MIMEWord]) {
@@ -188,7 +199,7 @@ public struct MIMEPhrase: Sendable {
   }
 }
 
-public struct MIMEPhraseParserConfiguration: Sendable {
+public struct MIMEPhraseParserConfiguration: Sendable, _StartsWithOptionalCFWSParserConfiguration {
   public var cfwsParserConfiguration: MIMECommentCoexistableFoldingWhitespaceParserConfiguration
 
   @inlinable
@@ -200,7 +211,8 @@ public struct MIMEPhraseParserConfiguration: Sendable {
 }
 
 /// A parser to parse a `phrase`.
-public struct MIMEPhraseParser<Input>: StringParser where Input: StringProtocol {
+public struct MIMEPhraseParser<Input>: StringParser, _StartsWithOptionalCFWSParser
+where Input: StringProtocol {
   public typealias Output = MIMEPhrase
 
   public typealias Configuration = MIMEPhraseParserConfiguration
@@ -210,20 +222,44 @@ public struct MIMEPhraseParser<Input>: StringParser where Input: StringProtocol 
 
   public var configuration: Configuration
 
+  public var cfwsParserConfiguration: CFWSParserConfiguration {
+    get { configuration.cfwsParserConfiguration }
+    set { configuration.cfwsParserConfiguration = newValue }
+  }
+
+  struct RemainingParser: StringParser {
+    let input: Input.SubSequence
+    var configuration: Configuration
+    var cfwsParserConfiguration: CFWSParserConfiguration { configuration.cfwsParserConfiguration }
+
+    init(input: Input.SubSequence, configuration: Configuration? = nil) {
+      self.input = input
+      self.configuration = configuration ?? .default
+    }
+
+    mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+      let wordConfig = MIMEWordParserConfiguration(cfwsParserConfiguration: cfwsParserConfiguration)
+      var delegateParser = RepetitionParser<Input, MIMEWordParser>(
+        input: input,
+        minCount: 1,
+        eachConfiguration: { _ in wordConfig }
+      )
+      guard let (words, endIndex) = delegateParser.parse() else {
+        return nil
+      }
+      assert(words.first!.leadingComments.isNil, "Not consumed leading CFWS?!")
+      return (MIMEPhrase(_words: words), endIndex)
+    }
+  }
+
   @inlinable
   public init(input: Input, configuration: Configuration? = nil) {
     self.input = input
     self.configuration = configuration ?? .default
   }
 
-  @inlinable
   public mutating func parse() -> (output: MIMEPhrase, endIndex: Input.Index)? {
-    var delegateParser = RepetitionParser<Input, MIMEWordParser>(input: input, minCount: 1)
-    guard let (words, endIndex) = delegateParser.parse() else {
-      return nil
-    }
-    let phrase = MIMEPhrase(_words: words)
-    return (phrase, endIndex)
+    return self._parseWhole()
   }
 }
 
