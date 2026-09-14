@@ -233,6 +233,63 @@ extension _Either: _EitherMappable {
   }
 }
 
+
+internal struct _EitherParser<Input, LeftParser, RightParser>: StringParser
+where Input: StringProtocol,
+      LeftParser: StringParser,
+      LeftParser.Input == Input,
+      RightParser: StringParser,
+      RightParser.Input == Input
+{
+  typealias Output = _Either<LeftParser.Output, RightParser.Output>
+
+  struct Configuration {
+    var leftParserConfiguration: LeftParser.Configuration?
+    var rightParserConfiguration: RightParser.Configuration?
+
+    init(
+      leftParserConfiguration: LeftParser.Configuration?,
+      rightParserConfiguration: RightParser.Configuration?
+    ) {
+      self.leftParserConfiguration = leftParserConfiguration
+      self.rightParserConfiguration = rightParserConfiguration
+    }
+
+    static var `default`: Configuration {
+      .init(
+        leftParserConfiguration: nil,
+        rightParserConfiguration: nil
+      )
+    }
+  }
+
+  let input: Input
+  var configuration: Configuration
+
+  init(input: Input, configuration: Configuration?) {
+    self.input = input
+    self.configuration = configuration ?? .default
+  }
+
+  mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+    if let leftResult = LeftParser.parse(
+      input,
+      configuration: configuration.leftParserConfiguration
+    ) {
+      return (.left(leftResult.output), leftResult.endIndex)
+    }
+
+    if let rightResult = RightParser.parse(
+      input,
+      configuration: configuration.rightParserConfiguration
+    ) {
+      return (.right(rightResult.output), rightResult.endIndex)
+    }
+
+    return nil
+  }
+}
+
 internal struct _EitherOfTypesStartingWithOptionalCFWSParser<
   Input,
   LeftParser,
@@ -240,9 +297,9 @@ internal struct _EitherOfTypesStartingWithOptionalCFWSParser<
 >: StringParser, _StartsWithOptionalCFWSParser
 where Input: StringProtocol,
       LeftParser: _StartsWithOptionalCFWSParser,
-      LeftParser.RemainingParser.Input == Input.SubSequence.SubSequence,
+      LeftParser.Input == Input,
       RightParser: _StartsWithOptionalCFWSParser,
-      RightParser.RemainingParser.Input == Input.SubSequence.SubSequence
+      RightParser.Input == Input
 {
   typealias Output = _Either<LeftParser.Output, RightParser.Output>
 
@@ -271,7 +328,7 @@ where Input: StringProtocol,
         rightParserConfiguration: nil
       )
     }
-  } // /Configuration
+  }
 
   typealias RemainingInput = Input.SubSequence
   typealias RemainingOutput = Output
@@ -288,25 +345,17 @@ where Input: StringProtocol,
     }
 
     mutating func parse() -> (output: RemainingOutput, endIndex: RemainingInput.Index)? {
-      var currentIndex = self.input.startIndex
-
-      if let leftOutput = LeftParser.RemainingParser.parse(
+      return _EitherParser<
+        RemainingInput,
+        LeftParser.RemainingParser,
+        RightParser.RemainingParser
+      >.parse(
         input,
-        from: &currentIndex,
-        configuration: configuration.leftParserConfiguration
-      ) {
-        return (.left(leftOutput), currentIndex)
-      }
-
-      if let rightOutput = RightParser.RemainingParser.parse(
-        input,
-        from: &currentIndex,
-        configuration: configuration.rightParserConfiguration
-      ) {
-        return (.right(rightOutput), currentIndex)
-      }
-
-      return nil
+        configuration: .init(
+          leftParserConfiguration: configuration.leftParserConfiguration,
+          rightParserConfiguration: configuration.rightParserConfiguration
+        )
+      )
     }
   } // /RemainingParser
 

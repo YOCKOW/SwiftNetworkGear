@@ -392,8 +392,8 @@ extension MIMEAddressSpecification {
     public mutating func parse() -> (output: LocalPart, endIndex: Input.Index)? {
       var parser = _EitherOfTypesStartingWithOptionalCFWSParser<
         Input,
-        MIMEDotAtomParser<Input.SubSequence>,
-        MIMEQuotedStringParser<Input.SubSequence>
+        MIMEDotAtomParser<Input>,
+        MIMEQuotedStringParser<Input>
       >(
         input: input,
         configuration: .init(
@@ -440,8 +440,8 @@ extension MIMEAddressSpecification {
     public mutating func parse() -> (output: DomainPortion, endIndex: Input.Index)? {
       var parser = _EitherOfTypesStartingWithOptionalCFWSParser<
         Input,
-        MIMEDotAtomParser<Input.SubSequence>,
-        MIMEDomainLiteralParser<Input.SubSequence>
+        MIMEDotAtomParser<Input>,
+        MIMEDomainLiteralParser<Input>
       >(
         input: input,
         configuration: .init(
@@ -521,11 +521,78 @@ extension MIMEAddressSpecification: _InitializableWithParser {
 }
 
 /// Representation of `display-name` defined in [RFC 5322 §3.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4).
-public struct MIMEDisplayName: Sendable {
-  private let _entity: MIMEPhrase
+public struct MIMEDisplayName: Sendable, _StartsWithOptionalCFWS {
+  @usableFromInline internal var _entity: MIMEPhrase
 
+  public internal(set) var leadingComments: [MIMEComment]? {
+    get {
+      return self._entity.leadingComments
+    }
+    set {
+      self._entity.leadingComments = newValue
+    }
+  }
+
+  @inlinable
   public init(_ phrase: MIMEPhrase) {
     self._entity = phrase
+  }
+}
+
+public struct MIMEDisplayNameParserConfiguration: Sendable, _StartsWithOptionalCFWSParserConfiguration {
+  internal var _phraseParserConfiguration: MIMEPhraseParserConfiguration
+
+  public var cfwsParserConfiguration: CFWSParserConfiguration {
+    get {
+      return _phraseParserConfiguration.cfwsParserConfiguration
+    }
+    set {
+      _phraseParserConfiguration.cfwsParserConfiguration = newValue
+    }
+  }
+
+  public init(cfwsParserConfiguration: CFWSParserConfiguration? = nil) {
+    self._phraseParserConfiguration = cfwsParserConfiguration.map(MIMEPhraseParserConfiguration.init) ?? .default
+  }
+
+  public static let `default`: MIMEDisplayNameParserConfiguration = .init()
+}
+
+public struct MIMEDisplayNameParser<Input>: StringParser, _StartsWithOptionalCFWSParser where Input: StringProtocol {
+  public typealias Output = MIMEDisplayName
+  public typealias Configuration = MIMEDisplayNameParserConfiguration
+
+  typealias RemainingInput = Input.SubSequence
+  struct RemainingParser: StringParser {
+    let input: RemainingInput
+    var configuration: Configuration
+
+    init(input: RemainingInput, configuration: Configuration?) {
+      self.input = input
+      self.configuration = configuration ?? .default
+    }
+
+    mutating func parse() -> (output: Output, endIndex: RemainingInput.Index)? {
+      guard let (partialPhrase, endIndex) = MIMEPhraseParser<RemainingInput>.RemainingParser.parse(
+        input,
+        configuration: configuration._phraseParserConfiguration
+      ) else {
+        return nil
+      }
+      return (MIMEDisplayName(partialPhrase), endIndex)
+    }
+  }
+
+  @usableFromInline let input: Input
+  public var configuration: Configuration
+
+  public init(input: Input, configuration: Configuration? = nil) {
+    self.input = input
+    self.configuration = configuration ?? .default
+  }
+
+  public mutating func parse() -> (output: MIMEDisplayName, endIndex: Input.Index)? {
+    return _parseWhole()
   }
 }
 
@@ -636,5 +703,130 @@ extension MIMEAngleBracketEnclosedAddress: _InitializableWithParser {
       parser: MIMEAngleBracketEnclosedAddressParser<S>.self,
       configuration: configuration
     )
+  }
+}
+
+/// Representation of `name-addr` defined in [RFC 5322 §3.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4).
+public struct MIMENameAddress: Sendable, _StartsWithOptionalCFWS {
+  public var displayName: MIMEDisplayName?
+
+  public var address: MIMEAngleBracketEnclosedAddress
+
+  public internal(set) var leadingComments: [MIMEComment]? {
+    get {
+      return displayName?.leadingComments ?? address.leadingComments
+    }
+    set {
+      if var displayName = self.displayName {
+        displayName.leadingComments = newValue
+        self.displayName = displayName
+      } else {
+        self.address.leadingComments = newValue
+      }
+    }
+  }
+
+  public init(displayName: MIMEDisplayName?, address: MIMEAngleBracketEnclosedAddress) {
+    self.displayName = displayName
+    self.address = address
+  }
+}
+
+public struct MIMENameAddressParserConfiguration: Sendable, _StartsWithOptionalCFWSParserConfiguration {
+  public var cfwsParserConfiguration: CFWSParserConfiguration
+
+  public init(cfwsParserConfiguration: CFWSParserConfiguration = .default) {
+    self.cfwsParserConfiguration = cfwsParserConfiguration
+  }
+
+  public static let `default`: MIMENameAddressParserConfiguration = .init()
+}
+
+public struct MIMENameAddressParser<Input>: StringParser, _StartsWithOptionalCFWSParser
+where Input: StringProtocol {
+  public typealias Output = MIMENameAddress
+
+  public typealias Configuration = MIMENameAddressParserConfiguration
+
+  typealias RemainingInput = Input.SubSequence
+  struct RemainingParser: StringParser {
+    typealias Input = RemainingInput
+
+    let input: RemainingInput
+
+    var configuration: Configuration
+
+    var cfwsParserConfiguration: CFWSParserConfiguration {
+      get { configuration.cfwsParserConfiguration }
+      set { configuration.cfwsParserConfiguration = newValue }
+    }
+
+    init(input: RemainingInput, configuration: Configuration?) {
+      self.input = input
+      self.configuration = configuration ?? .default
+    }
+
+    mutating public func parse() -> (output: Output, endIndex: RemainingInput.Index)? {
+      var eitherParser = _EitherOfTypesStartingWithOptionalCFWSParser<
+        RemainingInput,
+        MIMEDisplayNameParser<RemainingInput>,
+        MIMEAngleBracketEnclosedAddressParser<RemainingInput>
+      >(
+        input: input,
+        configuration: .init(
+          leftParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration),
+          rightParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration)
+        )
+      )
+      guard let eitherResult = eitherParser.parse() else {
+        return nil
+      }
+      switch eitherResult.output {
+      case .left(let displayName):
+        var angleAddrParser = MIMEAngleBracketEnclosedAddressParser<RemainingInput.SubSequence>(
+          input: input[eitherResult.endIndex...],
+          configuration: .init(cfwsParserConfiguration: cfwsParserConfiguration)
+        )
+        guard let angleAddrResult = angleAddrParser.parse() else {
+          return nil
+        }
+        return (
+          MIMENameAddress(displayName: displayName, address: angleAddrResult.output),
+          angleAddrResult.endIndex
+        )
+      case .right(let angleAddr):
+        return (
+          MIMENameAddress(displayName: nil, address: angleAddr),
+          eitherResult.endIndex
+        )
+      }
+    }
+  }
+
+  @usableFromInline let input: Input
+
+  public var configuration: Configuration
+
+  public var cfwsParserConfiguration: CFWSParserConfiguration {
+    get { configuration.cfwsParserConfiguration }
+    set { configuration.cfwsParserConfiguration = newValue }
+  }
+
+  public init(input: Input, configuration: Configuration? = nil) {
+    self.input = input
+    self.configuration = configuration ?? .default
+  }
+
+  public mutating func parse() -> (output: MIMENameAddress, endIndex: Input.Index)? {
+    return self._parseWhole()
+  }
+}
+
+extension MIMENameAddress: _InitializableWithParser {
+  public init?<S>(
+    parsing string: S,
+    configuration: MIMENameAddressParserConfiguration? = nil
+  ) where S: StringProtocol {
+    self.init(string, parser: MIMENameAddressParser<S>.self, configuration: configuration)
   }
 }

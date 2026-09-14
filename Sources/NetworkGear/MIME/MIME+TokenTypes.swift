@@ -106,7 +106,7 @@ public struct MIMEWord: Sendable, _SandwichedByOptionalCFWS {
   }
 }
 
-public struct MIMEWordParserConfiguration: Sendable {
+public struct MIMEWordParserConfiguration: Sendable, _SandwichedByOptionalCFWSParserConfiguration {
   public var cfwsParserConfiguration: MIMECommentCoexistableFoldingWhitespaceParserConfiguration
 
   @inlinable
@@ -117,12 +117,44 @@ public struct MIMEWordParserConfiguration: Sendable {
   public static let `default`: MIMEWordParserConfiguration = .init()
 }
 
-public struct MIMEWordParser<Input>: StringParser where Input: StringProtocol {
+public struct MIMEWordParser<Input>: StringParser, _SandwichedByOptionalCFWSParser
+where Input: StringProtocol {
   public typealias Output = MIMEWord
 
   public typealias Configuration = MIMEWordParserConfiguration
 
-  let input: Input
+  typealias CoreParserInput = Input.SubSequence
+  struct CoreParser: StringParser {
+    let input: CoreParserInput
+    var configuration: Configuration
+
+    init(input: CoreParserInput, configuration: Configuration?) {
+      self.input = input
+      self.configuration = configuration ?? .default
+    }
+
+    mutating func parse() -> (output: Output, endIndex: CoreParserInput.Index)? {
+      guard let coreResult = _EitherParser<
+        CoreParserInput,
+        MIMEAtomParser<CoreParserInput>.CoreParser,
+        MIMEQuotedStringParser<CoreParserInput>.CoreParser
+      >.parse(
+        input,
+        configuration: .init(
+          leftParserConfiguration: .init(cfwsParserConfiguration: configuration.cfwsParserConfiguration),
+          rightParserConfiguration: .init(cfwsParserConfiguration: configuration.cfwsParserConfiguration)
+        )
+      ) else {
+        return nil
+      }
+      return (
+        MIMEWord(_entity: coreResult.output.map(type: MIMEWord._Entity.self)),
+        coreResult.endIndex
+      )
+    }
+  }
+
+  @usableFromInline let input: Input
 
   public var configuration: Configuration
 
@@ -138,8 +170,8 @@ public struct MIMEWordParser<Input>: StringParser where Input: StringProtocol {
   public mutating func parse() -> (output: MIMEWord, endIndex: Input.Index)? {
     var parser = _EitherOfTypesStartingWithOptionalCFWSParser<
       Input,
-      MIMEAtomParser<Input.SubSequence>,
-      MIMEQuotedStringParser<Input.SubSequence>
+      MIMEAtomParser<Input>,
+      MIMEQuotedStringParser<Input>
     >(
       input: input,
       configuration: .init(
@@ -194,6 +226,11 @@ public struct MIMEPhrase: Sendable, _StartsWithOptionalCFWS {
   }
 
   @inlinable
+  public var wordCount: Int {
+    return _words.count
+  }
+
+  @inlinable
   public func word(at index: Int) -> MIMEWord {
     return _words[index]
   }
@@ -227,28 +264,41 @@ where Input: StringProtocol {
     set { configuration.cfwsParserConfiguration = newValue }
   }
 
+  typealias RemainingInput = Input.SubSequence
   struct RemainingParser: StringParser {
-    let input: Input.SubSequence
+    let input: RemainingInput
     var configuration: Configuration
     var cfwsParserConfiguration: CFWSParserConfiguration { configuration.cfwsParserConfiguration }
 
-    init(input: Input.SubSequence, configuration: Configuration? = nil) {
+    init(input: RemainingInput, configuration: Configuration? = nil) {
       self.input = input
       self.configuration = configuration ?? .default
     }
 
-    mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+    mutating func parse() -> (output: Output, endIndex: RemainingInput.Index)? {
       let wordConfig = MIMEWordParserConfiguration(cfwsParserConfiguration: cfwsParserConfiguration)
-      var delegateParser = RepetitionParser<Input, MIMEWordParser>(
-        input: input,
-        minCount: 1,
-        eachConfiguration: { _ in wordConfig }
-      )
-      guard let (words, endIndex) = delegateParser.parse() else {
+
+      guard let firstWordResult = MIMEWordParser<RemainingInput>.RemainingParser.parse(
+        input,
+        configuration: wordConfig
+      ) else {
         return nil
       }
-      assert(words.first!.leadingComments.isNil, "Not consumed leading CFWS?!")
-      return (MIMEPhrase(_words: words), endIndex)
+
+      var words: [MIMEWord] = [firstWordResult.output]
+      var currentIndex = firstWordResult.endIndex
+
+      if let restWords = RepetitionParser<RemainingInput.SubSequence, MIMEWordParser>.parse(
+        input,
+        from: &currentIndex,
+        configuration: .init(
+          minCount: 1,
+          eachConfiguration: { _ in wordConfig}
+        )
+      ) {
+        words.append(contentsOf: restWords)
+      }
+      return (MIMEPhrase(_words: words), currentIndex)
     }
   }
 

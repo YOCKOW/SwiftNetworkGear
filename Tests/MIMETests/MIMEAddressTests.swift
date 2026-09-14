@@ -69,4 +69,32 @@ import Testing
       #expect(angleAddr.trailingComments == [MIMEComment([.text("qux")])])
     }
   }
+
+  @Test func nameAddress() throws {
+    do {
+      let onlyAngleAddr = try #require(MIMENameAddress(parsing: "<angle@bracket.com>"))
+      #expect(onlyAngleAddr.displayName.isNil)
+      #expect(onlyAngleAddr.address.addressSpecification.localPart.dotAtom?.text == "angle")
+      #expect(onlyAngleAddr.address.addressSpecification.domainPortion.dotAtom?.text == "bracket.com")
+    }
+
+    do {
+      let fullNameAddr = try #require(MIMENameAddress(parsing: #"(1)atom(2)"quoted-string"(3)<local.part@domain.portion>(4)"#))
+
+      let displayName = try #require(fullNameAddr.displayName)
+      guard displayName._entity.wordCount == 2 else {
+        Issue.record("Unexpected count.")
+        return
+      }
+      #expect(displayName._entity.leadingComments == [MIMEComment([.text("1")])])
+      #expect(displayName._entity.word(at: 0).isAtom)
+      #expect(displayName._entity.word(at: 0).trailingComments == [MIMEComment([.text("2")])])
+      #expect(displayName._entity.word(at: 1).isQuotedString)
+      #expect(displayName._entity.word(at: 1).trailingComments == [MIMEComment([.text("3")])])
+
+      #expect(fullNameAddr.address.addressSpecification.localPart.dotAtom?.text == "local.part")
+      #expect(fullNameAddr.address.addressSpecification.domainPortion.dotAtom?.text == "domain.portion")
+      #expect(fullNameAddr.address.trailingComments == [MIMEComment([.text("4")])])
+    }
+  }
 }
