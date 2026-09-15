@@ -264,21 +264,21 @@ where Input: StringProtocol {
     set { configuration.cfwsParserConfiguration = newValue }
   }
 
-  typealias RemainingInput = Input.SubSequence
-  struct RemainingParser: StringParser {
-    let input: RemainingInput
+  typealias PostLeadingCFWSInput = Input.SubSequence
+  struct PostLeadingCFWSParser: StringParser {
+    let input: PostLeadingCFWSInput
     var configuration: Configuration
     var cfwsParserConfiguration: CFWSParserConfiguration { configuration.cfwsParserConfiguration }
 
-    init(input: RemainingInput, configuration: Configuration? = nil) {
+    init(input: PostLeadingCFWSInput, configuration: Configuration? = nil) {
       self.input = input
       self.configuration = configuration ?? .default
     }
 
-    mutating func parse() -> (output: Output, endIndex: RemainingInput.Index)? {
+    mutating func parse() -> (output: Output, endIndex: PostLeadingCFWSInput.Index)? {
       let wordConfig = MIMEWordParserConfiguration(cfwsParserConfiguration: cfwsParserConfiguration)
 
-      guard let firstWordResult = MIMEWordParser<RemainingInput>.RemainingParser.parse(
+      guard let firstWordResult = MIMEWordParser<PostLeadingCFWSInput>.PostLeadingCFWSParser.parse(
         input,
         configuration: wordConfig
       ) else {
@@ -288,7 +288,7 @@ where Input: StringProtocol {
       var words: [MIMEWord] = [firstWordResult.output]
       var currentIndex = firstWordResult.endIndex
 
-      if let restWords = RepetitionParser<RemainingInput.SubSequence, MIMEWordParser>.parse(
+      if let restWords = RepetitionParser<PostLeadingCFWSInput.SubSequence, MIMEWordParser>.parse(
         input,
         from: &currentIndex,
         configuration: .init(

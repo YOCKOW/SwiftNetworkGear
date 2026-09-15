@@ -23,12 +23,12 @@ internal protocol _StartsWithOptionalCFWSParser: _InputAccessibleParser,
                                                  _ConfigurationAccessibleParser
 where Self.Output: _StartsWithOptionalCFWS,
       Self.Configuration: _StartsWithOptionalCFWSParserConfiguration,
-      Self.RemainingParser: StringParser,
-      Self.RemainingParser.Input == Self.Input.SubSequence,
-      Self.RemainingParser.Output == Self.Output,
-      Self.RemainingParser.Configuration == Self.Configuration
+      Self.PostLeadingCFWSParser: StringParser,
+      Self.PostLeadingCFWSParser.Input == Self.Input.SubSequence,
+      Self.PostLeadingCFWSParser.Output == Self.Output,
+      Self.PostLeadingCFWSParser.Configuration == Self.Configuration
 {
-  associatedtype RemainingParser
+  associatedtype PostLeadingCFWSParser
 }
 
 internal struct _FollowedByOptionalCFWSParser<Input, CoreParser>: StringParser
@@ -85,7 +85,7 @@ where Self.Output: _SandwichedByOptionalCFWS,
       Self.CoreParser.Configuration == Self.Configuration
 {
   associatedtype CoreParser
-  associatedtype RemainingParser = _FollowedByOptionalCFWSParser<Input.SubSequence, CoreParser>
+  associatedtype PostLeadingCFWSParser = _FollowedByOptionalCFWSParser<Input.SubSequence, CoreParser>
 }
 
 extension _StartsWithOptionalCFWSParser {
@@ -99,8 +99,8 @@ extension _StartsWithOptionalCFWSParser {
   }
 
   @inlinable
-  mutating func _parseRemaining(from index: inout Input.Index) -> Output? {
-    return RemainingParser.parse(input, from: &index, configuration: self.configuration)
+  mutating func _parseAfterLeadingCFWS(from index: inout Input.Index) -> Output? {
+    return PostLeadingCFWSParser.parse(input, from: &index, configuration: self.configuration)
   }
 
   @inlinable
@@ -113,13 +113,13 @@ extension _StartsWithOptionalCFWSParser {
       currentIndex = leadingCFWSResult.endIndex
     }
 
-    guard var remaining = _parseRemaining(from: &currentIndex) else {
+    guard var output = _parseAfterLeadingCFWS(from: &currentIndex) else {
       return nil
     }
 
-    remaining.leadingComments = leadingComments
+    output.leadingComments = leadingComments
 
-    return (output: remaining, endIndex: currentIndex)
+    return (output: output, endIndex: currentIndex)
   }
 }
 
@@ -330,25 +330,23 @@ where Input: StringProtocol,
     }
   }
 
-  typealias RemainingInput = Input.SubSequence
-  typealias RemainingOutput = Output
-  struct RemainingParser: StringParser {
-    typealias Input = RemainingInput
-    typealias Output = RemainingOutput
+  typealias PostLeadingCFWSInput = Input.SubSequence
+  struct PostLeadingCFWSParser: StringParser {
+    typealias Input = PostLeadingCFWSInput
 
-    let input: RemainingInput
+    let input: PostLeadingCFWSInput
     var configuration: Configuration
 
-    init(input: RemainingInput, configuration: Configuration?) {
+    init(input: PostLeadingCFWSInput, configuration: Configuration?) {
       self.input = input
       self.configuration = configuration ?? .default
     }
 
-    mutating func parse() -> (output: RemainingOutput, endIndex: RemainingInput.Index)? {
+    mutating func parse() -> (output: Output, endIndex: PostLeadingCFWSInput.Index)? {
       return _EitherParser<
-        RemainingInput,
-        LeftParser.RemainingParser,
-        RightParser.RemainingParser
+        PostLeadingCFWSInput,
+        LeftParser.PostLeadingCFWSParser,
+        RightParser.PostLeadingCFWSParser
       >.parse(
         input,
         configuration: .init(
@@ -357,7 +355,7 @@ where Input: StringProtocol,
         )
       )
     }
-  } // /RemainingParser
+  } // /PostLeadingCFWSParser
 
   let input: Input
   var configuration: Configuration

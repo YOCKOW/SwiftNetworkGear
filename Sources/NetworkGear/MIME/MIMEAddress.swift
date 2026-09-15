@@ -562,18 +562,18 @@ public struct MIMEDisplayNameParser<Input>: StringParser, _StartsWithOptionalCFW
   public typealias Output = MIMEDisplayName
   public typealias Configuration = MIMEDisplayNameParserConfiguration
 
-  typealias RemainingInput = Input.SubSequence
-  struct RemainingParser: StringParser {
-    let input: RemainingInput
+  typealias PostLeadingCFWSInput = Input.SubSequence
+  struct PostLeadingCFWSParser: StringParser {
+    let input: PostLeadingCFWSInput
     var configuration: Configuration
 
-    init(input: RemainingInput, configuration: Configuration?) {
+    init(input: PostLeadingCFWSInput, configuration: Configuration?) {
       self.input = input
       self.configuration = configuration ?? .default
     }
 
-    mutating func parse() -> (output: Output, endIndex: RemainingInput.Index)? {
-      guard let (partialPhrase, endIndex) = MIMEPhraseParser<RemainingInput>.RemainingParser.parse(
+    mutating func parse() -> (output: Output, endIndex: PostLeadingCFWSInput.Index)? {
+      guard let (partialPhrase, endIndex) = MIMEPhraseParser<PostLeadingCFWSInput>.PostLeadingCFWSParser.parse(
         input,
         configuration: configuration._phraseParserConfiguration
       ) else {
@@ -748,11 +748,11 @@ where Input: StringProtocol {
 
   public typealias Configuration = MIMENameAddressParserConfiguration
 
-  typealias RemainingInput = Input.SubSequence
-  struct RemainingParser: StringParser {
-    typealias Input = RemainingInput
+  typealias PostLeadingCFWSInput = Input.SubSequence
+  struct PostLeadingCFWSParser: StringParser {
+    typealias Input = PostLeadingCFWSInput
 
-    let input: RemainingInput
+    let input: PostLeadingCFWSInput
 
     var configuration: Configuration
 
@@ -761,16 +761,16 @@ where Input: StringProtocol {
       set { configuration.cfwsParserConfiguration = newValue }
     }
 
-    init(input: RemainingInput, configuration: Configuration?) {
+    init(input: PostLeadingCFWSInput, configuration: Configuration?) {
       self.input = input
       self.configuration = configuration ?? .default
     }
 
-    mutating public func parse() -> (output: Output, endIndex: RemainingInput.Index)? {
+    mutating public func parse() -> (output: Output, endIndex: PostLeadingCFWSInput.Index)? {
       var eitherParser = _EitherOfTypesStartingWithOptionalCFWSParser<
-        RemainingInput,
-        MIMEDisplayNameParser<RemainingInput>,
-        MIMEAngleBracketEnclosedAddressParser<RemainingInput>
+        PostLeadingCFWSInput,
+        MIMEDisplayNameParser<PostLeadingCFWSInput>,
+        MIMEAngleBracketEnclosedAddressParser<PostLeadingCFWSInput>
       >(
         input: input,
         configuration: .init(
@@ -783,7 +783,7 @@ where Input: StringProtocol {
       }
       switch eitherResult.output {
       case .left(let displayName):
-        var angleAddrParser = MIMEAngleBracketEnclosedAddressParser<RemainingInput.SubSequence>(
+        var angleAddrParser = MIMEAngleBracketEnclosedAddressParser<PostLeadingCFWSInput.SubSequence>(
           input: input[eitherResult.endIndex...],
           configuration: .init(cfwsParserConfiguration: cfwsParserConfiguration)
         )
