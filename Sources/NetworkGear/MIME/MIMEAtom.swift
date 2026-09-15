@@ -6,7 +6,7 @@
  ************************************************************************************************ */
 
 /// Representation of `atom` defined in [RFC 5322 §3.2.3](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.3).
-public struct MIMEAtom: Sendable, _SandwichedByOptionalCFWS {
+public struct MIMEAtom: Sendable, Equatable, _SandwichedByOptionalCFWS {
   public internal(set) var leadingComments: [MIMEComment]?
 
   public let text: String
@@ -18,6 +18,7 @@ public struct MIMEAtom: Sendable, _SandwichedByOptionalCFWS {
     _validatedText text: String,
     trailingComments: [MIMEComment]?
   ) {
+    assert(!text.isEmpty && text.utf8.allSatisfy(\._isAvailableInAtomText))
     self.leadingComments = leadingComments
     self.text = text
     self.trailingComments = trailingComments
@@ -104,16 +105,56 @@ public struct MIMEDotAtom: Sendable, _SandwichedByOptionalCFWS {
   /// `dot-atom-text`
   public let text: String
 
+  @usableFromInline
+  internal var _textContainsDot: Bool
+
   public internal(set) var trailingComments: [MIMEComment]?
 
   @usableFromInline
   internal init(
     leadingComments: [MIMEComment]?,
     _validatedText text: String,
-    trailingComments: [MIMEComment]?) {
+    textContainsDot: Bool,
+    trailingComments: [MIMEComment]?)
+  {
+    assert(
+      !text.isEmpty &&
+      text.utf8.first!._isAvailableInAtomText &&
+      text.utf8.last!._isAvailableInAtomText &&
+      text.utf8.allSatisfy({ $0._isAvailableInAtomText || $0._isPeriod })
+    )
+    assert(
+      textContainsDot == text.utf8.contains(where: { $0._isPeriod })
+    )
     self.leadingComments = leadingComments
     self.text = text
+    self._textContainsDot = textContainsDot
     self.trailingComments = trailingComments
+  }
+
+  /// Creates an instance from `atom`.
+  @inlinable
+  public init(_ atom: MIMEAtom) {
+    self.init(
+      leadingComments: atom.leadingComments,
+      _validatedText: atom.text,
+      textContainsDot: false,
+      trailingComments: atom.trailingComments
+    )
+  }
+}
+
+extension MIMEAtom {
+  /// Creates an instance from `dot-atom` if possible.
+  public init?(_ dotAtom: MIMEDotAtom) {
+    if dotAtom._textContainsDot {
+      return nil
+    }
+    self.init(
+      leadingComments: dotAtom.leadingComments,
+      _validatedText: dotAtom.text,
+      trailingComments: dotAtom.trailingComments
+    )
   }
 }
 
@@ -158,12 +199,16 @@ where Input: StringProtocol {
       guard let _ = self.parseString(from: &currentIndex, while: \._isAvailableInAtomText) else {
         return nil
       }
+      let atomEndIndex = currentIndex
       while self._parseDotAndAtext(from: &currentIndex) {}
+
       let text = self.input[..<currentIndex]
+      let textContainsDot = atomEndIndex < currentIndex
 
       let partialDotAtom = MIMEDotAtom(
         leadingComments: nil,
         _validatedText: text._string,
+        textContainsDot: textContainsDot,
         trailingComments: nil
       )
 

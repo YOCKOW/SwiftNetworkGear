@@ -14,7 +14,7 @@ private typealias _TestArgument = (
   expected: ([MIMEComment]?, String, [MIMEComment]?)?
 )
 
-@Suite struct MIMEAtomTests {
+@Suite struct `MIME[Dot]AtomTests` {
   @Test(
     arguments: [
       ("...", nil),
@@ -56,9 +56,7 @@ private typealias _TestArgument = (
     #expect(atom.text == expected.1)
     #expect(atom.trailingComments == expected.2)
   }
-}
 
-@Suite struct MIMEDotAtomTests {
   @Test(
     arguments: [
       ("...", nil),
@@ -88,7 +86,7 @@ private typealias _TestArgument = (
         )
       ),
     ] as Array<_TestArgument>
-  ) func test_atomParser(argument: (string: String, expected: ([MIMEComment]?, String, [MIMEComment]?)?)) throws {
+  ) func test_dotAtomParser(argument: (string: String, expected: ([MIMEComment]?, String, [MIMEComment]?)?)) throws {
     let createdDotAtom = MIMEDotAtom(parsing: argument.string)
 
     guard let expected = argument.expected else {
@@ -99,5 +97,17 @@ private typealias _TestArgument = (
     #expect(dotAtom.leadingComments == expected.0)
     #expect(dotAtom.text == expected.1)
     #expect(dotAtom.trailingComments == expected.2)
+  }
+
+  @Test func mutualInitializers() throws {
+    let atom = try #require(MIMEAtom(parsing: "(a)b(c)"))
+    let dotAtom = MIMEDotAtom(atom)
+
+    #expect(dotAtom.leadingComments == atom.leadingComments)
+    #expect(dotAtom.text == atom.text)
+    #expect(dotAtom.trailingComments == atom.trailingComments)
+
+    let reAtom = try #require(MIMEAtom(dotAtom))
+    #expect(reAtom == atom)
   }
 }
