@@ -34,9 +34,9 @@ public struct MIMEDomainLiteral: Sendable, _SandwichedByOptionalCFWS {
 }
 
 /// Representation of `addr-spec` defined in [RFC 5322 §3.4.1](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4.1).
-public struct MIMEAddressSpecification: Sendable {
+public struct MIMEAddressSpecification: Sendable, _SandwichedByOptionalCFWS {
   /// Representation of `local-part` defined in [RFC 5322 §3.4.1](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4.1).
-  public struct LocalPart: Sendable {
+  public struct LocalPart: Sendable, _SandwichedByOptionalCFWS {
     fileprivate enum _Entity: Sendable, _EitherMappable {
       case dotAtom(MIMEDotAtom)
       case quotedString(MIMEQuotedString)
@@ -251,11 +251,28 @@ public struct MIMEAddressSpecification: Sendable {
     }
   }
 
-  public let localPart: LocalPart
+  public internal(set) var localPart: LocalPart
 
-  public let domainPortion: DomainPortion
+  public internal(set) var domainPortion: DomainPortion
 
-  @inlinable
+  internal var leadingComments: [MIMEComment]? {
+    get {
+      self.localPart.leadingComments
+    }
+    set {
+      self.localPart.leadingComments = newValue
+    }
+  }
+
+  internal var trailingComments: [MIMEComment]? {
+    get {
+      self.domainPortion.trailingComments
+    }
+    set {
+      self.domainPortion.trailingComments = newValue
+    }
+  }
+
   public init(localPart: LocalPart, domainPortion: DomainPortion) {
     self.localPart = localPart
     self.domainPortion = domainPortion
@@ -368,13 +385,44 @@ extension MIMEDomainLiteral: _InitializableWithParser {
 }
 
 extension MIMEAddressSpecification {
-  public struct LocalPartParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public struct LocalPartParser<Input>: StringParser, _SandwichedByOptionalCFWSParser where Input: StringProtocol {
     public typealias Output = LocalPart
 
     public typealias Configuration = ParserConfiguration
 
+    typealias CoreParserInput = Input.SubSequence
+    struct CoreParser: StringParser {
+      let input: CoreParserInput
+      var configuration: Configuration
+
+      init(input: CoreParserInput, configuration: Configuration?) {
+        self.input = input
+        self.configuration = configuration ?? .default
+      }
+
+      mutating func parse() -> (output: Output, endIndex: CoreParserInput.Index)? {
+        var parser = _EitherParser<
+          CoreParserInput,
+          MIMEDotAtomParser<CoreParserInput>.CoreParser,
+          MIMEQuotedStringParser<CoreParserInput>.CoreParser
+        >(
+          input: input,
+          configuration: .init(
+            leftParserConfiguration: .init(cfwsParserConfiguration: configuration.cfwsParserConfiguration),
+            rightParserConfiguration: .init(cfwsParserConfiguration: configuration.cfwsParserConfiguration)
+          )
+        )
+        guard let (either, endIndex) = parser.parse() else {
+          return nil
+        }
+        return (
+          LocalPart(_entity: either.map(type: LocalPart._Entity.self)),
+          endIndex
+        )
+      }
+    }
+
     @usableFromInline let input: Input
-    @usableFromInline let utf8: Input.UTF8View
 
     public var configuration: Configuration
 
@@ -385,36 +433,50 @@ extension MIMEAddressSpecification {
 
     public init(input: Input, configuration: Configuration? = nil) {
       self.input = input
-      self.utf8 = input.utf8
       self.configuration = configuration ?? .default
     }
 
     public mutating func parse() -> (output: LocalPart, endIndex: Input.Index)? {
-      var parser = _EitherOfTypesStartingWithOptionalCFWSParser<
-        Input,
-        MIMEDotAtomParser<Input>,
-        MIMEQuotedStringParser<Input>
-      >(
-        input: input,
-        configuration: .init(
-          leftParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration),
-          rightParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration)
-        )
-      )
-      guard let parsedResult = parser.parse() else {
-        return nil
-      }
-      return (
-        LocalPart(_entity: parsedResult.output.map(type: LocalPart._Entity.self)),
-        parsedResult.endIndex
-      )
+      return _parseWhole()
     }
   }
 
-  public struct DomainPortionParser<Input>: StringParser, _UTF8Parser where Input: StringProtocol {
+  public struct DomainPortionParser<Input>: StringParser, _SandwichedByOptionalCFWSParser where Input: StringProtocol {
     public typealias Output = DomainPortion
 
     public typealias Configuration = ParserConfiguration
+
+    typealias CoreParserInput = Input.SubSequence
+    struct CoreParser: StringParser {
+      let input: CoreParserInput
+      var configuration: Configuration
+
+      init(input: CoreParserInput, configuration: Configuration?) {
+        self.input = input
+        self.configuration = configuration ?? .default
+      }
+
+      mutating func parse() -> (output: Output, endIndex: CoreParserInput.Index)? {
+        var parser = _EitherParser<
+          CoreParserInput,
+          MIMEDotAtomParser<CoreParserInput>.CoreParser,
+          MIMEDomainLiteralParser<CoreParserInput>.CoreParser
+        >(
+          input: input,
+          configuration: .init(
+            leftParserConfiguration: .init(cfwsParserConfiguration: configuration.cfwsParserConfiguration),
+            rightParserConfiguration: .init(cfwsParserConfiguration: configuration.cfwsParserConfiguration)
+          )
+        )
+        guard let (either, endIndex) = parser.parse() else {
+          return nil
+        }
+        return (
+          DomainPortion(_entity: either.map(type: DomainPortion._Entity.self)),
+          endIndex
+        )
+      }
+    }
 
     @usableFromInline let input: Input
     @usableFromInline let utf8: Input.UTF8View
@@ -438,72 +500,77 @@ extension MIMEAddressSpecification {
     }
 
     public mutating func parse() -> (output: DomainPortion, endIndex: Input.Index)? {
-      var parser = _EitherOfTypesStartingWithOptionalCFWSParser<
-        Input,
-        MIMEDotAtomParser<Input>,
-        MIMEDomainLiteralParser<Input>
-      >(
-        input: input,
-        configuration: .init(
-          leftParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration),
-          rightParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration)
-        )
-      )
-      guard let parsedResult = parser.parse() else {
-        return nil
-      }
-      return (
-        DomainPortion(_entity: parsedResult.output.map(type: DomainPortion._Entity.self)),
-        parsedResult.endIndex
-      )
+      return _parseWhole()
     }
   }
 }
 
 
-public struct MIMEAddressSpecificationParser<Input>: StringParser, _UTF8Parser
+public struct MIMEAddressSpecificationParser<Input>: StringParser, _SandwichedByOptionalCFWSParser
 where Input: StringProtocol {
   public typealias Output = MIMEAddressSpecification
 
   public typealias Configuration = MIMEAddressSpecification.ParserConfiguration
 
+  typealias CoreParserInput = Input.SubSequence
+  struct CoreParser: StringParser, _UTF8Parser {
+    let input: CoreParserInput
+    var configuration: Configuration
+    var cfwsParserConfiguration: CFWSParserConfiguration {
+      return configuration.cfwsParserConfiguration
+    }
+
+    init(input: CoreParserInput, configuration: Configuration?) {
+      self.input = input
+      self.configuration = configuration ?? .default
+    }
+
+    mutating func parse() -> (output: Output, endIndex: Input.Index)? {
+      typealias _PartialLocalPartParser = MIMEAddressSpecification.LocalPartParser<CoreParserInput>.PostLeadingCFWSParser
+      guard let (partialLocalPart, localPartEndIndex) = _PartialLocalPartParser.parse(
+        input,
+        configuration: .init(cfwsParserConfiguration: cfwsParserConfiguration)
+      ) else {
+        return nil
+      }
+
+      var currentIndex = localPartEndIndex
+      guard let _ = self.readCurrentCodeUnit(at: &currentIndex, ifAllowedCodeUnit: \._isAtSign) else {
+        return nil
+      }
+
+      let leadingCommentsOfDomainPortion: [MIMEComment]? = CFWSParser<CoreParserInput.SubSequence>.parse(
+        input,
+        from: &currentIndex,
+        configuration: cfwsParserConfiguration
+      ) ?? nil
+      typealias _PartialDomainPortionParser = MIMEAddressSpecification.DomainPortionParser<CoreParserInput.SubSequence>.CoreParser
+      guard var partialDomainPortion = _PartialDomainPortionParser.parse(
+        input,
+        from: &currentIndex,
+        configuration: .init(cfwsParserConfiguration: cfwsParserConfiguration)
+      ) else {
+        return nil
+      }
+      partialDomainPortion.leadingComments = leadingCommentsOfDomainPortion
+
+      return (
+        MIMEAddressSpecification(localPart: partialLocalPart, domainPortion: partialDomainPortion),
+        currentIndex
+      )
+    }
+  }
+
   @usableFromInline let input: Input
-  @usableFromInline let utf8: Input.UTF8View
   public var configuration: Configuration
 
   public init(input: Input, configuration: Configuration? = nil) {
     self.input = input
-    self.utf8 = input.utf8
     self.configuration = configuration ?? .default
   }
 
   public mutating func parse() -> (output: MIMEAddressSpecification, endIndex: Input.Index)? {
-    var currentIndex = self.utf8.startIndex
-
-    guard let localPart = MIMEAddressSpecification.LocalPartParser<Input.SubSequence>.parse(
-      input,
-      from: &currentIndex,
-      configuration: self.configuration
-    ) else {
-      return nil
-    }
-
-    guard let _ = self.readCurrentCodeUnit(at: &currentIndex, ifAllowedCodeUnit: \._isAtSign) else {
-      return nil
-    }
-
-    guard let domainPortion = MIMEAddressSpecification.DomainPortionParser<Input.SubSequence>.parse(
-      input,
-      from: &currentIndex,
-      configuration: self.configuration
-    ) else {
-      return nil
-    }
-
-    return (
-      MIMEAddressSpecification(localPart: localPart, domainPortion: domainPortion),
-      currentIndex
-    )
+    return _parseWhole()
   }
 }
 
