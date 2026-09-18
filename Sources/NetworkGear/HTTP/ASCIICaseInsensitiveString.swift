@@ -117,7 +117,7 @@ public struct ASCIICaseInsensitiveString: ASCIICaseInsensitiveStringProtocol,
   public typealias UnicodeScalarLiteralType = String.UnicodeScalarLiteralType
 
   @usableFromInline
-  internal private(set) var _string: String
+  internal var _string: String
 
   public static func ==(lhs: ASCIICaseInsensitiveString, rhs: ASCIICaseInsensitiveString) -> Bool {
     return lhs._isEqual(to: rhs)
@@ -196,7 +196,7 @@ public struct ASCIICaseInsensitiveSubstring: ASCIICaseInsensitiveStringProtocol,
   public typealias UnicodeScalarLiteralType = Substring.UnicodeScalarLiteralType
 
   @usableFromInline
-  internal private(set) var _string: Substring
+  internal var _string: Substring
 
   public static func ==(lhs: ASCIICaseInsensitiveSubstring, rhs: ASCIICaseInsensitiveSubstring) -> Bool {
     return lhs._isEqual(to: rhs)

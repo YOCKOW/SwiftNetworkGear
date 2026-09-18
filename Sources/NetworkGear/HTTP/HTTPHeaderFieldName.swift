@@ -11,7 +11,7 @@ public struct HTTPHeaderFieldName: Equatable, Hashable, RawRepresentable, Sendab
   public typealias RawValue = String
 
   @usableFromInline
-  internal private(set) var _string: ASCIICaseInsensitiveString
+  internal var _string: ASCIICaseInsensitiveString
 
   public private(set) var rawValue: String {
     get {

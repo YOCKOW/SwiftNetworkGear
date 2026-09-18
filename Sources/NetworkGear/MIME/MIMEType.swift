@@ -1259,12 +1259,7 @@ extension MIMEType {
   }
 
   private func _setting(encoding: String.Encoding) -> MIMEType {
-    #if compiler(>=6.3)
-    if #available(macOS 26.4, *), let charset = encoding.ianaName {
-      return _setting(charset: charset)
-    }
-    #endif
-    guard let charset = encoding.ianaCharacterSetName else {
+    guard let charset = encoding.ianaCharsetName else {
       return self
     }
     return _setting(charset: charset)

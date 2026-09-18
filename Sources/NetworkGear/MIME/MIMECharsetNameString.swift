@@ -42,27 +42,11 @@ public struct MIMECharsetNameString: Sendable, Equatable, Hashable {
 
 extension MIMECharsetNameString {
   public var encoding: String.Encoding? {
-    #if compiler(>=6.3)
-    if #available(macOS 26.4, *) {
-      if let encoding = String.Encoding(ianaName: self.name.description) {
-        return encoding
-      }
-    }
-    #endif
-    return String.Encoding(ianaCharacterSetName: self.name.description)
+    return String.Encoding(ianaCharsetName: self.name.description)
   }
 
   public init?(encoding: String.Encoding) {
-    guard let name = ({
-      #if compiler(>=6.3)
-      if #available(macOS 26.4, *) {
-        if let name = encoding.ianaName {
-          return name
-        }
-      }
-      #endif
-      return encoding.ianaCharacterSetName
-    })() else {
+    guard let name = encoding.ianaCharsetName else {
       return nil
     }
     self.init(name: name, isUsedInExtendedParameterValue: true)
