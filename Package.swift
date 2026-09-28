@@ -104,6 +104,13 @@ let package = Package(
       ]
     ),
     .testTarget(
+      name: "MIMETests",
+      dependencies: [
+        "NetworkGear",
+        "ySwiftExtensions",
+      ]
+    ),
+    .testTarget(
       name: "NetworkGearTests",
       dependencies: [
         "CNetworkGear",

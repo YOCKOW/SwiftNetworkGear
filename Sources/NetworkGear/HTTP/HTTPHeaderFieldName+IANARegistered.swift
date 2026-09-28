@@ -4,7 +4,7 @@
 //# The material(s) to generate this file was/were obtained from below:
 //
 // URL: https://www.iana.org/assignments/http-fields/field-names.csv
-// Last-Modified: 2026-07-02T02:31:26Z
+// Last-Modified: 2026-08-28T21:51:21Z
 
 extension HTTPHeaderFieldName {
   /// An HTTP header field name whose raw value is `A-IM`.
@@ -198,6 +198,9 @@ extension HTTPHeaderFieldName {
 
   /// An HTTP header field name whose raw value is `Configuration-Context`.
   public static let configurationContext = HTTPHeaderFieldName(_validatedString: "Configuration-Context")
+
+  /// An HTTP header field name whose raw value is `Connect-UDP-Bind`.
+  public static let connectUDPBind = HTTPHeaderFieldName(_validatedString: "Connect-UDP-Bind")
 
   /// An HTTP header field name whose raw value is `Connection`.
   public static let connection = HTTPHeaderFieldName(_validatedString: "Connection")
@@ -531,6 +534,9 @@ extension HTTPHeaderFieldName {
 
   /// An HTTP header field name whose raw value is `Proxy-Instruction`.
   public static let proxyInstruction = HTTPHeaderFieldName(_validatedString: "Proxy-Instruction")
+
+  /// An HTTP header field name whose raw value is `Proxy-Public-Address`.
+  public static let proxyPublicAddress = HTTPHeaderFieldName(_validatedString: "Proxy-Public-Address")
 
   /// An HTTP header field name whose raw value is `Proxy-Status`.
   public static let proxyStatus = HTTPHeaderFieldName(_validatedString: "Proxy-Status")
