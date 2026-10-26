@@ -783,7 +783,7 @@ extension MIMEAngleBracketEnclosedAddress: _InitializableWithParser {
 }
 
 /// Representation of `name-addr` defined in [RFC 5322 §3.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4).
-public struct MIMENameAddress: Sendable, _StartsWithOptionalCFWS {
+public struct MIMENameAddress: Sendable, _SandwichedByOptionalCFWS {
   public var displayName: MIMEDisplayName?
 
   public var address: MIMEAngleBracketEnclosedAddress
@@ -799,6 +799,15 @@ public struct MIMENameAddress: Sendable, _StartsWithOptionalCFWS {
       } else {
         self.address.leadingComments = newValue
       }
+    }
+  }
+
+  public internal(set) var trailingComments: [MIMEComment]? {
+    get {
+      return address.trailingComments
+    }
+    set {
+      address.trailingComments = newValue
     }
   }
 
@@ -904,5 +913,105 @@ extension MIMENameAddress: _InitializableWithParser {
     configuration: MIMENameAddressParserConfiguration? = nil
   ) where S: StringProtocol {
     self.init(string, parser: MIMENameAddressParser<S>.self, configuration: configuration)
+  }
+}
+
+
+public struct MIMEMailBox: Sendable, _SandwichedByOptionalCFWS {
+  private var _entity: _Either<MIMENameAddress, MIMEAddressSpecification>
+
+  public var isNameAddress: Bool {
+    guard case .left = _entity else {
+       return false
+    }
+    return true
+  }
+
+  public var isAddressSpecification: Bool {
+    guard case .right = _entity else {
+       return false
+    }
+    return true
+  }
+
+  public internal(set) var leadingComments: [MIMEComment]? {
+    get {
+      self._entity.leadingComments
+    }
+    set {
+      self._entity.leadingComments = newValue
+    }
+  }
+
+  public internal(set) var trailingComments: [MIMEComment]? {
+    get {
+      self._entity.trailingComments
+    }
+    set {
+      self._entity.trailingComments = newValue
+    }
+  }
+
+  fileprivate init(_entity entity: _Either<MIMENameAddress, MIMEAddressSpecification>) {
+    self._entity = entity
+  }
+
+  public init(_ nameAddress: MIMENameAddress) {
+    self.init(_entity: .init(nameAddress))
+  }
+
+  public init(_ addrSpec: MIMEAddressSpecification) {
+    self.init(_entity: .init(addrSpec))
+  }
+}
+
+public struct MIMEMailBoxParserConfiguration: Sendable {
+  public var nameAddressParserConfiguration: MIMENameAddressParserConfiguration
+  public var addressSpecificationParserConfiguration: MIMEAddressSpecificationParser.Configuration
+
+  public init(
+    nameAddressParserConfiguration: MIMENameAddressParserConfiguration,
+    addressSpecificationParserConfiguration: MIMEAddressSpecificationParser.Configuration
+  ) {
+    self.nameAddressParserConfiguration = nameAddressParserConfiguration
+    self.addressSpecificationParserConfiguration = addressSpecificationParserConfiguration
+  }
+
+  public static let `default`: MIMEMailBoxParserConfiguration = .init(
+    nameAddressParserConfiguration: .default,
+    addressSpecificationParserConfiguration: .default
+  )
+}
+
+public struct MIMEMailBoxParser<Input>: StringParser where Input: StringProtocol {
+  public typealias Output = MIMEMailBox
+  public typealias Configuration = MIMEMailBoxParserConfiguration
+
+  let input: Input
+  let configuration: Configuration
+
+  public init(input: Input, configuration: Configuration? = nil) {
+    self.input = input
+    self.configuration = configuration ?? .default
+  }
+
+  public mutating func parse() -> (output: MIMEMailBox, endIndex: Input.Index)? {
+    var parser = _EitherOfTypesStartingWithOptionalCFWSParser<
+      Input,
+      MIMENameAddressParser,
+      MIMEAddressSpecificationParser
+    >(
+      input: input,
+      configuration: .init(
+        leftParserConfiguration: configuration.nameAddressParserConfiguration,
+        rightParserConfiguration: configuration.addressSpecificationParserConfiguration
+      )
+    )
+
+    guard let parsedResult = parser.parse() else {
+      return nil
+    }
+    let mailBox = MIMEMailBox(_entity: parsedResult.output)
+    return (output: mailBox, endIndex: parsedResult.endIndex)
   }
 }

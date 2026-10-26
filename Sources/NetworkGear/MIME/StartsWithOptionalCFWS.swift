@@ -142,6 +142,14 @@ internal enum _Either<Left, Right> {
     }
     return right
   }
+
+  init(_ left: Left) {
+    self = .left(left)
+  }
+
+  init(_ right: Right) {
+    self = .right(right)
+  }
 }
 
 extension _Either: Sendable where Left: Sendable, Right: Sendable {}
@@ -203,14 +211,6 @@ internal protocol _EitherMappable {
 extension _Either: _EitherMappable {
   typealias _Left = Left
   typealias _Right = Right
-
-  init(_ left: Left) {
-    self = .left(left)
-  }
-
-  init(_ right: Right) {
-    self = .right(right)
-  }
 
   @inlinable
   func map<T>(type: T.Type) -> T where T: _EitherMappable, T._Left == Left, T._Right == Right {

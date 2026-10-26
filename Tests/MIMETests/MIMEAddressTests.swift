@@ -97,4 +97,15 @@ import Testing
       #expect(fullNameAddr.address.trailingComments == [MIMEComment([.text("4")])])
     }
   }
+
+  @Test func mailBox() throws {
+    func __parse(_ string: String) -> MIMEMailBox? {
+      return MIMEMailBoxParser<String>.parse(string)?.output
+    }
+
+    #expect(__parse("foo-bar").isNil)
+    #expect(__parse("name <loca.partl@domain.portion>")?.isNameAddress == true)
+    #expect(__parse("<loca.partl@domain.portion>")?.isNameAddress == true)
+    #expect(__parse("loca.partl@domain.portion")?.isAddressSpecification == true)
+  }
 }
