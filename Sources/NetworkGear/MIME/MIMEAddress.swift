@@ -600,6 +600,15 @@ public struct MIMEDisplayName: Sendable, _StartsWithOptionalCFWS {
     }
   }
 
+  public internal(set) var trailingComments: [MIMEComment]? {
+    get {
+      return self._entity.trailingComments
+    }
+    set {
+      self._entity.trailingComments = newValue
+    }
+  }
+
   @inlinable
   public init(_ phrase: MIMEPhrase) {
     self._entity = phrase

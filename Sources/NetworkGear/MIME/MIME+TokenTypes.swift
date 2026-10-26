@@ -211,6 +211,17 @@ public struct MIMEPhrase: Sendable, _StartsWithOptionalCFWS {
     }
   }
 
+  internal var trailingComments: [MIMEComment]? {
+    @inlinable get {
+      return _words.last?.trailingComments
+    }
+    set {
+      var lastWord = _words.last!
+      lastWord.trailingComments = newValue
+      _words[_words.count - 1] = lastWord
+    }
+  }
+
   @usableFromInline
   internal init(_words words: [MIMEWord]) {
     assert(!words.isEmpty)
