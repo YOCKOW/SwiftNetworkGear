@@ -1015,3 +1015,19 @@ public struct MIMEMailBoxParser<Input>: StringParser where Input: StringProtocol
     return (output: mailBox, endIndex: parsedResult.endIndex)
   }
 }
+
+
+/// Representation of `mailbox-list` defined in [RFC 5322 §3.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4).
+public struct MIMEMailBoxList: Sendable {
+  /// Non-empty list of `mail-box`es.
+  public fileprivate(set) var mailBoxes: Array<MIMEMailBox> {
+    willSet {
+      assert(!newValue.isEmpty)
+    }
+  }
+
+  fileprivate init(_ mailBoxes: Array<MIMEMailBox>) {
+    assert(!mailBoxes.isEmpty)
+    self.mailBoxes = mailBoxes
+  }
+}
