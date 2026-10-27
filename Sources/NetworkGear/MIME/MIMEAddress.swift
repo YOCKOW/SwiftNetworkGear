@@ -1053,4 +1053,18 @@ public struct MIMEMailBoxList: Sendable {
     assert(!mailBoxes.isEmpty)
     self.mailBoxes = mailBoxes
   }
+
+  public init(_ mailBox: MIMEMailBox, _ otherMailBoxes: MIMEMailBox...) {
+    var allBoxes = [mailBox]
+    allBoxes.append(contentsOf: otherMailBoxes)
+    self.init(allBoxes)
+  }
+
+  public mutating func append(_ newMailBox: MIMEMailBox) {
+    self.mailBoxes.append(newMailBox)
+  }
+
+  public mutating func append<S>(contentsOf newMailBoxes: S) where S: Sequence, S.Element == MIMEMailBox {
+    self.mailBoxes.append(contentsOf: newMailBoxes)
+  }
 }
