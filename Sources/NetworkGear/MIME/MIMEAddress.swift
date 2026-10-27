@@ -852,7 +852,7 @@ where Input: StringProtocol {
     }
 
     mutating public func parse() -> (output: Output, endIndex: PostLeadingCFWSInput.Index)? {
-      var eitherParser = _EitherOfTypesStartingWithOptionalCFWSParser<
+      var eitherParser = _EitherParser<
         PostLeadingCFWSInput,
         MIMEDisplayNameParser<PostLeadingCFWSInput>,
         MIMEAngleBracketEnclosedAddressParser<PostLeadingCFWSInput>
@@ -917,7 +917,10 @@ extension MIMENameAddress: _InitializableWithParser {
 }
 
 
-public struct MIMEMailBox: Sendable, _SandwichedByOptionalCFWS {
+public struct MIMEMailBox: Sendable, _SandwichedByOptionalCFWS, _EitherMappable {
+  typealias _Left = MIMENameAddress
+  typealias _Right = MIMEAddressSpecification
+
   private var _entity: _Either<MIMENameAddress, MIMEAddressSpecification>
 
   public var isNameAddress: Bool {
@@ -965,9 +968,13 @@ public struct MIMEMailBox: Sendable, _SandwichedByOptionalCFWS {
   }
 }
 
-public struct MIMEMailBoxParserConfiguration: Sendable {
+public struct MIMEMailBoxParserConfiguration: Sendable, _StartsWithOptionalCFWSParserConfiguration {
   public var nameAddressParserConfiguration: MIMENameAddressParserConfiguration
   public var addressSpecificationParserConfiguration: MIMEAddressSpecificationParser.Configuration
+
+  var cfwsParserConfiguration: CFWSParserConfiguration {
+    nameAddressParserConfiguration.cfwsParserConfiguration
+  }
 
   public init(
     nameAddressParserConfiguration: MIMENameAddressParserConfiguration,
@@ -983,36 +990,52 @@ public struct MIMEMailBoxParserConfiguration: Sendable {
   )
 }
 
-public struct MIMEMailBoxParser<Input>: StringParser where Input: StringProtocol {
+public struct MIMEMailBoxParser<Input>: StringParser, _StartsWithOptionalCFWSParser where Input: StringProtocol {
   public typealias Output = MIMEMailBox
   public typealias Configuration = MIMEMailBoxParserConfiguration
 
-  let input: Input
-  let configuration: Configuration
+  @usableFromInline let input: Input
+  @usableFromInline let configuration: Configuration
 
   public init(input: Input, configuration: Configuration? = nil) {
     self.input = input
     self.configuration = configuration ?? .default
   }
 
-  public mutating func parse() -> (output: MIMEMailBox, endIndex: Input.Index)? {
-    var parser = _EitherOfTypesStartingWithOptionalCFWSParser<
-      Input,
-      MIMENameAddressParser,
-      MIMEAddressSpecificationParser
-    >(
-      input: input,
-      configuration: .init(
-        leftParserConfiguration: configuration.nameAddressParserConfiguration,
-        rightParserConfiguration: configuration.addressSpecificationParserConfiguration
-      )
-    )
+  typealias PostLeadingCFWSParserInput = Input.SubSequence
+  struct PostLeadingCFWSParser: StringParser {
+    let input: PostLeadingCFWSParserInput
+    var configuration: Configuration
 
-    guard let parsedResult = parser.parse() else {
-      return nil
+    init(input: PostLeadingCFWSParserInput, configuration: Configuration?) {
+      self.input = input
+      self.configuration = configuration ?? .default
     }
-    let mailBox = MIMEMailBox(_entity: parsedResult.output)
-    return (output: mailBox, endIndex: parsedResult.endIndex)
+
+    func parse() -> (output: Output, endIndex: Input.Index)? {
+      var parser = _EitherParser<
+        PostLeadingCFWSParserInput,
+        MIMENameAddressParser<Input>.PostLeadingCFWSParser,
+        MIMEAddressSpecificationParser<Input>.PostLeadingCFWSParser
+      >(
+        input: input,
+        configuration: .init(
+          leftParserConfiguration: configuration.nameAddressParserConfiguration,
+          rightParserConfiguration: configuration.addressSpecificationParserConfiguration
+        )
+      )
+      guard let parsedResult = parser.parse() else {
+        return nil
+      }
+      return (
+        output: parsedResult.output.map(type: MIMEMailBox.self),
+        endIndex: parsedResult.endIndex
+      )
+    }
+  }
+
+  public mutating func parse() -> (output: MIMEMailBox, endIndex: Input.Index)? {
+    return self._parseWhole()
   }
 }
 

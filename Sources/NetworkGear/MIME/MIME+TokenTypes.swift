@@ -168,24 +168,7 @@ where Input: StringProtocol {
   }
 
   public mutating func parse() -> (output: MIMEWord, endIndex: Input.Index)? {
-    var parser = _EitherOfTypesStartingWithOptionalCFWSParser<
-      Input,
-      MIMEAtomParser<Input>,
-      MIMEQuotedStringParser<Input>
-    >(
-      input: input,
-      configuration: .init(
-        leftParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration),
-        rightParserConfiguration: .init(cfwsParserConfiguration: cfwsParserConfiguration)
-      )
-    )
-    guard let parsedResult = parser.parse() else {
-      return nil
-    }
-    return (
-      MIMEWord(_entity: parsedResult.output.map(type: MIMEWord._Entity.self)),
-      parsedResult.endIndex
-    )
+    return self._parseWhole()
   }
 }
 
