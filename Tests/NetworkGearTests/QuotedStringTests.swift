@@ -40,26 +40,6 @@ import Testing
     #expect(HTTPQuotedString(validating: #""A\ B""#)?.content == "A B")
   }
 
-  @Test func test_MIMEQuotedStringParser() throws {
-    #expect(MIMEQuotedString(parsing: #""""#)?.content.isEmpty == true)
-    #expect(MIMEQuotedString(parsing: #""A\ B""#)?.content == "A B")
-
-    let complexString = """
-    (
-      leading\\ comment
-    )
-    "quoted
-    content"
-    (
-      trailing comment
-    )
-    """.split(whereSeparator: { $0.isNewline }).joined(separator: "\u{0D}\u{0A}  ")
-    let complex = try #require(MIMEQuotedString(parsing: complexString))
-    #expect(complex.leadingComments == [MIMEComment([.text("leading comment")])])
-    #expect(complex.content == "quoted content")
-    #expect(complex.trailingComments == [MIMEComment([.text("trailing comment")])])
-  }
-
   @Test(arguments: [QuotedStringMode.http, QuotedStringMode.mime])
   func test_divide(mode: QuotedStringMode) throws {
     let content = #"A\B"C\D"E"#

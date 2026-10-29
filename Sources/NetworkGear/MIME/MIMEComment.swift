@@ -7,11 +7,51 @@
 
 import Foundation
 
+/// A string representation which is available in `comment`.
+public struct MIMECommentText: Sendable, Equatable, Hashable {
+  /// Non-escaped string
+  private var _text: String
+
+  private static func _isValidText<S>(_ text: S) -> Bool where S: StringProtocol {
+    text.utf8.allSatisfy({ $0._isAvailableInMIMEComment || $0._canBeEscapedInMIMEQuotedText })
+  }
+
+  fileprivate init<S>(_validatedText text: S) where S: StringProtocol {
+    assert(MIMECommentText._isValidText(text))
+    self._text = text._string
+  }
+
+  public init?<S>(_ string: S) where S: StringProtocol {
+    guard MIMECommentText._isValidText(string) else {
+      return nil
+    }
+    self.init(_validatedText: string)
+  }
+
+  internal var escapedText: String {
+    var escapedUTF8 = Data()
+    for byte in self._text.utf8 {
+      if byte._isAvailableInMIMEComment {
+        escapedUTF8.append(byte)
+      } else {
+        assert(byte._canBeEscapedInMIMEQuotedText)
+        escapedUTF8.append(._backslash)
+        escapedUTF8.append(byte)
+      }
+    }
+    return String(decoding: escapedUTF8, as: UTF8.self)
+  }
+
+  public static func +(lhs: MIMECommentText, rhs: MIMECommentText) -> MIMECommentText {
+    return MIMECommentText(_validatedText: lhs._text + rhs._text)
+  }
+}
+
 /// A type for representation of `comment` defined in [RFC 5322 §3.2.2](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.2).
 public struct MIMEComment: Sendable, Equatable {
   public enum Content: Sendable, Equatable {
     /// Text
-    case text(String)
+    case text(MIMECommentText)
 
     /// Nested comment
     case comment(MIMEComment)
@@ -38,8 +78,8 @@ public struct MIMEComment: Sendable, Equatable {
   }
 
   @inlinable
-  public mutating func append<S>(_ string: S) where S: StringProtocol {
-    self.append(.text(string._string))
+  public mutating func append(_ text: MIMECommentText) {
+    self.append(.text(text))
   }
 
   @inlinable
@@ -107,10 +147,14 @@ public struct MIMECommentParser<Input>: StringParser, _UTF8Parser where Input: S
       }
       if removeTrailingWhitespaces {
         if let lastIndex = textBuffer.lastIndex(where: { !$0._isMIMEWhitespace }) {
-          comment.append(String(decoding: textBuffer[...lastIndex], as: UTF8.self))
+          comment.append(
+            MIMECommentText(_validatedText: String(decoding: textBuffer[...lastIndex], as: UTF8.self))
+          )
         }
       } else {
-        comment.append(String(decoding: textBuffer, as: UTF8.self))
+        comment.append(
+          MIMECommentText(_validatedText: String(decoding: textBuffer, as: UTF8.self))
+        )
       }
       textBuffer.removeAll(keepingCapacity: true)
     }
