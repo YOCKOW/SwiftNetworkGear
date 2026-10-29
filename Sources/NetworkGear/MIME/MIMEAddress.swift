@@ -1041,11 +1041,33 @@ public struct MIMEMailBoxParser<Input>: StringParser, _StartsWithOptionalCFWSPar
 
 
 /// Representation of `mailbox-list` defined in [RFC 5322 §3.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4).
-public struct MIMEMailBoxList: Sendable {
+public struct MIMEMailBoxList: Sendable, _SandwichedByOptionalCFWS {
   /// Non-empty list of `mail-box`es.
   public fileprivate(set) var mailBoxes: Array<MIMEMailBox> {
     willSet {
       assert(!newValue.isEmpty)
+    }
+  }
+
+  public internal(set) var leadingComments: [MIMEComment]? {
+    get {
+      return mailBoxes.first!.leadingComments
+    }
+    set {
+      var firstBox = mailBoxes.first!
+      firstBox.leadingComments = newValue
+      mailBoxes[0] = firstBox
+    }
+  }
+
+  public internal(set) var trailingComments: [MIMEComment]? {
+    get {
+      return mailBoxes.last!.trailingComments
+    }
+    set {
+      var lastBox = mailBoxes.last!
+      lastBox.trailingComments = newValue
+      mailBoxes[mailBoxes.count - 1] = lastBox
     }
   }
 
