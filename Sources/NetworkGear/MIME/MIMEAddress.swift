@@ -1191,3 +1191,51 @@ where Input: StringProtocol {
     return self._parseWhole()
   }
 }
+
+
+/// Representation of `group` defined in [RFC 5322 §3.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4).
+public struct MIMEAddressGroup: Sendable, _SandwichedByOptionalCFWS {
+  /// Representation of `group-list` defined in [RFC 5322 §3.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4).
+  public struct List: Sendable {
+    private enum _Entity: Sendable {
+      case mailBoxList(MIMEMailBoxList)
+      case cfws([MIMEComment])
+    }
+
+    private var _entity: _Entity
+
+    private init(_entity entity: _Entity) {
+      self._entity = entity
+    }
+
+    public init(_ mailBoxList: MIMEMailBoxList) {
+      self.init(_entity: .mailBoxList(mailBoxList))
+    }
+
+    public init(_ comments: [MIMEComment]) {
+      self.init(_entity: .cfws(comments))
+    }
+  }
+
+  public var displayName: MIMEDisplayName
+
+  public var list: List?
+
+  public internal(set) var trailingComments: [MIMEComment]?
+
+  public internal(set) var leadingComments: [MIMEComment]? {
+    get {
+      return displayName.leadingComments
+    }
+    set {
+      displayName.leadingComments = newValue
+    }
+  }
+
+  public init(displayName: MIMEDisplayName, list: List?, trailingComments: [MIMEComment]? = nil) {
+    self.displayName = displayName
+    self.list = list
+    self.trailingComments = trailingComments
+  }
+}
+
