@@ -31,8 +31,8 @@ import Testing
     let phrase = try #require(MIMEPhraseParser<String>.parse(
       #"(leading comment)atom(interjected comment)"quoted-string"(trailing comment)"#
     )?.output)
-    guard phrase._words.count == 2 else {
-      Issue.record("Unexpected word count?! (\(phrase._words.count))")
+    guard phrase.words.count == 2 else {
+      Issue.record("Unexpected word count?! (\(phrase.words.count))")
       return
     }
     #expect(phrase.word(at: 0).isAtom)

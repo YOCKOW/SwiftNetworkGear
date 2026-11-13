@@ -6,6 +6,7 @@
  ************************************************************************************************ */
 
 import Foundation
+import yExtensions
 
 /// Representation of `word` defined in [RFC 5322 §3.2.5](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.5).
 public struct MIMEWord: Sendable, _SandwichedByOptionalCFWS {
@@ -180,53 +181,54 @@ extension MIMEWord: _InitializableWithParser {
 
 /// Representation of `phrase` defined in [RFC 5322 §3.2.5](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.5).
 public struct MIMEPhrase: Sendable, _StartsWithOptionalCFWS {
-  @usableFromInline
-  internal private(set) var _words: [MIMEWord]
+  public typealias Words = NonEmpty<Array<MIMEWord>>
+
+  public private(set) var words: Words
 
   internal var leadingComments: [MIMEComment]? {
     @inlinable get {
-      return _words.first?.leadingComments
+      return words.first.leadingComments
     }
     set {
-      var firstWord = _words.first!
+      var firstWord = words.first
       firstWord.leadingComments = newValue
-      _words[0] = firstWord
+      words[0] = firstWord
     }
   }
 
   internal var trailingComments: [MIMEComment]? {
     @inlinable get {
-      return _words.last?.trailingComments
+      return words.last.trailingComments
     }
     set {
-      var lastWord = _words.last!
+      var lastWord = words.last
       lastWord.trailingComments = newValue
-      _words[_words.count - 1] = lastWord
+      words[words.count - 1] = lastWord
     }
   }
 
-  @usableFromInline
-  internal init(_words words: [MIMEWord]) {
-    assert(!words.isEmpty)
-    self._words = words
+  public init(_ words: Words) {
+    self.words = words
   }
 
   public init(_ firstWord: MIMEWord, _ otherWords: MIMEWord...) {
-    self._words = [firstWord] + otherWords
+    var words: Words = [firstWord]
+    words.append(contentsOf: otherWords)
+    self.init(words)
   }
 
   public mutating func append(_ word: MIMEWord) {
-    self._words.append(word)
+    self.words.append(word)
   }
 
   @inlinable
   public var wordCount: Int {
-    return _words.count
+    return words.count
   }
 
   @inlinable
   public func word(at index: Int) -> MIMEWord {
-    return _words[index]
+    return words[index]
   }
 }
 
@@ -279,7 +281,7 @@ where Input: StringProtocol {
         return nil
       }
 
-      var words: [MIMEWord] = [firstWordResult.output]
+      var words: MIMEPhrase.Words = [firstWordResult.output]
       var currentIndex = firstWordResult.endIndex
 
       if let restWords = RepetitionParser<PostLeadingCFWSInput.SubSequence, MIMEWordParser>.parse(
@@ -292,7 +294,7 @@ where Input: StringProtocol {
       ) {
         words.append(contentsOf: restWords)
       }
-      return (MIMEPhrase(_words: words), currentIndex)
+      return (MIMEPhrase(words), currentIndex)
     }
   }
 

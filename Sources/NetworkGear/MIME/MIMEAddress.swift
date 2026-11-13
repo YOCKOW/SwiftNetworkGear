@@ -592,6 +592,11 @@ extension MIMEAddressSpecification: _InitializableWithParser {
 public struct MIMEDisplayName: Sendable, _StartsWithOptionalCFWS {
   @usableFromInline internal var _entity: MIMEPhrase
 
+  /// The entity of the display name.
+  public var phrase: MIMEPhrase {
+    return self._entity
+  }
+
   public internal(set) var leadingComments: [MIMEComment]? {
     get {
       return self._entity.leadingComments
@@ -938,6 +943,22 @@ public struct MIMEMailBox: Sendable, _SandwichedByOptionalCFWS, _EitherMappable 
     return true
   }
 
+  public var displayName: MIMEDisplayName? {
+    guard case .left(let nameAddress) = _entity else {
+      return nil
+    }
+    return nameAddress.displayName
+  }
+
+  public var addressSpecification: MIMEAddressSpecification {
+    switch self._entity {
+    case .left(let nameAddress):
+      return nameAddress.address.addressSpecification
+    case .right(let addrSpec):
+      return addrSpec
+    }
+  }
+
   public internal(set) var leadingComments: [MIMEComment]? {
     get {
       self._entity.leadingComments
@@ -1068,6 +1089,21 @@ public struct MIMEMailBoxList: Sendable, _SandwichedByOptionalCFWS {
     }
   }
 
+  public var count: Int { mailBoxes.count }
+
+  public var first: MIMEMailBox { mailBoxes.first }
+
+  public var last: MIMEMailBox { mailBoxes.last }
+
+  public subscript(index: NonEmpty<Array<MIMEMailBox>>.Index) -> MIMEMailBox {
+    _read {
+      yield mailBoxes[index]
+    }
+    _modify {
+      yield &mailBoxes[index]
+    }
+  }
+
   public init(_ mailBoxes: NonEmpty<Array<MIMEMailBox>>) {
     self.mailBoxes = mailBoxes
   }
@@ -1084,5 +1120,74 @@ public struct MIMEMailBoxList: Sendable, _SandwichedByOptionalCFWS {
 
   public mutating func append<S>(contentsOf newMailBoxes: S) where S: Sequence, S.Element == MIMEMailBox {
     self.mailBoxes.append(contentsOf: newMailBoxes)
+  }
+}
+
+
+public struct MIMEMailBoxListParser<Input>: StringParser, _StartsWithOptionalCFWSParser
+where Input: StringProtocol {
+  public typealias Output = MIMEMailBoxList
+  public typealias Configuration = MIMEMailBoxParserConfiguration
+
+  @usableFromInline let input: Input
+  @usableFromInline let configuration: Configuration
+
+  public init(input: Input, configuration: MIMEMailBoxParserConfiguration? = nil) {
+    self.input = input
+    self.configuration = configuration ?? .default
+  }
+
+  typealias PostLeadingCFWSParserInput = Input.SubSequence
+  struct PostLeadingCFWSParser: StringParser, _UTF8Parser {
+    let input: PostLeadingCFWSParserInput
+    let utf8: PostLeadingCFWSParserInput.UTF8View
+    var configuration: Configuration
+
+    init(input: PostLeadingCFWSParserInput, configuration: Configuration?) {
+      self.input = input
+      self.utf8 = input.utf8
+      self.configuration = configuration ?? .default
+    }
+
+    func parse() -> (output: Output, endIndex: Input.Index)? {
+      var currentIndex = input.startIndex
+      guard let firstMailBox = MIMEMailBoxParser<Input>.PostLeadingCFWSParser.parse(
+        input,
+        from: &currentIndex,
+        configuration: configuration
+      ) else {
+        return nil
+      }
+
+      var list = MIMEMailBoxList(NonEmpty<Array<MIMEMailBox>>(firstMailBox))
+
+      // Parse separators loosely
+      func __parseSeparators() -> Bool {
+        return !self.parseString(from: &currentIndex, while: {
+          $0._isMIMEWhitespace || $0._isComma
+        }).isNil
+      }
+
+      while true {
+        guard __parseSeparators() else {
+          break
+        }
+
+        guard let mailBox = MIMEMailBoxParser<PostLeadingCFWSParserInput.SubSequence>.parse(
+          input,
+          from: &currentIndex,
+          configuration: configuration
+        ) else {
+          break
+        }
+        list.append(mailBox)
+      }
+
+      return (output: list, endIndex: currentIndex)
+    }
+  }
+
+  public mutating func parse() -> (output: MIMEMailBoxList, endIndex: Input.Index)? {
+    return self._parseWhole()
   }
 }

@@ -104,8 +104,41 @@ import Testing
     }
 
     #expect(__parse("foo-bar").isNil)
-    #expect(__parse("name <loca.partl@domain.portion>")?.isNameAddress == true)
-    #expect(__parse("<loca.partl@domain.portion>")?.isNameAddress == true)
-    #expect(__parse("loca.partl@domain.portion")?.isAddressSpecification == true)
+    #expect(__parse("name <loca.part@domain.portion>")?.isNameAddress == true)
+    #expect(__parse("<loca.part@domain.portion>")?.isNameAddress == true)
+    #expect(__parse("loca.part@domain.portion")?.isAddressSpecification == true)
+  }
+
+  @Test func mailBoxList() throws {
+    let string: String = [
+      "(comment)",
+      "person1 <person.1@domain.portion>,",
+      "person2 <person.2@domain.portion>,",
+      "<person.3@domain.portion>,",
+      "person.4@domain.portion"
+    ].joined(separator: FWS)
+
+    let list = try #require(MIMEMailBoxListParser.parse(string)?.output)
+    guard list.count == 4 else {
+      Issue.record("Unexpected count?! (Actual count: \(list.count))")
+      return
+    }
+
+    #expect(!list.first.leadingComments.isNil)
+    #expect(list.first.displayName?.phrase.words.first.atom?.text == "person1")
+    #expect(list.first.addressSpecification.localPart.dotAtom?.text == "person.1")
+    #expect(list.first.addressSpecification.domainPortion.dotAtom?.text == "domain.portion")
+
+    #expect(list[1].displayName?.phrase.words.first.atom?.text == "person2")
+    #expect(list[1].addressSpecification.localPart.dotAtom?.text == "person.2")
+    #expect(list[1].addressSpecification.domainPortion.dotAtom?.text == "domain.portion")
+
+    #expect(list[2].displayName.isNil)
+    #expect(list[2].addressSpecification.localPart.dotAtom?.text == "person.3")
+    #expect(list[2].addressSpecification.domainPortion.dotAtom?.text == "domain.portion")
+
+    #expect(list.last.displayName.isNil)
+    #expect(list.last.addressSpecification.localPart.dotAtom?.text == "person.4")
+    #expect(list.last.addressSpecification.domainPortion.dotAtom?.text == "domain.portion")
   }
 }
