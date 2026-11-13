@@ -6,6 +6,7 @@
  ************************************************************************************************ */
 
 import Foundation
+import yExtensions
 
 /// Representation of `domain-literal` defined in [RFC 5322 §3.4.1](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4.1).
 public struct MIMEDomainLiteral: Sendable, _SandwichedByOptionalCFWS {
@@ -1043,18 +1044,14 @@ public struct MIMEMailBoxParser<Input>: StringParser, _StartsWithOptionalCFWSPar
 /// Representation of `mailbox-list` defined in [RFC 5322 §3.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4).
 public struct MIMEMailBoxList: Sendable, _SandwichedByOptionalCFWS {
   /// Non-empty list of `mail-box`es.
-  public fileprivate(set) var mailBoxes: Array<MIMEMailBox> {
-    willSet {
-      assert(!newValue.isEmpty)
-    }
-  }
+  public var mailBoxes: NonEmpty<Array<MIMEMailBox>>
 
   public internal(set) var leadingComments: [MIMEComment]? {
     get {
-      return mailBoxes.first!.leadingComments
+      return mailBoxes.first.leadingComments
     }
     set {
-      var firstBox = mailBoxes.first!
+      var firstBox = mailBoxes.first
       firstBox.leadingComments = newValue
       mailBoxes[0] = firstBox
     }
@@ -1062,22 +1059,21 @@ public struct MIMEMailBoxList: Sendable, _SandwichedByOptionalCFWS {
 
   public internal(set) var trailingComments: [MIMEComment]? {
     get {
-      return mailBoxes.last!.trailingComments
+      return mailBoxes.last.trailingComments
     }
     set {
-      var lastBox = mailBoxes.last!
+      var lastBox = mailBoxes.last
       lastBox.trailingComments = newValue
       mailBoxes[mailBoxes.count - 1] = lastBox
     }
   }
 
-  fileprivate init(_ mailBoxes: Array<MIMEMailBox>) {
-    assert(!mailBoxes.isEmpty)
+  public init(_ mailBoxes: NonEmpty<Array<MIMEMailBox>>) {
     self.mailBoxes = mailBoxes
   }
 
   public init(_ mailBox: MIMEMailBox, _ otherMailBoxes: MIMEMailBox...) {
-    var allBoxes = [mailBox]
+    var allBoxes: NonEmpty<Array<MIMEMailBox>> = [mailBox]
     allBoxes.append(contentsOf: otherMailBoxes)
     self.init(allBoxes)
   }
