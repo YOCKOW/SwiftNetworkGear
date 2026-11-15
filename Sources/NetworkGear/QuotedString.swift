@@ -450,63 +450,63 @@ public typealias QuotedString = HTTPQuotedString
 public struct MIMEQuotedString: Sendable, QuotedStringProtocol, _SandwichedByOptionalCFWS {
   private let _converter: _LazyQuotedStringBidirectionalConverter
 
-  public internal(set) var leadingComments: [MIMEComment]?
+  public internal(set) var leadingCFWS: CFWS?
 
   public var quotedString: String { _converter.quotedString }
 
   public var content: String { _converter.content }
 
-  public internal(set) var trailingComments: [MIMEComment]?
+  public internal(set) var trailingCFWS: CFWS?
 
   private init(
     _converter converter: _LazyQuotedStringBidirectionalConverter,
-    leadingComments: [MIMEComment]?,
-    trailingComments: [MIMEComment]?
+    leadingCFWS: CFWS?,
+    trailingCFWS: CFWS?
   ) {
     assert(converter.mode == .mime)
     self._converter = converter
-    self.leadingComments = leadingComments
-    self.trailingComments = trailingComments
+    self.leadingCFWS = leadingCFWS
+    self.trailingCFWS = trailingCFWS
   }
 
   internal init(
-    leadingComments: [MIMEComment]?,
+    leadingCFWS: CFWS?,
     quotedString: String,
     content: String,
-    trailingComments: [MIMEComment]?
+    trailingCFWS: CFWS?
   ) {
     assert(quotedString._unquotedString(for: .mime) == content)
     self.init(
       _converter: .init(quotedString: quotedString, content: content, mode: .mime),
-      leadingComments: leadingComments,
-      trailingComments: trailingComments
+      leadingCFWS: leadingCFWS,
+      trailingCFWS: trailingCFWS
     )
   }
 
   internal init(
-    leadingComments: [MIMEComment]?,
+    leadingCFWS: CFWS?,
     quotedString: String,
-    trailingComments: [MIMEComment]?
+    trailingCFWS: CFWS?
   ) {
     assert(!quotedString._unquotedString(for: .mime).isNil)
     self.init(
       _converter: .init(quotedString: quotedString, mode: .mime),
-      leadingComments: leadingComments,
-      trailingComments: trailingComments
+      leadingCFWS: leadingCFWS,
+      trailingCFWS: trailingCFWS
     )
   }
 
   @usableFromInline
   internal init<S>(
-    leadingComments: [MIMEComment]?,
+    leadingCFWS: CFWS?,
     content: S,
-    trailingComments: [MIMEComment]?
+    trailingCFWS: CFWS?
   ) where S: StringProtocol {
     assert(QuotedStringMode.mime._validContent(content))
     self.init(
       _converter: .init(content: content._bidiUTF8ViewString, mode: .mime),
-      leadingComments: leadingComments,
-      trailingComments: trailingComments
+      leadingCFWS: leadingCFWS,
+      trailingCFWS: trailingCFWS
     )
   }
 
@@ -515,15 +515,15 @@ public struct MIMEQuotedString: Sendable, QuotedStringProtocol, _SandwichedByOpt
       return nil
     }
     self.init(
-      leadingComments: nil,
+      leadingCFWS: nil,
       quotedString: quotedString,
       content: content._string,
-      trailingComments: nil
+      trailingCFWS: nil
     )
   }
 
   public func appending(_ other: MIMEQuotedString) -> MIMEQuotedString {
-    func __concatenate(_ comments1: [MIMEComment]?, _ comments2: [MIMEComment]?) -> [MIMEComment]? {
+    func __concatenate(_ comments1: CFWS?, _ comments2: CFWS?) -> CFWS? {
       switch (comments1, comments2) {
       case (nil, nil):
         return nil
@@ -531,15 +531,16 @@ public struct MIMEQuotedString: Sendable, QuotedStringProtocol, _SandwichedByOpt
         return comments1
       case (nil, _?):
         return comments2
-      case (let c1?, let c2?):
-        return c1 + c2
+      case (var c1?, let c2?):
+        c2.comments.map({ c1.append(contentsOf: $0) })
+        return c1
       }
     }
 
     return MIMEQuotedString(
       _converter: self._converter.appending(other._converter)!,
-      leadingComments: __concatenate(self.leadingComments, other.leadingComments),
-      trailingComments: __concatenate(self.trailingComments, other.trailingComments),
+      leadingCFWS: __concatenate(self.leadingCFWS, other.leadingCFWS),
+      trailingCFWS: __concatenate(self.trailingCFWS, other.trailingCFWS),
     )
   }
 
@@ -549,16 +550,16 @@ public struct MIMEQuotedString: Sendable, QuotedStringProtocol, _SandwichedByOpt
     }
     return MIMEQuotedString(
       _converter: newConverter,
-      leadingComments: self.leadingComments,
-      trailingComments: self.trailingComments
+      leadingCFWS: self.leadingCFWS,
+      trailingCFWS: self.trailingCFWS
     )
   }
 
   public func divide(whereFirstPartMaxUTF8Count maxCount: Int) -> (MIMEQuotedString, MIMEQuotedString?) {
     let (converter1, conveter2) = self._converter.divide(whereFirstPartMaxUTF8Count: maxCount)
     return (
-      MIMEQuotedString(_converter: converter1, leadingComments: nil, trailingComments: nil),
-      conveter2.map({ MIMEQuotedString(_converter: $0, leadingComments: nil, trailingComments: nil) })
+      MIMEQuotedString(_converter: converter1, leadingCFWS: nil, trailingCFWS: nil),
+      conveter2.map({ MIMEQuotedString(_converter: $0, leadingCFWS: nil, trailingCFWS: nil) })
     )
   }
 }
@@ -721,14 +722,14 @@ public struct MIMEQuotedStringParser<Input>: StringParser, _SandwichedByOptional
 
       let content = String(decoding: contentUTF8, as: UTF8.self)
       let output: MIMEQuotedString = fwsExists ? MIMEQuotedString(
-        leadingComments: nil,
+        leadingCFWS: nil,
         content: content,
-        trailingComments: nil
+        trailingCFWS: nil
       ) : MIMEQuotedString(
-        leadingComments: nil,
+        leadingCFWS: nil,
         quotedString: input[..<currentIndex]._string,
         content: content,
-        trailingComments: nil
+        trailingCFWS: nil
       )
       return (output, currentIndex)
     }

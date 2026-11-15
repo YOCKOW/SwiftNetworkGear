@@ -6,11 +6,11 @@
  ************************************************************************************************ */
 
 internal protocol _StartsWithOptionalCFWS {
-  var leadingComments: [MIMEComment]? { get set }
+  var leadingCFWS: CFWS? { get set }
 }
 
 internal protocol _SandwichedByOptionalCFWS: _StartsWithOptionalCFWS {
-  var trailingComments: [MIMEComment]? { get set }
+  var trailingCFWS: CFWS? { get set }
 }
 
 internal protocol _StartsWithOptionalCFWSParserConfiguration {
@@ -57,17 +57,14 @@ where Input: StringProtocol,
     }
 
     var currentIndex = coreResult.endIndex
-    var trailingComments: [MIMEComment]? = nil
-    if let trailingCFWS = CFWSParser<Input.SubSequence>.parse(
+    let trailingCFWS: CFWS? = CFWSParser<Input.SubSequence>.parse(
       input,
       from: &currentIndex,
       configuration: configuration?.cfwsParserConfiguration
-    ) {
-      trailingComments = trailingCFWS
-    }
+    )
 
     var core = coreResult.output
-    core.trailingComments = trailingComments
+    core.trailingCFWS = trailingCFWS
 
     return (
       output: core,
@@ -90,34 +87,31 @@ where Self.Output: _SandwichedByOptionalCFWS,
 
 extension _StartsWithOptionalCFWSParser {
   @inlinable
-  mutating func _parseOptionalLeadingCFWS() -> (leadingComments: [MIMEComment]?, endIndex: Input.Index)? {
-    var leadingCFWSParser = CFWSParser<Input>(
+  mutating func _parseLeadingCFWS() -> (leadingCFWS: CFWS?, endIndex: Input.Index) {
+    var parser = CFWSParser<Input>(
       input: input,
       configuration: self.configuration.cfwsParserConfiguration
     )
-    return leadingCFWSParser.parse() as ([MIMEComment]?, Input.Index)?
+    guard let result = parser.parse() else {
+      return (leadingCFWS: nil, endIndex: input.startIndex)
+    }
+    return (leadingCFWS: result.output, endIndex: result.endIndex)
   }
 
   @inlinable
-  mutating func _parseAfterLeadingCFWS(from index: inout Input.Index) -> Output? {
+  mutating func _parsePostLeadingCFWS(from index: inout Input.Index) -> Output? {
     return PostLeadingCFWSParser.parse(input, from: &index, configuration: self.configuration)
   }
 
   @inlinable
   mutating func _parseWhole() -> (output: Output, endIndex: Input.Index)? {
-    var currentIndex = self.input.startIndex
+    var(leadingCFWS, currentIndex) = _parseLeadingCFWS()
 
-    var leadingComments: [MIMEComment]? = nil
-    if let leadingCFWSResult = _parseOptionalLeadingCFWS() {
-      leadingComments = leadingCFWSResult.leadingComments
-      currentIndex = leadingCFWSResult.endIndex
-    }
-
-    guard var output = _parseAfterLeadingCFWS(from: &currentIndex) else {
+    guard var output = _parsePostLeadingCFWS(from: &currentIndex) else {
       return nil
     }
 
-    output.leadingComments = leadingComments
+    output.leadingCFWS = leadingCFWS
 
     return (output: output, endIndex: currentIndex)
   }
@@ -156,20 +150,20 @@ extension _Either: Sendable where Left: Sendable, Right: Sendable {}
 
 extension _Either: _StartsWithOptionalCFWS
 where Left: _StartsWithOptionalCFWS, Right: _StartsWithOptionalCFWS {
-  var leadingComments: [MIMEComment]? {
+  var leadingCFWS: CFWS? {
     get {
       switch self {
-      case .left(let left): return left.leadingComments
-      case .right(let right): return right.leadingComments
+      case .left(let left): return left.leadingCFWS
+      case .right(let right): return right.leadingCFWS
       }
     }
     set {
       switch self {
       case .left(var left):
-        left.leadingComments = newValue
+        left.leadingCFWS = newValue
         self = .left(left)
       case .right(var right):
-        right.leadingComments = newValue
+        right.leadingCFWS = newValue
         self = .right(right)
       }
     }
@@ -178,22 +172,22 @@ where Left: _StartsWithOptionalCFWS, Right: _StartsWithOptionalCFWS {
 
 extension _Either: _SandwichedByOptionalCFWS
 where Left: _SandwichedByOptionalCFWS, Right: _SandwichedByOptionalCFWS {
-  var trailingComments: [MIMEComment]? {
+  var trailingCFWS: CFWS? {
     get {
       switch self {
       case .left(let left):
-        return left.trailingComments
+        return left.trailingCFWS
       case .right(let right):
-        return right.trailingComments
+        return right.trailingCFWS
       }
     }
     set {
       switch self {
       case .left(var left):
-        left.trailingComments = newValue
+        left.trailingCFWS = newValue
         self = .left(left)
       case .right(var right):
-        right.trailingComments = newValue
+        right.trailingCFWS = newValue
         self = .right(right)
       }
     }

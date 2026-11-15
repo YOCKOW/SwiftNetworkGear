@@ -23,7 +23,7 @@ import Testing
   )
   """.split(whereSeparator: { $0.isNewline }).joined(separator: "\u{0D}\u{0A}  ")
   let complex = try #require(MIMEQuotedString(parsing: complexString))
-  #expect(try complex.leadingComments == [MIMEComment([.text("leading comment")])])
+  #expect(try complex.leadingCFWS == [MIMEComment([.text("leading comment")])])
   #expect(complex.content == "quoted content")
-  #expect(try complex.trailingComments == [MIMEComment([.text("trailing comment")])])
+  #expect(try complex.trailingCFWS == [MIMEComment([.text("trailing comment")])])
 }

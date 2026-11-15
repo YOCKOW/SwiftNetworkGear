@@ -56,11 +56,11 @@ import Testing
         case (.http, .content):
           return HTTPQuotedString(content: content)
         case (.mime, .content):
-          return MIMEQuotedString(leadingComments: nil, content: content, trailingComments: nil)
+          return MIMEQuotedString(leadingCFWS: nil, content: content, trailingCFWS: nil)
         case (.http, .quotedString):
           return HTTPQuotedString(quotedString: quotedRawValue)
         case (.mime, .quotedString):
-          return MIMEQuotedString(leadingComments: nil, quotedString: quotedRawValue, trailingComments: nil)
+          return MIMEQuotedString(leadingCFWS: nil, quotedString: quotedRawValue, trailingCFWS: nil)
         }
       }
     }

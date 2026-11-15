@@ -11,7 +11,7 @@ import yExtensions
 
 private typealias _TestArgument = (
   string: String,
-  expected: ([MIMEComment]?, String, [MIMEComment]?)?
+  expected: (CFWS?, String, CFWS?)?
 )
 
 @Suite struct `MIME[Dot]AtomTests` {
@@ -44,7 +44,7 @@ private typealias _TestArgument = (
         )
       ),
     ] as Array<_TestArgument>
-  ) func test_atomParser(argument: (string: String, expected: ([MIMEComment]?, String, [MIMEComment]?)?)) throws {
+  ) func test_atomParser(argument: (string: String, expected: (CFWS?, String, CFWS?)?)) throws {
     let createdAtom = MIMEAtom(parsing: argument.string)
 
     guard let expected = argument.expected else {
@@ -52,9 +52,9 @@ private typealias _TestArgument = (
       return
     }
     let atom = try #require(createdAtom)
-    #expect(atom.leadingComments == expected.0)
+    #expect(atom.leadingCFWS == expected.0)
     #expect(atom.text == expected.1)
-    #expect(atom.trailingComments == expected.2)
+    #expect(atom.trailingCFWS == expected.2)
   }
 
   @Test(
@@ -86,7 +86,7 @@ private typealias _TestArgument = (
         )
       ),
     ] as Array<_TestArgument>
-  ) func test_dotAtomParser(argument: (string: String, expected: ([MIMEComment]?, String, [MIMEComment]?)?)) throws {
+  ) func test_dotAtomParser(argument: (string: String, expected: (CFWS?, String, CFWS?)?)) throws {
     let createdDotAtom = MIMEDotAtom(parsing: argument.string)
 
     guard let expected = argument.expected else {
@@ -94,18 +94,18 @@ private typealias _TestArgument = (
       return
     }
     let dotAtom = try #require(createdDotAtom)
-    #expect(dotAtom.leadingComments == expected.0)
+    #expect(dotAtom.leadingCFWS == expected.0)
     #expect(dotAtom.text == expected.1)
-    #expect(dotAtom.trailingComments == expected.2)
+    #expect(dotAtom.trailingCFWS == expected.2)
   }
 
   @Test func mutualInitializers() throws {
     let atom = try #require(MIMEAtom(parsing: "(a)b(c)"))
     let dotAtom = MIMEDotAtom(atom)
 
-    #expect(dotAtom.leadingComments == atom.leadingComments)
+    #expect(dotAtom.leadingCFWS == atom.leadingCFWS)
     #expect(dotAtom.text == atom.text)
-    #expect(dotAtom.trailingComments == atom.trailingComments)
+    #expect(dotAtom.trailingCFWS == atom.trailingCFWS)
 
     let reAtom = try #require(MIMEAtom(dotAtom))
     #expect(reAtom == atom)

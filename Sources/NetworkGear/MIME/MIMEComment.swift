@@ -6,6 +6,7 @@
  ************************************************************************************************ */
 
 import Foundation
+import yExtensions
 
 /// A string representation which is available in `comment`.
 public struct MIMECommentText: Sendable, Equatable, Hashable {
@@ -220,6 +221,72 @@ extension MIMEComment: _InitializableWithParser {
   }
 }
 
+/// Representation of `CFWS` defined in [RFC 5322 §3.2.2](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.2).
+public struct MIMECommentCoexistableFoldingWhitespace: Sendable, Equatable, ExpressibleByArrayLiteral {
+  private enum _Entity: Sendable, Equatable {
+    case comments(NonEmpty<Array<MIMEComment>>)
+    case foldingWhitespace
+  }
+
+  private var _entity: _Entity
+
+  public var comments: NonEmpty<Array<MIMEComment>>? {
+    guard case .comments(let comments) = _entity else {
+      return nil
+    }
+    return comments
+  }
+
+  private init(_entity entity: _Entity) {
+    self._entity = entity
+  }
+
+  public init() {
+    self.init(_entity: .foldingWhitespace)
+  }
+
+  /// `FWS` without any comments.
+  public static let foldingWhitespace: MIMECommentCoexistableFoldingWhitespace = .init(_entity: .foldingWhitespace)
+
+  public init(_ comments: NonEmpty<Array<MIMEComment>>) {
+    self.init(_entity: .comments(comments))
+  }
+
+  public typealias ArrayLiteralElement = MIMEComment
+  public init(arrayLiteral elements: ArrayLiteralElement...) {
+    if let nonEmpty = NonEmpty<Array<MIMEComment>>(elements) {
+      self.init(_entity: .comments(nonEmpty))
+    } else {
+      self.init(_entity: .foldingWhitespace)
+    }
+  }
+
+  public mutating func append(_ newComment: MIMEComment) {
+    switch self._entity {
+    case .comments(var comments):
+      comments.append(newComment)
+      self._entity = .comments(comments)
+    case .foldingWhitespace:
+      self._entity = .comments([newComment])
+    }
+  }
+
+  public mutating func append<S>(contentsOf newComments: S) where S: Sequence, S.Element == MIMEComment {
+    switch self._entity {
+    case .comments(var comments):
+      comments.append(contentsOf: newComments)
+      self._entity = .comments(comments)
+    case .foldingWhitespace:
+      if let nonEmptyComments = NonEmpty<Array<MIMEComment>>(Array<MIMEComment>(newComments)) {
+        self._entity = .comments(nonEmptyComments)
+      }
+    }
+  }
+}
+
+/// Representation of `CFWS`.
+public typealias CFWS = MIMECommentCoexistableFoldingWhitespace
+
 public struct MIMECommentCoexistableFoldingWhitespaceParserConfiguration: Sendable {
   public var commentParserConfiguration: MIMECommentParserConfiguration
 
@@ -234,7 +301,8 @@ public struct MIMECommentCoexistableFoldingWhitespaceParserConfiguration: Sendab
 /// A parser to parse `CFWS` defined in [RFC 5322 §3.2.2](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.2).
 public struct MIMECommentCoexistableFoldingWhitespaceParser<Input>: StringParser
 where Input: StringProtocol {
-  public typealias Output = Array<MIMEComment>?
+  /// `CFWS`
+  public typealias Output = MIMECommentCoexistableFoldingWhitespace
 
   public typealias Configuration = MIMECommentCoexistableFoldingWhitespaceParserConfiguration
 
@@ -286,7 +354,7 @@ where Input: StringProtocol {
     return .comment(comment)
   }
 
-  public mutating func parse() -> (output: Array<MIMEComment>?, endIndex: Input.Index)? {
+  public mutating func parse() -> (output: MIMECommentCoexistableFoldingWhitespace, endIndex: Input.Index)? {
     var currentIndex = self.input.startIndex
 
     // Implementation Note:
@@ -297,18 +365,19 @@ where Input: StringProtocol {
     }
 
     guard let firstComment = firstElement.comment else {
-      return (output: nil, endIndex: currentIndex)
+      return (output: .foldingWhitespace, endIndex: currentIndex)
     }
 
-    var comments: [MIMEComment] = [firstComment]
+    var comments: NonEmpty<Array<MIMEComment>> = [firstComment]
     while let element = self._parseElement(from: &currentIndex) {
       guard let comment = element.comment else {
-        // `FWS` after `comment`.
+        // `element` is `.foldingWhitespace`.
+        // i.e.) `FWS` after `comment`.
         break
       }
       comments.append(comment)
     }
-    return (comments, currentIndex)
+    return (output: .init(comments), endIndex: currentIndex)
   }
 }
 

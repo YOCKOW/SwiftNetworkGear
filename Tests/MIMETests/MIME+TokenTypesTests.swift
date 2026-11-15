@@ -14,15 +14,15 @@ import Testing
 
     let atomWord = try #require(MIMEWord(parsing: "(leading comment)atom(trailing comment)"))
     #expect(atomWord.isAtom)
-    #expect(atomWord.atom?.leadingComments == [MIMEComment([.text("leading comment")])])
+    #expect(atomWord.atom?.leadingCFWS == [MIMEComment([.text("leading comment")])])
     #expect(atomWord.atom?.text == "atom")
-    #expect(atomWord.atom?.trailingComments == [MIMEComment([.text("trailing comment")])])
+    #expect(atomWord.atom?.trailingCFWS == [MIMEComment([.text("trailing comment")])])
 
     let qsWord = try #require(MIMEWord(parsing: #"(leading comment)"quoted-string"(trailing comment)"#))
     #expect(qsWord.isQuotedString)
-    #expect(qsWord.quotedString?.leadingComments == [MIMEComment([.text("leading comment")])])
+    #expect(qsWord.quotedString?.leadingCFWS == [MIMEComment([.text("leading comment")])])
     #expect(qsWord.quotedString?.content == "quoted-string")
-    #expect(qsWord.quotedString?.trailingComments == [MIMEComment([.text("trailing comment")])])
+    #expect(qsWord.quotedString?.trailingCFWS == [MIMEComment([.text("trailing comment")])])
   }
 }
 
@@ -36,14 +36,14 @@ import Testing
       return
     }
     #expect(phrase.word(at: 0).isAtom)
-    #expect(phrase.word(at: 0).atom?.leadingComments == [MIMEComment([.text("leading comment")])])
+    #expect(phrase.word(at: 0).atom?.leadingCFWS == [MIMEComment([.text("leading comment")])])
     #expect(phrase.word(at: 0).atom?.text == "atom")
-    #expect(phrase.word(at: 0).atom?.trailingComments == [MIMEComment([.text("interjected comment")])])
+    #expect(phrase.word(at: 0).atom?.trailingCFWS == [MIMEComment([.text("interjected comment")])])
 
     #expect(phrase.word(at: 1).isQuotedString)
-    #expect(phrase.word(at: 1).quotedString?.leadingComments == nil)
+    #expect(phrase.word(at: 1).quotedString?.leadingCFWS == nil)
     #expect(phrase.word(at: 1).quotedString?.content == "quoted-string")
-    #expect(phrase.word(at: 1).quotedString?.trailingComments == [MIMEComment([.text("trailing comment")])])
+    #expect(phrase.word(at: 1).quotedString?.trailingCFWS == [MIMEComment([.text("trailing comment")])])
   }
 }
 

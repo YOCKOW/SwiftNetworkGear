@@ -10,16 +10,16 @@ import yExtensions
 
 /// Representation of `domain-literal` defined in [RFC 5322 §3.4.1](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4.1).
 public struct MIMEDomainLiteral: Sendable, _SandwichedByOptionalCFWS {
-  public internal(set) var leadingComments: [MIMEComment]?
+  public internal(set) var leadingCFWS: CFWS?
 
   public let text: String
 
-  public internal(set) var trailingComments: [MIMEComment]?
+  public internal(set) var trailingCFWS: CFWS?
 
   internal init(
-    leadingComments: [MIMEComment]?,
+    leadingCFWS: CFWS?,
     _validatedText text: String,
-    trailingComments: [MIMEComment]?
+    trailingCFWS: CFWS?
   ) {
     assert(
       text.hasPrefix("[") &&
@@ -28,9 +28,9 @@ public struct MIMEDomainLiteral: Sendable, _SandwichedByOptionalCFWS {
         $0._isAvailableInMIMEDomainLiteral || $0._isSpace
       })
     )
-    self.leadingComments = leadingComments
+    self.leadingCFWS = leadingCFWS
     self.text = text
-    self.trailingComments = trailingComments
+    self.trailingCFWS = trailingCFWS
   }
 }
 
@@ -84,51 +84,51 @@ public struct MIMEAddressSpecification: Sendable, _SandwichedByOptionalCFWS {
       return quotedString
     }
 
-    public internal(set) var leadingComments: [MIMEComment]? {
+    public internal(set) var leadingCFWS: CFWS? {
       get {
         switch self._entity {
-        case .dotAtom(let dotAtom): return dotAtom.leadingComments
-        case .quotedString(let quotedString): return quotedString.leadingComments
+        case .dotAtom(let dotAtom): return dotAtom.leadingCFWS
+        case .quotedString(let quotedString): return quotedString.leadingCFWS
         }
       }
       set {
         switch self._entity {
         case .dotAtom(var dotAtom):
-          dotAtom.leadingComments = newValue
+          dotAtom.leadingCFWS = newValue
           self._entity = .dotAtom(dotAtom)
         case .quotedString(var quotedString):
-          quotedString.leadingComments = newValue
+          quotedString.leadingCFWS = newValue
           self._entity = .quotedString(quotedString)
         }
       }
     }
 
 
-    public internal(set) var trailingComments: [MIMEComment]? {
+    public internal(set) var trailingCFWS: CFWS? {
       get {
         switch self._entity {
-        case .dotAtom(let dotAtom): return dotAtom.trailingComments
-        case .quotedString(let quotedString): return quotedString.trailingComments
+        case .dotAtom(let dotAtom): return dotAtom.trailingCFWS
+        case .quotedString(let quotedString): return quotedString.trailingCFWS
         }
       }
       set {
         switch self._entity {
         case .dotAtom(var dotAtom):
-          dotAtom.trailingComments = newValue
+          dotAtom.trailingCFWS = newValue
           self._entity = .dotAtom(dotAtom)
         case .quotedString(var quotedString):
-          quotedString.trailingComments = newValue
+          quotedString.trailingCFWS = newValue
           self._entity = .quotedString(quotedString)
         }
       }
     }
 
     public mutating func removeLeadingComments() {
-      self.leadingComments = nil
+      self.leadingCFWS = nil
     }
 
     public mutating func removeTrailingComments() {
-      self.trailingComments = nil
+      self.trailingCFWS = nil
     }
 
     fileprivate init(_entity entity: _Entity) {
@@ -192,51 +192,51 @@ public struct MIMEAddressSpecification: Sendable, _SandwichedByOptionalCFWS {
       return literal
     }
 
-    public internal(set) var leadingComments: [MIMEComment]? {
+    public internal(set) var leadingCFWS: CFWS? {
       get {
         switch self._entity {
-        case .dotAtom(let dotAtom): return dotAtom.leadingComments
-        case .domainLiteral(let literal): return literal.leadingComments
+        case .dotAtom(let dotAtom): return dotAtom.leadingCFWS
+        case .domainLiteral(let literal): return literal.leadingCFWS
         }
       }
       set {
         switch self._entity {
         case .dotAtom(var dotAtom):
-          dotAtom.leadingComments = newValue
+          dotAtom.leadingCFWS = newValue
           self._entity = .dotAtom(dotAtom)
         case .domainLiteral(var literal):
-          literal.leadingComments = newValue
+          literal.leadingCFWS = newValue
           self._entity = .domainLiteral(literal)
         }
       }
     }
 
 
-    public internal(set) var trailingComments: [MIMEComment]? {
+    public internal(set) var trailingCFWS: CFWS? {
       get {
         switch self._entity {
-        case .dotAtom(let dotAtom): return dotAtom.trailingComments
-        case .domainLiteral(let literal): return literal.trailingComments
+        case .dotAtom(let dotAtom): return dotAtom.trailingCFWS
+        case .domainLiteral(let literal): return literal.trailingCFWS
         }
       }
       set {
         switch self._entity {
         case .dotAtom(var dotAtom):
-          dotAtom.trailingComments = newValue
+          dotAtom.trailingCFWS = newValue
           self._entity = .dotAtom(dotAtom)
         case .domainLiteral(var literal):
-          literal.trailingComments = newValue
+          literal.trailingCFWS = newValue
           self._entity = .domainLiteral(literal)
         }
       }
     }
 
     public mutating func removeLeadingComments() {
-      self.leadingComments = nil
+      self.leadingCFWS = nil
     }
 
     public mutating func removeTrailingComments() {
-      self.trailingComments = nil
+      self.trailingCFWS = nil
     }
 
     fileprivate init(_entity entity: _Entity) {
@@ -256,21 +256,21 @@ public struct MIMEAddressSpecification: Sendable, _SandwichedByOptionalCFWS {
 
   public internal(set) var domainPortion: DomainPortion
 
-  internal var leadingComments: [MIMEComment]? {
+  internal var leadingCFWS: CFWS? {
     get {
-      self.localPart.leadingComments
+      self.localPart.leadingCFWS
     }
     set {
-      self.localPart.leadingComments = newValue
+      self.localPart.leadingCFWS = newValue
     }
   }
 
-  internal var trailingComments: [MIMEComment]? {
+  internal var trailingCFWS: CFWS? {
     get {
-      self.domainPortion.trailingComments
+      self.domainPortion.trailingCFWS
     }
     set {
-      self.domainPortion.trailingComments = newValue
+      self.domainPortion.trailingCFWS = newValue
     }
   }
 
@@ -353,9 +353,9 @@ where Input: StringProtocol {
 
       return (
         MIMEDomainLiteral(
-          leadingComments: nil,
+          leadingCFWS: nil,
           _validatedText: String(decoding: resultUTF8, as: UTF8.self),
-          trailingComments: nil
+          trailingCFWS: nil
         ),
         currentIndex
       )
@@ -540,11 +540,11 @@ where Input: StringProtocol {
         return nil
       }
 
-      let leadingCommentsOfDomainPortion: [MIMEComment]? = CFWSParser<CoreParserInput.SubSequence>.parse(
+      let leadingCommentsOfDomainPortion: CFWS? = CFWSParser<CoreParserInput.SubSequence>.parse(
         input,
         from: &currentIndex,
         configuration: cfwsParserConfiguration
-      ) ?? nil
+      )
       typealias _PartialDomainPortionParser = MIMEAddressSpecification.DomainPortionParser<CoreParserInput.SubSequence>.CoreParser
       guard var partialDomainPortion = _PartialDomainPortionParser.parse(
         input,
@@ -553,7 +553,7 @@ where Input: StringProtocol {
       ) else {
         return nil
       }
-      partialDomainPortion.leadingComments = leadingCommentsOfDomainPortion
+      partialDomainPortion.leadingCFWS = leadingCommentsOfDomainPortion
 
       return (
         MIMEAddressSpecification(localPart: partialLocalPart, domainPortion: partialDomainPortion),
@@ -597,21 +597,21 @@ public struct MIMEDisplayName: Sendable, _StartsWithOptionalCFWS {
     return self._entity
   }
 
-  public internal(set) var leadingComments: [MIMEComment]? {
+  public internal(set) var leadingCFWS: CFWS? {
     get {
-      return self._entity.leadingComments
+      return self._entity.leadingCFWS
     }
     set {
-      self._entity.leadingComments = newValue
+      self._entity.leadingCFWS = newValue
     }
   }
 
-  public internal(set) var trailingComments: [MIMEComment]? {
+  public internal(set) var trailingCFWS: CFWS? {
     get {
-      return self._entity.trailingComments
+      return self._entity.trailingCFWS
     }
     set {
-      self._entity.trailingComments = newValue
+      self._entity.trailingCFWS = newValue
     }
   }
 
@@ -680,20 +680,20 @@ public struct MIMEDisplayNameParser<Input>: StringParser, _StartsWithOptionalCFW
 
 /// Representation of `angle-addr` defined in [RFC 5322 §3.4](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4).
 public struct MIMEAngleBracketEnclosedAddress: Sendable, _SandwichedByOptionalCFWS {
-  public internal(set) var leadingComments: [MIMEComment]?
+  public internal(set) var leadingCFWS: CFWS?
 
   public var addressSpecification: MIMEAddressSpecification
 
-  public internal(set) var trailingComments: [MIMEComment]?
+  public internal(set) var trailingCFWS: CFWS?
 
   internal init(
-    leadingComments: [MIMEComment]?,
+    leadingCFWS: CFWS?,
     addressSpecification: MIMEAddressSpecification,
-    trailingComments: [MIMEComment]?
+    trailingCFWS: CFWS?
   ) {
-    self.leadingComments = leadingComments
+    self.leadingCFWS = leadingCFWS
     self.addressSpecification = addressSpecification
-    self.trailingComments = trailingComments
+    self.trailingCFWS = trailingCFWS
   }
 }
 
@@ -752,9 +752,9 @@ where Input: StringProtocol {
 
       return (
         MIMEAngleBracketEnclosedAddress(
-          leadingComments: nil,
+          leadingCFWS: nil,
           addressSpecification: addrSpec,
-          trailingComments: nil
+          trailingCFWS: nil
         ),
         currentIndex
       )
@@ -794,26 +794,26 @@ public struct MIMENameAddress: Sendable, _SandwichedByOptionalCFWS {
 
   public var address: MIMEAngleBracketEnclosedAddress
 
-  public internal(set) var leadingComments: [MIMEComment]? {
+  public internal(set) var leadingCFWS: CFWS? {
     get {
-      return displayName?.leadingComments ?? address.leadingComments
+      return displayName?.leadingCFWS ?? address.leadingCFWS
     }
     set {
       if var displayName = self.displayName {
-        displayName.leadingComments = newValue
+        displayName.leadingCFWS = newValue
         self.displayName = displayName
       } else {
-        self.address.leadingComments = newValue
+        self.address.leadingCFWS = newValue
       }
     }
   }
 
-  public internal(set) var trailingComments: [MIMEComment]? {
+  public internal(set) var trailingCFWS: CFWS? {
     get {
-      return address.trailingComments
+      return address.trailingCFWS
     }
     set {
-      address.trailingComments = newValue
+      address.trailingCFWS = newValue
     }
   }
 
@@ -959,21 +959,21 @@ public struct MIMEMailBox: Sendable, _SandwichedByOptionalCFWS, _EitherMappable 
     }
   }
 
-  public internal(set) var leadingComments: [MIMEComment]? {
+  public internal(set) var leadingCFWS: CFWS? {
     get {
-      self._entity.leadingComments
+      self._entity.leadingCFWS
     }
     set {
-      self._entity.leadingComments = newValue
+      self._entity.leadingCFWS = newValue
     }
   }
 
-  public internal(set) var trailingComments: [MIMEComment]? {
+  public internal(set) var trailingCFWS: CFWS? {
     get {
-      self._entity.trailingComments
+      self._entity.trailingCFWS
     }
     set {
-      self._entity.trailingComments = newValue
+      self._entity.trailingCFWS = newValue
     }
   }
 
@@ -1067,24 +1067,24 @@ public struct MIMEMailBoxList: Sendable, _SandwichedByOptionalCFWS {
   /// Non-empty list of `mail-box`es.
   public var mailBoxes: NonEmpty<Array<MIMEMailBox>>
 
-  public internal(set) var leadingComments: [MIMEComment]? {
+  public internal(set) var leadingCFWS: CFWS? {
     get {
-      return mailBoxes.first.leadingComments
+      return mailBoxes.first.leadingCFWS
     }
     set {
       var firstBox = mailBoxes.first
-      firstBox.leadingComments = newValue
+      firstBox.leadingCFWS = newValue
       mailBoxes[0] = firstBox
     }
   }
 
-  public internal(set) var trailingComments: [MIMEComment]? {
+  public internal(set) var trailingCFWS: CFWS? {
     get {
-      return mailBoxes.last.trailingComments
+      return mailBoxes.last.trailingCFWS
     }
     set {
       var lastBox = mailBoxes.last
-      lastBox.trailingComments = newValue
+      lastBox.trailingCFWS = newValue
       mailBoxes[mailBoxes.count - 1] = lastBox
     }
   }
@@ -1199,7 +1199,7 @@ public struct MIMEAddressGroup: Sendable, _SandwichedByOptionalCFWS {
   public struct List: Sendable {
     private enum _Entity: Sendable {
       case mailBoxList(MIMEMailBoxList)
-      case cfws([MIMEComment])
+      case cfws(CFWS)
     }
 
     private var _entity: _Entity
@@ -1212,8 +1212,8 @@ public struct MIMEAddressGroup: Sendable, _SandwichedByOptionalCFWS {
       self.init(_entity: .mailBoxList(mailBoxList))
     }
 
-    public init(_ comments: [MIMEComment]) {
-      self.init(_entity: .cfws(comments))
+    public init(_ cfws: CFWS) {
+      self.init(_entity: .cfws(cfws))
     }
   }
 
@@ -1221,21 +1221,137 @@ public struct MIMEAddressGroup: Sendable, _SandwichedByOptionalCFWS {
 
   public var list: List?
 
-  public internal(set) var trailingComments: [MIMEComment]?
+  public internal(set) var trailingCFWS: CFWS?
 
-  public internal(set) var leadingComments: [MIMEComment]? {
+  public internal(set) var leadingCFWS: CFWS? {
     get {
-      return displayName.leadingComments
+      return displayName.leadingCFWS
     }
     set {
-      displayName.leadingComments = newValue
+      displayName.leadingCFWS = newValue
     }
   }
 
-  public init(displayName: MIMEDisplayName, list: List?, trailingComments: [MIMEComment]? = nil) {
+  public init(displayName: MIMEDisplayName, list: List?, trailingCFWS: CFWS? = nil) {
     self.displayName = displayName
     self.list = list
-    self.trailingComments = trailingComments
+    self.trailingCFWS = trailingCFWS
   }
 }
 
+public typealias MIMEAddressGroupList = MIMEAddressGroup.List
+
+public struct MIMEAddressGroupListParser<Input>: StringParser where Input: StringProtocol {
+  public typealias Output = MIMEAddressGroupList
+  public typealias Configuration = MIMEMailBoxListParser<Input>.Configuration
+
+  let input: Input
+  public var configuration: Configuration
+
+  public init(input: Input, configuration: Configuration? = nil) {
+    self.input = input
+    self.configuration = configuration ?? .default
+  }
+
+  public mutating func parse() -> (output: MIMEAddressGroupList, endIndex: Input.Index)? {
+    // Implementation note:
+    //   group-list = mailbox-list / CFWS
+
+    var currentIndex = input.startIndex
+    let cfws = CFWSParser.parse(
+      input,
+      from: &currentIndex,
+      configuration: configuration.cfwsParserConfiguration
+    )
+
+    let mailBoxListAfterCFWS = MIMEMailBoxListParser<Input>.PostLeadingCFWSParser.parse(
+      input,
+      from: &currentIndex,
+      configuration: configuration
+    )
+
+    switch (cfws, mailBoxListAfterCFWS) {
+    case (nil, nil):
+      return nil
+    case (nil, let mailBoxList?):
+      return (output: MIMEAddressGroupList(mailBoxList), endIndex: currentIndex)
+    case (let comments?, nil):
+      return (output: MIMEAddressGroupList(comments), endIndex: currentIndex)
+    case (let comments?, var mailBoxList?):
+      mailBoxList.leadingCFWS = comments
+      return (output: MIMEAddressGroupList(mailBoxList), endIndex: currentIndex)
+    }
+  }
+}
+
+
+public struct MIMEAddressGroupParser<Input>: StringParser, _StartsWithOptionalCFWSParser
+where Input: StringProtocol {
+  public typealias Output = MIMEAddressGroup
+  public typealias Configuration = MIMEMailBoxListParser<Input>.Configuration
+
+  @usableFromInline let input: Input
+  public var configuration: Configuration
+
+  public init(input: Input, configuration: Configuration? = nil) {
+    self.input = input
+    self.configuration = configuration ?? .default
+  }
+
+  typealias PostLeadingCFWSParserInput = Input.SubSequence
+  struct PostLeadingCFWSParser: StringParser, _UTF8Parser {
+    let input: PostLeadingCFWSParserInput
+    let utf8: PostLeadingCFWSParserInput.UTF8View
+    var configuration: Configuration
+
+    init(input: PostLeadingCFWSParserInput, configuration: Configuration?) {
+      self.input = input
+      self.utf8 = input.utf8
+      self.configuration = configuration ?? .default
+    }
+
+    func parse() -> (output: Output, endIndex: PostLeadingCFWSParserInput.Index)? {
+      var currentIndex = self.utf8.startIndex
+      guard let displayName = MIMEDisplayNameParser<Input>.PostLeadingCFWSParser.parse(
+        input,
+        from: &currentIndex,
+        configuration: .init(cfwsParserConfiguration: configuration.cfwsParserConfiguration)
+      ) else {
+        return nil
+      }
+
+      guard let _ = self.readCurrentCodeUnit(at: &currentIndex, ifAllowedCodeUnit: \._isColon) else {
+        return nil
+      }
+
+      let groupList = MIMEAddressGroupListParser<PostLeadingCFWSParserInput>.parse(
+        input,
+        from: &currentIndex,
+        configuration: configuration
+      )
+
+      guard let _ = self.readCurrentCodeUnit(at: &currentIndex, ifAllowedCodeUnit: \._isSemicolon) else {
+        return nil
+      }
+
+      let trailingCFWS = CFWSParser<PostLeadingCFWSParserInput>.parse(
+        input,
+        from: &currentIndex,
+        configuration: configuration.cfwsParserConfiguration
+      )
+
+      return (
+        output: MIMEAddressGroup(
+          displayName: displayName,
+          list: groupList,
+          trailingCFWS: trailingCFWS
+        ),
+        endIndex: currentIndex
+      )
+    }
+  }
+
+  public mutating func parse() -> (output: MIMEAddressGroup, endIndex: Input.Index)? {
+    return self._parseWhole()
+  }
+}

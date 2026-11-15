@@ -56,39 +56,39 @@ public struct MIMEWord: Sendable, _SandwichedByOptionalCFWS {
     return quotedString
   }
 
-  public internal(set) var leadingComments: [MIMEComment]? {
+  public internal(set) var leadingCFWS: CFWS? {
     get {
       switch self._entity {
-      case .atom(let atom): return atom.leadingComments
-      case .quotedString(let quotedString): return quotedString.leadingComments
+      case .atom(let atom): return atom.leadingCFWS
+      case .quotedString(let quotedString): return quotedString.leadingCFWS
       }
     }
     set {
       switch self._entity {
       case .atom(var atom):
-        atom.leadingComments = newValue
+        atom.leadingCFWS = newValue
         self._entity = .atom(atom)
       case .quotedString(var quotedString):
-        quotedString.leadingComments = newValue
+        quotedString.leadingCFWS = newValue
         self._entity = .quotedString(quotedString)
       }
     }
   }
 
-  public internal(set) var trailingComments: [MIMEComment]? {
+  public internal(set) var trailingCFWS: CFWS? {
     get {
       switch self._entity {
-      case .atom(let atom): return atom.trailingComments
-      case .quotedString(let quotedString): return quotedString.trailingComments
+      case .atom(let atom): return atom.trailingCFWS
+      case .quotedString(let quotedString): return quotedString.trailingCFWS
       }
     }
     set {
       switch self._entity {
       case .atom(var atom):
-        atom.trailingComments = newValue
+        atom.trailingCFWS = newValue
         self._entity = .atom(atom)
       case .quotedString(var quotedString):
-        quotedString.trailingComments = newValue
+        quotedString.trailingCFWS = newValue
         self._entity = .quotedString(quotedString)
       }
     }
@@ -185,24 +185,24 @@ public struct MIMEPhrase: Sendable, _StartsWithOptionalCFWS {
 
   public private(set) var words: Words
 
-  internal var leadingComments: [MIMEComment]? {
+  internal var leadingCFWS: CFWS? {
     @inlinable get {
-      return words.first.leadingComments
+      return words.first.leadingCFWS
     }
     set {
       var firstWord = words.first
-      firstWord.leadingComments = newValue
+      firstWord.leadingCFWS = newValue
       words[0] = firstWord
     }
   }
 
-  internal var trailingComments: [MIMEComment]? {
+  internal var trailingCFWS: CFWS? {
     @inlinable get {
-      return words.last.trailingComments
+      return words.last.trailingCFWS
     }
     set {
       var lastWord = words.last
-      lastWord.trailingComments = newValue
+      lastWord.trailingCFWS = newValue
       words[words.count - 1] = lastWord
     }
   }

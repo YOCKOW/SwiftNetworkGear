@@ -11,9 +11,9 @@ import Testing
 @Suite struct MIMEAddressTests {
   @Test func domainLiteralParser() throws {
     let literal = try #require(MIMEDomainLiteral(parsing: "(foo)[bar](baz)"))
-    #expect(literal.leadingComments == [MIMEComment([.text("foo")])])
+    #expect(literal.leadingCFWS == [MIMEComment([.text("foo")])])
     #expect(literal.text == "[bar]")
-    #expect(literal.trailingComments == [MIMEComment([.text("baz")])])
+    #expect(literal.trailingCFWS == [MIMEComment([.text("baz")])])
   }
 
   @Test func addrSpecParser() throws {
@@ -22,14 +22,14 @@ import Testing
 
       let localPart = addrSpec.localPart
       #expect(localPart.isDotAtom)
-      #expect(localPart.leadingComments.isNil)
-      #expect(localPart.trailingComments.isNil)
+      #expect(localPart.leadingCFWS.isNil)
+      #expect(localPart.trailingCFWS.isNil)
       #expect(localPart.dotAtom?.text == "addr")
 
       let domainPortion = addrSpec.domainPortion
       #expect(domainPortion.isDotAtom)
-      #expect(domainPortion.leadingComments.isNil)
-      #expect(domainPortion.trailingComments.isNil)
+      #expect(domainPortion.leadingCFWS.isNil)
+      #expect(domainPortion.trailingCFWS.isNil)
       #expect(domainPortion.dotAtom?.text == "spec.parser")
     }
 
@@ -40,33 +40,33 @@ import Testing
 
       let localPart = addrSpec.localPart
       #expect(localPart.isQuotedString)
-      #expect(localPart.quotedString?.leadingComments == [MIMEComment([.text("My name is")])])
+      #expect(localPart.quotedString?.leadingCFWS == [MIMEComment([.text("My name is")])])
       #expect(localPart.quotedString?.content == "YOCKOW")
-      #expect(localPart.quotedString?.trailingComments == [MIMEComment([.text(".")])])
+      #expect(localPart.quotedString?.trailingCFWS == [MIMEComment([.text(".")])])
 
       let domainPortion = addrSpec.domainPortion
       #expect(domainPortion.isDomainLiteral)
-      #expect(domainPortion.domainLiteral?.leadingComments == [MIMEComment([.text("Domain literal can contain")])])
+      #expect(domainPortion.domainLiteral?.leadingCFWS == [MIMEComment([.text("Domain literal can contain")])])
       #expect(domainPortion.domainLiteral?.text == "[any characters you want]")
-      #expect(domainPortion.domainLiteral?.trailingComments == [MIMEComment([.text("excluding some characters.")])])
+      #expect(domainPortion.domainLiteral?.trailingCFWS == [MIMEComment([.text("excluding some characters.")])])
     }
   }
 
   @Test func angleAddr() throws {
     do {
       let angleAddr = try #require(MIMEAngleBracketEnclosedAddress(parsing: "<angle@bracket.com>"))
-      #expect(angleAddr.leadingComments.isNil)
-      #expect(angleAddr.trailingComments.isNil)
+      #expect(angleAddr.leadingCFWS.isNil)
+      #expect(angleAddr.trailingCFWS.isNil)
       #expect(angleAddr.addressSpecification.localPart.dotAtom?.text == "angle")
       #expect(angleAddr.addressSpecification.domainPortion.dotAtom?.text == "bracket.com")
     }
 
     do {
       let angleAddr = try #require(MIMEAngleBracketEnclosedAddress(parsing: "(foo)<bar@baz>(qux)"))
-      #expect(angleAddr.leadingComments == [MIMEComment([.text("foo")])])
+      #expect(angleAddr.leadingCFWS == [MIMEComment([.text("foo")])])
       #expect(angleAddr.addressSpecification.localPart.dotAtom?.text == "bar")
       #expect(angleAddr.addressSpecification.domainPortion.dotAtom?.text == "baz")
-      #expect(angleAddr.trailingComments == [MIMEComment([.text("qux")])])
+      #expect(angleAddr.trailingCFWS == [MIMEComment([.text("qux")])])
     }
   }
 
@@ -86,15 +86,15 @@ import Testing
         Issue.record("Unexpected count.")
         return
       }
-      #expect(displayName._entity.leadingComments == [MIMEComment([.text("1")])])
+      #expect(displayName._entity.leadingCFWS == [MIMEComment([.text("1")])])
       #expect(displayName._entity.word(at: 0).isAtom)
-      #expect(displayName._entity.word(at: 0).trailingComments == [MIMEComment([.text("2")])])
+      #expect(displayName._entity.word(at: 0).trailingCFWS == [MIMEComment([.text("2")])])
       #expect(displayName._entity.word(at: 1).isQuotedString)
-      #expect(displayName._entity.word(at: 1).trailingComments == [MIMEComment([.text("3")])])
+      #expect(displayName._entity.word(at: 1).trailingCFWS == [MIMEComment([.text("3")])])
 
       #expect(fullNameAddr.address.addressSpecification.localPart.dotAtom?.text == "local.part")
       #expect(fullNameAddr.address.addressSpecification.domainPortion.dotAtom?.text == "domain.portion")
-      #expect(fullNameAddr.address.trailingComments == [MIMEComment([.text("4")])])
+      #expect(fullNameAddr.address.trailingCFWS == [MIMEComment([.text("4")])])
     }
   }
 
@@ -124,7 +124,7 @@ import Testing
       return
     }
 
-    #expect(!list.first.leadingComments.isNil)
+    #expect(!list.first.leadingCFWS.isNil)
     #expect(list.first.displayName?.phrase.words.first.atom?.text == "person1")
     #expect(list.first.addressSpecification.localPart.dotAtom?.text == "person.1")
     #expect(list.first.addressSpecification.domainPortion.dotAtom?.text == "domain.portion")
@@ -140,5 +140,13 @@ import Testing
     #expect(list.last.displayName.isNil)
     #expect(list.last.addressSpecification.localPart.dotAtom?.text == "person.4")
     #expect(list.last.addressSpecification.domainPortion.dotAtom?.text == "domain.portion")
+  }
+
+  @Test(arguments: [
+    "name:;",
+    "name:(no list here);(comment)",
+    "name:local@domain;",
+  ]) func group(argument: String) throws {
+    #expect(!MIMEAddressGroupParser<String>.parse(argument).isNil)
   }
 }

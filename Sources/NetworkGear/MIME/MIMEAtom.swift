@@ -7,21 +7,21 @@
 
 /// Representation of `atom` defined in [RFC 5322 §3.2.3](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.3).
 public struct MIMEAtom: Sendable, Equatable, _SandwichedByOptionalCFWS {
-  public internal(set) var leadingComments: [MIMEComment]?
+  public internal(set) var leadingCFWS: CFWS?
 
   public let text: String
 
-  public internal(set) var trailingComments: [MIMEComment]?
+  public internal(set) var trailingCFWS: CFWS?
 
   internal init(
-    leadingComments: [MIMEComment]?,
+    leadingCFWS: CFWS?,
     _validatedText text: String,
-    trailingComments: [MIMEComment]?
+    trailingCFWS: CFWS?
   ) {
     assert(!text.isEmpty && text.utf8.allSatisfy(\._isAvailableInAtomText))
-    self.leadingComments = leadingComments
+    self.leadingCFWS = leadingCFWS
     self.text = text
-    self.trailingComments = trailingComments
+    self.trailingCFWS = trailingCFWS
   }
 }
 
@@ -64,9 +64,9 @@ where Input: StringProtocol {
         return nil
       }
       let partialAtom = MIMEAtom(
-        leadingComments: nil,
+        leadingCFWS: nil,
         _validatedText: text._string,
-        trailingComments: nil
+        trailingCFWS: nil
       )
       return (partialAtom, currentIndex)
     }
@@ -100,7 +100,7 @@ extension MIMEAtom: _InitializableWithParser {
 
 /// Representation of `dot-atom` defined in [RFC 5322 §3.2.3](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.3).
 public struct MIMEDotAtom: Sendable, _SandwichedByOptionalCFWS {
-  public internal(set) var leadingComments: [MIMEComment]?
+  public internal(set) var leadingCFWS: CFWS?
 
   /// `dot-atom-text`
   public let text: String
@@ -108,14 +108,14 @@ public struct MIMEDotAtom: Sendable, _SandwichedByOptionalCFWS {
   @usableFromInline
   internal var _textContainsDot: Bool
 
-  public internal(set) var trailingComments: [MIMEComment]?
+  public internal(set) var trailingCFWS: CFWS?
 
   @usableFromInline
   internal init(
-    leadingComments: [MIMEComment]?,
+    leadingCFWS: CFWS?,
     _validatedText text: String,
     textContainsDot: Bool,
-    trailingComments: [MIMEComment]?)
+    trailingCFWS: CFWS?)
   {
     assert(
       !text.isEmpty &&
@@ -126,20 +126,20 @@ public struct MIMEDotAtom: Sendable, _SandwichedByOptionalCFWS {
     assert(
       textContainsDot == text.utf8.contains(where: { $0._isPeriod })
     )
-    self.leadingComments = leadingComments
+    self.leadingCFWS = leadingCFWS
     self.text = text
     self._textContainsDot = textContainsDot
-    self.trailingComments = trailingComments
+    self.trailingCFWS = trailingCFWS
   }
 
   /// Creates an instance from `atom`.
   @inlinable
   public init(_ atom: MIMEAtom) {
     self.init(
-      leadingComments: atom.leadingComments,
+      leadingCFWS: atom.leadingCFWS,
       _validatedText: atom.text,
       textContainsDot: false,
-      trailingComments: atom.trailingComments
+      trailingCFWS: atom.trailingCFWS
     )
   }
 }
@@ -151,9 +151,9 @@ extension MIMEAtom {
       return nil
     }
     self.init(
-      leadingComments: dotAtom.leadingComments,
+      leadingCFWS: dotAtom.leadingCFWS,
       _validatedText: dotAtom.text,
-      trailingComments: dotAtom.trailingComments
+      trailingCFWS: dotAtom.trailingCFWS
     )
   }
 }
@@ -206,10 +206,10 @@ where Input: StringProtocol {
       let textContainsDot = atomEndIndex < currentIndex
 
       let partialDotAtom = MIMEDotAtom(
-        leadingComments: nil,
+        leadingCFWS: nil,
         _validatedText: text._string,
         textContainsDot: textContainsDot,
-        trailingComments: nil
+        trailingCFWS: nil
       )
 
       return (partialDotAtom, currentIndex)
