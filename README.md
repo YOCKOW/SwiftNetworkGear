@@ -19,11 +19,11 @@ title: NetworkGear Dependencies
 flowchart TD
   swiftbootstring(["Bootstring<br>@1.2.0"])
   swiftnetworkgear["NetworkGear"]
-  swiftpublicsuffix(["PublicSuffix<br>@2.4.45"])
+  swiftpublicsuffix(["PublicSuffix<br>@2.4.46"])
   swiftranges(["Ranges<br>@4.0.2"])
   swifttemporaryfile(["TemporaryFile<br>@5.0.0"])
   swiftunicodesupplement(["UnicodeSupplement<br>@2.0.1"])
-  yswiftextensions(["yExtensions<br>@2.4.0"])
+  yswiftextensions(["yExtensions<br>@2.4.1"])
 
   click swiftbootstring href "https://github.com/YOCKOW/SwiftBootstring.git"
   click swiftpublicsuffix href "https://github.com/YOCKOW/SwiftPublicSuffix.git"
